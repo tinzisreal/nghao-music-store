@@ -109,3 +109,39 @@ test("notifyAdminNewPaidOrder skips duplicate notifications if already notified"
   assert.equal(result.skipped, true);
   assert.equal(result.reason, "already_notified");
 });
+
+test("sendNtfyOrderAlert and sendTelegramOrderAlert include phone number and Zalo link", async () => {
+  let capturedNtfy = null;
+  const mockNtfyFetch = async (url, options) => {
+    capturedNtfy = JSON.parse(options.body);
+    return { ok: true, text: async () => "ok" };
+  };
+
+  await sendNtfyOrderAlert({
+    order: { id: "ord_p1", amount: 2000, transferNote: "NGHAO P1", email: "fan@gmail.com", phone: "0333025864" },
+    track: { title: "Bật nhạc lên" },
+    fetchImpl: mockNtfyFetch
+  });
+
+  assert.ok(capturedNtfy.message.includes("0333025864"));
+  assert.ok(capturedNtfy.actions.some((a) => a.label === "Nhắn Zalo" && a.url.includes("zalo.me/0333025864")));
+
+  process.env.TELEGRAM_BOT_TOKEN = "test_bot_token";
+  process.env.TELEGRAM_CHAT_ID = "123456789";
+  let capturedTelegram = null;
+  const mockTgFetch = async (url, options) => {
+    capturedTelegram = JSON.parse(options.body);
+    return { ok: true, json: async () => ({ ok: true, result: { message_id: 101 } }) };
+  };
+
+  await sendTelegramOrderAlert({
+    order: { id: "ord_p2", amount: 2000, transferNote: "NGHAO P2", email: "fan@gmail.com", phone: "0333025864" },
+    track: { title: "Bật nhạc lên" },
+    fetchImpl: mockTgFetch
+  });
+
+  assert.ok(capturedTelegram.text.includes("0333025864"));
+  const allTgButtons = capturedTelegram.reply_markup.inline_keyboard.flat();
+  assert.ok(allTgButtons.some((b) => b.text === "💬 Nhắn Zalo" && b.url.includes("zalo.me/0333025864")));
+});
+

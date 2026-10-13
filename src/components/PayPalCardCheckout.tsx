@@ -5,6 +5,7 @@ import {
   Loader2Icon,
   LockIcon,
   MailIcon,
+  PhoneIcon,
   ShieldCheckIcon
 } from "lucide-react";
 import { Track } from "../types/track";
@@ -16,6 +17,8 @@ interface PayPalCardCheckoutProps {
   track: Track;
   email: string;
   onEmailChange: (email: string) => void;
+  phone: string;
+  onPhoneChange: (phone: string) => void;
   onSuccess: (orderData: Partial<Order>) => void;
   onError: (err: string) => void;
 }
@@ -75,6 +78,8 @@ export function PayPalCardCheckout({
   track,
   email,
   onEmailChange,
+  phone,
+  onPhoneChange,
   onSuccess,
   onError
 }: PayPalCardCheckoutProps) {
@@ -152,10 +157,16 @@ export function PayPalCardCheckout({
             setLocalError(errText);
             throw new Error(errText);
           }
+          const cleanPhone = phone.trim();
+          if (!cleanPhone || cleanPhone.replace(/[^0-9]/g, "").length < 9) {
+            const errText = "Vui lòng nhập đúng số điện thoại (hoặc Zalo) để Nghao Producer liên hệ hỗ trợ bạn.";
+            setLocalError(errText);
+            throw new Error(errText);
+          }
 
           setProcessing(true);
           try {
-            const res = await api.createPayPalOrder(track.id, cleanEmail);
+            const res = await api.createPayPalOrder(track.id, cleanEmail, cleanPhone);
             activeOrderRef.current = res.orderId;
             return res.paypalOrderId;
           } catch (err) {
@@ -170,16 +181,20 @@ export function PayPalCardCheckout({
           setLocalError("");
           try {
             const currentOrderId = activeOrderRef.current || "";
+            const cleanEmail = email.trim();
+            const cleanPhone = phone.trim();
             const captureRes = await api.capturePayPalOrder(
               currentOrderId,
               data.orderID,
-              email.trim()
+              cleanEmail,
+              cleanPhone
             );
 
             onSuccess({
               id: captureRes.orderId || currentOrderId,
               status: "paid",
-              email: captureRes.email || email.trim(),
+              email: captureRes.email || cleanEmail,
+              phone: captureRes.phone || cleanPhone,
               paidAmount: priceVnd,
               amountUsd: captureRes.amountUsd || priceUsd,
               paymentMethod: "paypal_card",
@@ -208,7 +223,7 @@ export function PayPalCardCheckout({
     } catch (err) {
       console.error("PayPal render error:", err);
     }
-  }, [sdkReady, email, track.id, priceVnd, priceUsd, onSuccess, onError]);
+  }, [sdkReady, email, phone, track.id, priceVnd, priceUsd, onSuccess, onError]);
 
   if (loadingConfig) {
     return (
@@ -268,8 +283,8 @@ export function PayPalCardCheckout({
         </div>
       </div>
 
-      {/* Nhập Gmail nhận nhạc trước khi quẹt thẻ */}
-      <div>
+      {/* Nhập Gmail & SĐT nhận nhạc trước khi quẹt thẻ */}
+      <div className="space-y-3">
         <label className="block">
           <span className="flex items-center gap-1.5 text-xs font-medium text-white/85">
             <MailIcon className="h-3.5 w-3.5 text-ember" />
@@ -287,6 +302,26 @@ export function PayPalCardCheckout({
           />
           <span className="mt-1 block text-[11px] text-white/50">
             Sau khi quẹt thẻ thành công, Nghao Producer sẽ gửi trực tiếp bản MP3 Full vào Gmail này của bạn.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-white/85">
+            <PhoneIcon className="h-3.5 w-3.5 text-ember" />
+            <span>
+              Số điện thoại liên hệ (hoặc Zalo) <span className="text-ember">*</span>
+            </span>
+          </span>
+          <input
+            type="tel"
+            required
+            value={phone}
+            onChange={(e) => onPhoneChange(e.target.value)}
+            placeholder="0333 025 864"
+            className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+          />
+          <span className="mt-1 block text-[11px] text-white/50">
+            Để Nghao Producer liên hệ hỗ trợ hoặc gửi file qua Zalo nếu cần thiết.
           </span>
         </label>
       </div>

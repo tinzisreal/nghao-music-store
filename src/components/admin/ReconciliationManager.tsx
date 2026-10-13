@@ -10,6 +10,8 @@ import {
   InfoIcon,
   Loader2Icon,
   MailIcon,
+  MessageCircleIcon,
+  PhoneIcon,
   RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
@@ -197,6 +199,7 @@ export function ReconciliationManager() {
         (o.id || "").toLowerCase().includes(q) ||
         (o.trackTitle || "").toLowerCase().includes(q) ||
         (o.email || "").toLowerCase().includes(q) ||
+        (o.phone || "").toLowerCase().includes(q) ||
         (o.referenceCode || "").toLowerCase().includes(q) ||
         (o.transactionId || "").toLowerCase().includes(q) ||
         (o.apipayPublicId || "").toLowerCase().includes(q)
@@ -494,10 +497,11 @@ export function ReconciliationManager() {
                       </td>
 
                       <td className="px-4 py-3.5 text-xs text-white/70">
-                        {order.email ? (
-                          <div>
+                        <div className="space-y-1.5">
+                          {order.email ? (
                             <div className="flex items-center gap-1.5 font-medium text-white">
-                              <span>{order.email}</span>
+                              <MailIcon className="h-3 w-3 shrink-0 text-white/45" />
+                              <span className="truncate max-w-[160px]" title={order.email}>{order.email}</span>
                               <button
                                 type="button"
                                 onClick={() => handleCopy(order.email!)}
@@ -510,19 +514,45 @@ export function ReconciliationManager() {
                                 )}
                               </button>
                             </div>
+                          ) : (
+                            <span className="text-white/35">Chưa nhập Gmail</span>
+                          )}
+
+                          {order.phone && (
+                            <div className="flex items-center gap-1.5 font-medium text-ember">
+                              <PhoneIcon className="h-3 w-3 shrink-0 text-ember/70" />
+                              <a
+                                href={`tel:${order.phone}`}
+                                title="Bấm để gọi"
+                                className="hover:underline">
+                                {order.phone}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(order.phone!)}
+                                title="Sao chép SĐT khách hàng"
+                                className="text-white/50 hover:text-white">
+                                {copiedText === order.phone ? (
+                                  <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : (
+                                  <CopyIcon className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          )}
+
+                          <div>
                             {order.emailSentAt ? (
-                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
                                 ✓ Đã gửi Gmail
                               </span>
                             ) : isPaid ? (
-                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
-                                Chờ gửi Gmail thủ công
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                                Chờ gửi file
                               </span>
                             ) : null}
                           </div>
-                        ) : (
-                          <span className="text-white/35">Chưa nhập Gmail</span>
-                        )}
+                        </div>
                       </td>
 
                       <td className="px-4 py-3.5">
@@ -582,6 +612,18 @@ export function ReconciliationManager() {
                             <MailIcon className="h-3.5 w-3.5" />
                             <span>{order.emailSentAt ? "Gửi lại Gmail" : "Mở Gmail gửi khách"}</span>
                           </button>
+
+                          {order.phone && (
+                            <a
+                              href={`https://zalo.me/${order.phone.replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Nhắn tin qua Zalo cho khách"
+                              className="inline-flex items-center gap-1 rounded-full bg-sky-500/20 px-2.5 py-1.5 text-xs font-semibold text-sky-300 transition-colors hover:bg-sky-500 hover:text-white">
+                              <MessageCircleIcon className="h-3.5 w-3.5" />
+                              <span>Zalo</span>
+                            </a>
+                          )}
 
                           <button
                             type="button"

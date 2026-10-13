@@ -88,6 +88,7 @@ export interface Order {
   paymentResolution?: PaymentResolution;
   downloadUrl?: string;
   email?: string;
+  phone?: string;
   emailSentAt?: string;
   emailDeliveryError?: string;
   createdAt?: string;
@@ -125,6 +126,7 @@ export interface PayPalCaptureResult {
   orderId: string;
   status: OrderStatus;
   email?: string;
+  phone?: string;
   amountUsd?: string;
   message?: string;
 }
@@ -133,6 +135,7 @@ export interface OrderConfirmation {
   orderId: string;
   status: OrderStatus;
   email?: string;
+  phone?: string;
   emailSent?: boolean;
   emailSentAt?: string;
   emailDeliveryReason?: string;

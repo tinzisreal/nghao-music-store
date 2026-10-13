@@ -9,6 +9,7 @@ import {
   DownloadIcon,
   Loader2Icon,
   MailIcon,
+  PhoneIcon,
   QrCodeIcon,
   SendIcon,
   XIcon
@@ -70,6 +71,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   const [error, setError] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState("");
 
@@ -98,6 +100,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
       .then((o) => {
         setOrder(o);
         if (o.email) setEmail(o.email);
+        if (o.phone) setPhone(o.phone);
         if (o.status === "paid") {
           setPhase("done");
         } else {
@@ -124,13 +127,22 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
             setOrder(updated);
             setPhase("done");
             const cleanMail = email.trim();
+            const cleanPhone = phone.trim();
             if (cleanMail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanMail)) {
               api
-                .confirmOrder(updated.id, cleanMail)
+                .confirmOrder(updated.id, cleanMail, cleanPhone)
                 .then((res) => {
-                  setOrder((prev) => (prev ? { ...prev, email: res.email || cleanMail } : prev));
+                  setOrder((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          email: res.email || cleanMail,
+                          phone: res.phone || cleanPhone
+                        }
+                      : prev
+                  );
                   setEmailFeedback(
-                    `Đã lưu Gmail nhận nhạc (${cleanMail}). Nghao Producer sẽ gửi bản MP3 Full qua Gmail của bạn ngay sau khi đối soát!`
+                    `Đã lưu Gmail (${cleanMail})${cleanPhone ? ` và SĐT (${cleanPhone})` : ""}. Nghao Producer sẽ gửi bản MP3 Full qua Gmail của bạn ngay sau khi đối soát!`
                   );
                 })
                 .catch(() => {});
@@ -148,7 +160,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
     }, 3000);
 
     return () => window.clearInterval(timer);
-  }, [isFreeTrack, order, phase, email]);
+  }, [isFreeTrack, order, phase, email, phone]);
 
   const confirm = () => {
     if (!order) return;
@@ -157,11 +169,16 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
       setError("Vui lòng nhập đúng địa chỉ Gmail để Nghao Producer gửi file MP3 Full sau khi thanh toán.");
       return;
     }
+    const cleanPhone = phone.trim();
+    if (!cleanPhone || cleanPhone.replace(/[^0-9]/g, "").length < 9) {
+      setError("Vui lòng nhập số điện thoại liên hệ (hoặc Zalo) để Nghao Producer hỗ trợ bạn tốt nhất.");
+      return;
+    }
     setPhase("confirming");
     setError("");
     setStatusNote("");
     api
-      .confirmOrder(order.id, cleanEmail)
+      .confirmOrder(order.id, cleanEmail, cleanPhone)
       .then((res) => {
         if (res?.status === "paid") {
           setOrder((prev) =>
@@ -170,6 +187,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                   ...prev,
                   status: "paid",
                   email: res.email || cleanEmail,
+                  phone: res.phone || cleanPhone,
                   emailSentAt: res.emailSentAt || prev.emailSentAt,
                   paidAmount: res.paidAmount ?? prev.paidAmount,
                   overpaidAmount: res.overpaidAmount ?? prev.overpaidAmount,
@@ -179,7 +197,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
               : prev
           );
           setEmailFeedback(
-            `Đã ghi nhận Gmail nhận nhạc (${cleanEmail}). Nghao Producer sẽ kiểm tra đối soát và gửi bản nhạc Full qua Gmail của bạn!`
+            `Đã ghi nhận Gmail (${cleanEmail}) và SĐT (${cleanPhone}). Nghao Producer sẽ kiểm tra đối soát và gửi bản nhạc Full qua Gmail của bạn!`
           );
           setPhase("done");
         } else {
@@ -189,6 +207,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                 ? {
                     ...prev,
                     email: cleanEmail,
+                    phone: cleanPhone,
                     status: "underpaid",
                     paidAmount: res.paidAmount ?? prev.paidAmount,
                     shortfallAmount: res.shortfallAmount ?? prev.shortfallAmount,
@@ -197,10 +216,10 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                 : prev
             );
           } else {
-            setOrder((prev) => (prev ? { ...prev, email: cleanEmail } : prev));
+            setOrder((prev) => (prev ? { ...prev, email: cleanEmail, phone: cleanPhone } : prev));
           }
           setStatusNote(
-            `Đã lưu Gmail (${cleanEmail}). Hệ thống đang chờ ngân hàng xác nhận giao dịch chuyển khoản...`
+            `Đã lưu Gmail (${cleanEmail}) & SĐT (${cleanPhone}). Hệ thống đang chờ ngân hàng xác nhận giao dịch chuyển khoản...`
           );
           setPhase("ready");
         }
@@ -218,20 +237,28 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
       setError("Vui lòng nhập đúng địa chỉ Gmail để nhận file MP3 Full.");
       return;
     }
+    const cleanPhone = phone.trim() || order.phone || "";
     setSendingEmail(true);
     setError("");
     api
-      .confirmOrder(order.id, cleanEmail)
+      .confirmOrder(order.id, cleanEmail, cleanPhone)
       .then((res) => {
         setOrder((prev) =>
-          prev ? { ...prev, email: res.email || cleanEmail, emailSentAt: res.emailSentAt || prev.emailSentAt } : prev
+          prev
+            ? {
+                ...prev,
+                email: res.email || cleanEmail,
+                phone: res.phone || cleanPhone,
+                emailSentAt: res.emailSentAt || prev.emailSentAt
+              }
+            : prev
         );
         setEmailFeedback(
-          `Đã cập nhật Gmail nhận nhạc: ${cleanEmail}. Nghao Producer sẽ gửi file MP3 Full qua Gmail này cho bạn!`
+          `Đã cập nhật Gmail (${cleanEmail})${cleanPhone ? ` và SĐT (${cleanPhone})` : ""}. Nghao Producer sẽ gửi file MP3 Full qua Gmail này cho bạn!`
         );
       })
       .catch((err: unknown) => {
-        setError(errorMessage(err, "Không thể cập nhật Gmail lúc này."));
+        setError(errorMessage(err, "Không thể cập nhật thông tin lúc này."));
       })
       .finally(() => {
         setSendingEmail(false);
@@ -342,51 +369,63 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
             </div>
           )}
 
-          {/* Hộp thông báo nhận file MP3 Full qua Gmail */}
+          {/* Hộp thông báo nhận file MP3 Full qua Gmail & SĐT */}
           <div className="mt-5 w-full max-w-md rounded-3xl border border-ember/35 bg-ember/[0.08] p-5 text-left">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ember/20 text-ember">
                 <MailIcon className="h-5 w-5" aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-white">Nhận bản nhạc Full qua Gmail</h3>
+                <h3 className="text-sm font-semibold text-white">Nhận bản nhạc Full qua Gmail & SĐT</h3>
                 <p className="mt-1 text-xs leading-relaxed text-white/70">
-                  Đối với bài nhạc có phí, <strong>Nghao Producer</strong> sẽ kiểm tra đơn hàng và gửi trực tiếp file nhạc gốc chất lượng cao qua Gmail của bạn.
+                  Đối với bài nhạc có phí, <strong>Nghao Producer</strong> sẽ kiểm tra đơn hàng và gửi trực tiếp file nhạc gốc chất lượng cao qua Gmail hoặc liên hệ Zalo cho bạn.
                 </p>
               </div>
             </div>
 
-            <div className="mt-4">
-              <label className="block text-xs font-medium text-white/70">Gmail nhận file nhạc của bạn</label>
-              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-white/70">Gmail nhận file nhạc</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nhapgmailcuaban@gmail.com"
-                  className="flex-1 rounded-2xl bg-black/40 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                  className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
                 />
-                <button
-                  type="button"
-                  disabled={sendingEmail}
-                  onClick={handleSaveEmailOnDone}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-ember px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-ember/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50">
-                  {sendingEmail ? (
-                    <Loader2Icon className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <SendIcon className="h-3.5 w-3.5" />
-                  )}
-                  <span>{order?.email ? "Cập nhật Gmail" : "Xác nhận Gmail"}</span>
-                </button>
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-white/70">Số điện thoại liên hệ (hoặc Zalo)</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="0333 025 864"
+                  className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                />
+              </div>
+
+              <button
+                type="button"
+                disabled={sendingEmail}
+                onClick={handleSaveEmailOnDone}
+                className="w-full inline-flex items-center justify-center gap-1.5 rounded-2xl bg-ember px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-ember/25 transition-transform hover:scale-[1.01] active:scale-95 disabled:opacity-50">
+                {sendingEmail ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SendIcon className="h-3.5 w-3.5" />
+                )}
+                <span>{order?.email ? "Cập nhật Gmail & Số điện thoại" : "Xác nhận Gmail & Số điện thoại"}</span>
+              </button>
             </div>
 
             {emailFeedback && (
               <p className="mt-3 rounded-xl bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">{emailFeedback}</p>
             )}
-            {!emailFeedback && order?.email && (
+            {!emailFeedback && (order?.email || order?.phone) && (
               <p className="mt-3 rounded-xl bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
-                ✓ Đã ghi nhận Gmail <strong>{order.email}</strong>. Nghao Producer sẽ gửi file nhạc vào Gmail này cho bạn!
+                ✓ Đã ghi nhận{order?.email ? <> Gmail <strong>{order.email}</strong></> : ""}{order?.phone ? <> · SĐT <strong>{order.phone}</strong></> : ""}. Nghao Producer sẽ gửi file nhạc cho bạn!
               </p>
             )}
 
@@ -480,6 +519,8 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                 track={track}
                 email={email}
                 onEmailChange={setEmail}
+                phone={phone}
+                onPhoneChange={setPhone}
                 onSuccess={(paidData) => {
                   setOrder((prev) => ({ ...(prev || {}), ...paidData } as Order));
                   setPhase("done");
@@ -595,6 +636,26 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                       </span>
                     </label>
 
+                    <label className="mt-3 block">
+                      <span className="flex items-center gap-1.5 text-xs font-medium text-white/85 sm:text-sm">
+                        <PhoneIcon className="h-3.5 w-3.5 text-ember" aria-hidden />
+                        <span>
+                          Số điện thoại liên hệ (hoặc Zalo) <span className="text-ember">*</span>
+                        </span>
+                      </span>
+                      <input
+                        type="tel"
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="0333 025 864"
+                        className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                      />
+                      <span className="mt-1 block text-[11px] text-white/50">
+                        Để Nghao Producer liên hệ hỗ trợ hoặc gửi file qua Zalo nếu cần thiết.
+                      </span>
+                    </label>
+
                     {error && (
                       <p className="mt-3 text-sm text-ember" role="alert">
                         {error}
@@ -617,8 +678,8 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                       className="mt-4 flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform duration-150 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
                       {phase === "confirming" && <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden />}
                       {phase === "confirming"
-                        ? "Đang kiểm tra & lưu Gmail..."
-                        : "Tôi đã chuyển khoản — Đăng ký Gmail nhận nhạc"}
+                        ? "Đang kiểm tra & lưu thông tin..."
+                        : "Tôi đã chuyển khoản — Xác nhận Gmail & SĐT nhận nhạc"}
                     </button>
 
                     <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 text-center ring-1 ring-inset ring-white/10">

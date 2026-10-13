@@ -675,7 +675,7 @@ app.get("/sections", (req, res) => {
 
 // POST /orders — Tạo yêu cầu thanh toán qua ApiPay
 app.post("/orders", async (req, res) => {
-  const { trackId, redirectUrl, email } = req.body || {};
+  const { trackId, redirectUrl, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -734,6 +734,7 @@ app.post("/orders", async (req, res) => {
     : defaultBank;
 
   const cleanEmail = email ? String(email).trim() : undefined;
+  const cleanPhone = phone ? String(phone).trim() : undefined;
 
   const order = {
     id: orderId,
@@ -746,6 +747,7 @@ app.post("/orders", async (req, res) => {
     apipayPublicId: apipayData?.publicId || undefined,
     redirectSecret: apipayData?.redirectSecret || undefined,
     email: cleanEmail || undefined,
+    phone: cleanPhone || undefined,
     status: "pending_verification",
     createdAt: apipayData?.createdAt || new Date().toISOString()
   };
@@ -782,7 +784,7 @@ app.get("/paypal/config", (req, res) => {
 
 // POST /paypal/create-order — Khởi tạo PayPal Checkout order để khách quẹt thẻ Visa/Mastercard
 app.post("/paypal/create-order", async (req, res) => {
-  const { trackId, email } = req.body || {};
+  const { trackId, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -802,6 +804,7 @@ app.post("/paypal/create-order", async (req, res) => {
 
   const orderId = `ord_pp_${Date.now()}`;
   const cleanEmail = email ? String(email).trim() : undefined;
+  const cleanPhone = phone ? String(phone).trim() : undefined;
 
   try {
     const ppOrder = await createPayPalCheckoutOrder({
@@ -827,6 +830,7 @@ app.post("/paypal/create-order", async (req, res) => {
         accountName: "NGHAO Music Store"
       },
       email: cleanEmail,
+      phone: cleanPhone,
       status: "pending_verification",
       createdAt: new Date().toISOString()
     };
@@ -851,7 +855,7 @@ app.post("/paypal/create-order", async (req, res) => {
 
 // POST /paypal/capture-order — Xác nhận thanh toán thẻ từ PayPal sau khi khách nhập thẻ
 app.post("/paypal/capture-order", async (req, res) => {
-  const { orderId, paypalOrderId, email } = req.body || {};
+  const { orderId, paypalOrderId, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -868,6 +872,7 @@ app.post("/paypal/capture-order", async (req, res) => {
       orderId: order.id,
       status: order.status,
       email: order.email,
+      phone: order.phone,
       message: "Đơn hàng đã được thanh toán thành công trước đó."
     });
   }
@@ -893,6 +898,9 @@ app.post("/paypal/capture-order", async (req, res) => {
     }
     if (email && (!order.email || order.email.length === 0)) {
       order.email = String(email).trim();
+    }
+    if (phone && (!order.phone || order.phone.length === 0)) {
+      order.phone = String(phone).trim();
     }
     if (captureResult.payerName) {
       order.payerName = captureResult.payerName;
@@ -922,6 +930,7 @@ app.post("/paypal/capture-order", async (req, res) => {
       orderId: order.id,
       status: order.status,
       email: order.email,
+      phone: order.phone,
       amountUsd: captureResult.paidAmountUsd,
       message: "Thanh toán thẻ Visa/Mastercard thành công!"
     });
@@ -1010,10 +1019,10 @@ app.get("/api/apipay/redirect-verify", (req, res) => {
   }
 });
 
-// POST /orders/:id/confirm — Lưu Gmail khách hàng, kiểm tra thanh toán và tự động gửi file MP3 Full qua Gmail
+// POST /orders/:id/confirm — Lưu Gmail & SĐT khách hàng, kiểm tra thanh toán và tự động gửi file MP3 Full qua Gmail
 app.post("/orders/:id/confirm", async (req, res) => {
   const { id } = req.params;
-  const { email } = req.body || {};
+  const { email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1022,6 +1031,9 @@ app.post("/orders/:id/confirm", async (req, res) => {
 
   if (email) {
     order.email = String(email).trim();
+  }
+  if (phone !== undefined) {
+    order.phone = String(phone).trim();
   }
   if (!order.status) {
     order.status = "pending_verification";
@@ -1039,10 +1051,10 @@ app.post("/orders/:id/confirm", async (req, res) => {
     emailDeliveryReason = mailResult.reason;
   }
 
-  let message = "Hệ thống đã ghi nhận Gmail của bạn. Nghao Producer sẽ gửi trực tiếp bản MP3 Full qua Gmail cho bạn sau khi xác nhận thanh toán!";
+  let message = "Hệ thống đã ghi nhận Gmail và Số điện thoại của bạn. Nghao Producer sẽ gửi trực tiếp bản MP3 Full qua Gmail cho bạn sau khi xác nhận thanh toán!";
   if (isPaid) {
     const emailNotice = order.email
-      ? `Đã ghi nhận Gmail (${order.email}). Nghao Producer sẽ gửi trực tiếp bản MP3 Full chất lượng cao qua Gmail cho bạn!`
+      ? `Đã ghi nhận Gmail (${order.email})${order.phone ? ` & SĐT (${order.phone})` : ""}. Nghao Producer sẽ gửi trực tiếp bản MP3 Full chất lượng cao qua Gmail cho bạn!`
       : "Vui lòng nhập Gmail để Nghao gửi file nhạc cho bạn.";
     message =
       order.overpaidAmount > 0
@@ -1056,6 +1068,7 @@ app.post("/orders/:id/confirm", async (req, res) => {
     orderId: id,
     status: order.status,
     email: order.email,
+    phone: order.phone,
     emailSent,
     emailSentAt: order.emailSentAt,
     emailDeliveryReason,
@@ -1067,10 +1080,10 @@ app.post("/orders/:id/confirm", async (req, res) => {
   });
 });
 
-// POST /orders/:id/resend-email — Gửi lại hoặc cập nhật Gmail nhận file MP3 Full cho đơn hàng đã thanh toán
+// POST /orders/:id/resend-email — Gửi lại hoặc cập nhật Gmail & SĐT nhận file MP3 Full cho đơn hàng đã thanh toán
 app.post("/orders/:id/resend-email", async (req, res) => {
   const { id } = req.params;
-  const { email } = req.body || {};
+  const { email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1083,6 +1096,10 @@ app.post("/orders/:id/resend-email", async (req, res) => {
       return res.status(400).json({ message: "Địa chỉ Gmail không hợp lệ." });
     }
     order.email = clean;
+    writeDb(db);
+  }
+  if (phone !== undefined) {
+    order.phone = String(phone).trim();
     writeDb(db);
   }
 
@@ -1098,6 +1115,7 @@ app.post("/orders/:id/resend-email", async (req, res) => {
   return res.json({
     orderId: order.id,
     email: order.email,
+    phone: order.phone,
     sent: Boolean(mailResult.sent),
     emailSentAt: order.emailSentAt,
     reason: mailResult.reason,
@@ -1451,7 +1469,7 @@ app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
 // PATCH /admin/orders/:id/email-sent — Đánh dấu Admin đã gửi file qua Gmail thủ công cho khách
 app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { sent = true, email } = req.body || {};
+  const { sent = true, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1460,6 +1478,9 @@ app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
 
   if (email) {
     order.email = String(email).trim();
+  }
+  if (phone !== undefined) {
+    order.phone = String(phone).trim();
   }
   order.emailSentAt = sent ? new Date().toISOString() : undefined;
   writeDb(db);

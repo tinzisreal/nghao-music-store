@@ -37,6 +37,7 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
   const trackTitle = track?.title || "Bản nhạc";
   const amountStr = formatVnd(order.amount);
   const customerEmail = order.email || "Khách chưa để lại email";
+  const customerPhone = order.phone || "";
   const transferNote = order.transferNote || "N/A";
   const transId = transaction?.transactionId || order.reconciledVia || "N/A";
   const siteUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.duckdns.org").replace(/\/+$/, "");
@@ -47,17 +48,42 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
     ? buildCustomerComposeMailUrl({ customerEmail, trackTitle, transferNote })
     : adminUrl;
 
-  const body = [
+  const bodyLines = [
     `🎵 Bài hát: ${trackTitle}`,
     `💰 Số tiền: ${amountStr}`,
-    `📧 Gmail khách: ${customerEmail}`,
-    `📝 Nội dung CK: ${transferNote}`,
-    `🏦 Mã GD: ${transId}`
-  ].join("\n");
+    `📧 Gmail khách: ${customerEmail}`
+  ];
+  if (customerPhone) {
+    bodyLines.push(`📱 SĐT/Zalo: ${customerPhone}`);
+  }
+  bodyLines.push(`📝 Nội dung CK: ${transferNote}`);
+  bodyLines.push(`🏦 Mã GD: ${transId}`);
+  const body = bodyLines.join("\n");
 
-  const actions = hasEmail
-    ? `view, Mở Gmail gửi nhạc, ${composeUrl}, clear=true; view, Bảng Quản trị, ${adminUrl}`
-    : `view, Bảng Quản trị, ${adminUrl}`;
+  const ntfyActions = [];
+  if (hasEmail) {
+    ntfyActions.push({
+      action: "view",
+      label: "Mở Gmail gửi nhạc",
+      url: composeUrl,
+      clear: true
+    });
+  }
+  if (customerPhone) {
+    const cleanDigits = customerPhone.replace(/[^0-9]/g, "");
+    if (cleanDigits.length >= 9) {
+      ntfyActions.push({
+        action: "view",
+        label: "Nhắn Zalo",
+        url: `https://zalo.me/${cleanDigits}`
+      });
+    }
+  }
+  ntfyActions.push({
+    action: "view",
+    label: "Bảng Quản trị",
+    url: adminUrl
+  });
 
   try {
     const controller = new AbortController();
@@ -70,27 +96,7 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
       priority: 5, // urgent (phát chuông to + rung mạnh trên điện thoại)
       tags: ["musical_note", "moneybag", "bell"],
       click: composeUrl,
-      actions: hasEmail
-        ? [
-            {
-              action: "view",
-              label: "Mở Gmail gửi nhạc",
-              url: composeUrl,
-              clear: true
-            },
-            {
-              action: "view",
-              label: "Bảng Quản trị",
-              url: adminUrl
-            }
-          ]
-        : [
-            {
-              action: "view",
-              label: "Bảng Quản trị",
-              url: adminUrl
-            }
-          ]
+      actions: ntfyActions
     };
 
     const res = await fetchImpl("https://ntfy.sh", {
@@ -132,6 +138,7 @@ export async function sendTelegramOrderAlert({ order, track, transaction = null,
   const trackTitle = track?.title || "Bản nhạc";
   const amountStr = formatVnd(order.amount);
   const customerEmail = order.email || "Khách không để lại email";
+  const customerPhone = order.phone || "";
   const transferNote = order.transferNote || "N/A";
   const transId = transaction?.transactionId || order.reconciledVia || "N/A";
   const timeStr = new Date().toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -140,24 +147,40 @@ export async function sendTelegramOrderAlert({ order, track, transaction = null,
     ? buildCustomerComposeMailUrl({ customerEmail, trackTitle, transferNote })
     : null;
 
-  const text = [
+  const textLines = [
     `🔔 <b>ĐƠN HÀNG MỚI ĐÃ THANH TOÁN THÀNH CÔNG!</b>`,
     ``,
     `🎵 <b>Bài hát:</b> ${escapeHtml(trackTitle)}`,
     `💰 <b>Số tiền:</b> <code>${amountStr}</code>`,
-    `📧 <b>Gmail của khách:</b> <code>${escapeHtml(customerEmail)}</code>`,
-    `📝 <b>Nội dung CK:</b> <code>${escapeHtml(transferNote)}</code>`,
-    `🏦 <b>Mã giao dịch:</b> <code>${escapeHtml(transId)}</code>`,
-    `⏰ <b>Thời gian:</b> ${timeStr}`,
-    ``,
+    `📧 <b>Gmail của khách:</b> <code>${escapeHtml(customerEmail)}</code>`
+  ];
+  if (customerPhone) {
+    textLines.push(`📱 <b>SĐT / Zalo:</b> <code>${escapeHtml(customerPhone)}</code>`);
+  }
+  textLines.push(`📝 <b>Nội dung CK:</b> <code>${escapeHtml(transferNote)}</code>`);
+  textLines.push(`🏦 <b>Mã giao dịch:</b> <code>${escapeHtml(transId)}</code>`);
+  textLines.push(`⏰ <b>Thời gian:</b> ${timeStr}`);
+  textLines.push(``);
+  textLines.push(
     customerEmail.includes("@")
       ? `👉 <i>Bấm nút bên dưới để mở Gmail đính kèm MP3 gửi khách ngay!</i>`
       : `⚠️ <i>Khách chưa điền email. Kiểm tra trang Quản trị.</i>`
-  ].join("\n");
+  );
+  const text = textLines.join("\n");
 
   const inlineKeyboard = [];
+  const actionRow = [];
   if (composeUrl) {
-    inlineKeyboard.push([{ text: "📧 Mở Gmail gửi nhạc cho khách", url: composeUrl }]);
+    actionRow.push({ text: "📧 Mở Gmail gửi nhạc", url: composeUrl });
+  }
+  if (customerPhone) {
+    const cleanDigits = customerPhone.replace(/[^0-9]/g, "");
+    if (cleanDigits.length >= 9) {
+      actionRow.push({ text: "💬 Nhắn Zalo", url: `https://zalo.me/${cleanDigits}` });
+    }
+  }
+  if (actionRow.length > 0) {
+    inlineKeyboard.push(actionRow);
   }
   inlineKeyboard.push([
     {
@@ -219,6 +242,7 @@ export async function sendGmailOrderAlert({ order, track, transaction = null, fe
   const trackTitle = track?.title || "Bản nhạc";
   const amountStr = formatVnd(order.amount);
   const customerEmail = order.email || "Chưa cung cấp";
+  const customerPhone = order.phone || "";
   const transferNote = order.transferNote || "N/A";
   const transId = transaction?.transactionId || order.reconciledVia || "N/A";
   const composeUrl = customerEmail.includes("@")
@@ -244,6 +268,7 @@ export async function sendGmailOrderAlert({ order, track, transaction = null, fe
       <p style="margin:6px 0;font-size:14px;"><strong>🎵 Bài hát:</strong> ${escapeHtml(trackTitle)}</p>
       <p style="margin:6px 0;font-size:14px;"><strong>💰 Số tiền:</strong> <span style="color:#22c55e;font-weight:700;">${amountStr}</span></p>
       <p style="margin:6px 0;font-size:14px;"><strong>📧 Gmail khách hàng:</strong> <code style="color:#ff5a1f;background:rgba(255,90,31,0.12);padding:2px 6px;border-radius:4px;">${escapeHtml(customerEmail)}</code></p>
+      ${customerPhone ? `<p style="margin:6px 0;font-size:14px;"><strong>📱 SĐT / Zalo:</strong> <code style="color:#38bdf8;background:rgba(56,189,248,0.12);padding:2px 6px;border-radius:4px;">${escapeHtml(customerPhone)}</code></p>` : ""}
       <p style="margin:6px 0;font-size:14px;"><strong>📝 Nội dung CK:</strong> <code>${escapeHtml(transferNote)}</code></p>
       <p style="margin:6px 0;font-size:14px;"><strong>🏦 Mã GD:</strong> <code>${escapeHtml(transId)}</code></p>
     </div>

@@ -257,13 +257,13 @@ export const api = {
     return `${MEDIA_PROXY_BASE}/v2/media/asset/${encodeURIComponent(trackId)}`;
   },
 
-  async createOrder(trackId: string, redirectUrl?: string, email?: string): Promise<Order> {
+  async createOrder(trackId: string, redirectUrl?: string, email?: string, phone?: string): Promise<Order> {
     if (!USE_MOCK) {
       const ord = await request<Order>(
         "/v2/events/initiate",
         {
           method: "POST",
-          body: JSON.stringify({ trackId, redirectUrl, email })
+          body: JSON.stringify({ trackId, redirectUrl, email, phone })
         },
         MEDIA_PROXY_BASE
       );
@@ -290,13 +290,13 @@ export const api = {
     return Promise.reject(new ApiError("Mock mode"));
   },
 
-  confirmOrder(orderId: string, email: string): Promise<OrderConfirmation> {
+  confirmOrder(orderId: string, email?: string, phone?: string): Promise<OrderConfirmation> {
     if (!USE_MOCK) {
       return request<OrderConfirmation>(
         `/v2/events/complete/${encodeURIComponent(orderId)}`,
         {
           method: "POST",
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ email, phone })
         },
         MEDIA_PROXY_BASE
       );
@@ -306,13 +306,14 @@ export const api = {
 
   resendOrderEmail(
     orderId: string,
-    email?: string
-  ): Promise<{ orderId: string; email: string; sent: boolean; emailSentAt?: string; message: string }> {
-    return request<{ orderId: string; email: string; sent: boolean; emailSentAt?: string; message: string }>(
+    email?: string,
+    phone?: string
+  ): Promise<{ orderId: string; email: string; phone?: string; sent: boolean; emailSentAt?: string; message: string }> {
+    return request<{ orderId: string; email: string; phone?: string; sent: boolean; emailSentAt?: string; message: string }>(
       `/orders/${encodeURIComponent(orderId)}/resend-email`,
       {
         method: "POST",
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, phone })
       }
     );
   },
@@ -326,7 +327,7 @@ export const api = {
     return request<PayPalConfig>("/v2/events/paypal/config", {}, MEDIA_PROXY_BASE);
   },
 
-  createPayPalOrder(trackId: string, email?: string): Promise<PayPalCreateOrderResult> {
+  createPayPalOrder(trackId: string, email?: string, phone?: string): Promise<PayPalCreateOrderResult> {
     if (USE_MOCK) {
       return mock({
         orderId: `ord_pp_${Date.now()}`,
@@ -339,19 +340,20 @@ export const api = {
       "/v2/events/paypal/create-order",
       {
         method: "POST",
-        body: JSON.stringify({ trackId, email })
+        body: JSON.stringify({ trackId, email, phone })
       },
       MEDIA_PROXY_BASE
     );
   },
 
-  capturePayPalOrder(orderId: string, paypalOrderId: string, email?: string): Promise<PayPalCaptureResult> {
+  capturePayPalOrder(orderId: string, paypalOrderId: string, email?: string, phone?: string): Promise<PayPalCaptureResult> {
     if (USE_MOCK) {
       return mock({
         success: true,
         orderId,
         status: "paid" as const,
         email,
+        phone,
         amountUsd: "20.00",
         message: "Thanh toán thành công"
       });
@@ -360,7 +362,7 @@ export const api = {
       "/v2/events/paypal/capture-order",
       {
         method: "POST",
-        body: JSON.stringify({ orderId, paypalOrderId, email })
+        body: JSON.stringify({ orderId, paypalOrderId, email, phone })
       },
       MEDIA_PROXY_BASE
     );
