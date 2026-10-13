@@ -34,6 +34,9 @@ import {
   Order,
   OrderConfirmation,
   OrderStatus,
+  PayPalCaptureResult,
+  PayPalConfig,
+  PayPalCreateOrderResult,
   Producer,
   ReconciliationData,
   StoreData,
@@ -311,6 +314,55 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ email })
       }
+    );
+  },
+
+  /* ───────── International Card & PayPal API ───────── */
+
+  getPayPalConfig(): Promise<PayPalConfig> {
+    if (USE_MOCK) {
+      return mock({ configured: true, clientId: "mock_client_id", currency: "USD", mode: "sandbox" });
+    }
+    return request<PayPalConfig>("/v2/events/paypal/config", {}, MEDIA_PROXY_BASE);
+  },
+
+  createPayPalOrder(trackId: string, email?: string): Promise<PayPalCreateOrderResult> {
+    if (USE_MOCK) {
+      return mock({
+        orderId: `ord_pp_${Date.now()}`,
+        paypalOrderId: `PAYPAL_${Date.now()}`,
+        amountUsd: "20.00",
+        currency: "USD"
+      });
+    }
+    return request<PayPalCreateOrderResult>(
+      "/v2/events/paypal/create-order",
+      {
+        method: "POST",
+        body: JSON.stringify({ trackId, email })
+      },
+      MEDIA_PROXY_BASE
+    );
+  },
+
+  capturePayPalOrder(orderId: string, paypalOrderId: string, email?: string): Promise<PayPalCaptureResult> {
+    if (USE_MOCK) {
+      return mock({
+        success: true,
+        orderId,
+        status: "paid" as const,
+        email,
+        amountUsd: "20.00",
+        message: "Thanh toán thành công"
+      });
+    }
+    return request<PayPalCaptureResult>(
+      "/v2/events/paypal/capture-order",
+      {
+        method: "POST",
+        body: JSON.stringify({ orderId, paypalOrderId, email })
+      },
+      MEDIA_PROXY_BASE
     );
   },
 

@@ -11,22 +11,22 @@
     },
     "socials": [
       {
-        "href": "https://www.instagram.com/nghao.wav",
+        "href": "https://www.instagram.com/prod.nghao/",
         "kind": "instagram",
         "label": "Instagram",
-        "handle": "@nghao.wav"
+        "handle": "prod.nghao"
       },
       {
-        "href": "https://www.facebook.com/nghao205/",
+        "href": "https://www.facebook.com/prodnghao",
         "kind": "facebook",
         "label": "Facebook",
-        "handle": "nghao205"
+        "handle": "Nguyen Hao "
       },
       {
-        "href": "https://www.tiktok.com/@nghao.wav",
+        "href": "https://www.tiktok.com/@prod.nghao",
         "kind": "tiktok",
         "label": "TikTok",
-        "handle": "@nghao.wav"
+        "handle": "prod.nghao"
       }
     ]
   },
@@ -312,6 +312,21 @@
   ],
   "tracks": [
     {
+      "id": "t1791874838261",
+      "album": "Freedown",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791867884/music_store/images/oebw09vmeelix3tm9e1y.jpg",
+      "genre": "House",
+      "price": 0,
+      "title": "Real love remix",
+      "artist": "Nghao",
+      "demoEnd": 120,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791867947/music_store/audios/jefwhwk34b90zjbcr1y4.mp3",
+      "duration": 266,
+      "featured": false,
+      "demoStart": 60,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791867947/music_store/audios/jefwhwk34b90zjbcr1y4.mp3"
+    },
+    {
       "id": "t1791867400589",
       "album": "Freedown",
       "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791867257/music_store/images/byb0aizbomqaouwasqzs.jpg",
@@ -344,13 +359,13 @@
     {
       "id": "t1791863592445",
       "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791863442/music_store/images/ahx07w10fbt11s0mjx2m.png",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875409/music_store/images/bvvzgvmznqkmmbsd6ugw.jpg",
       "genre": "House",
       "price": 500000,
       "title": "Dù có cách xa ( Slot )",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3",
+      "audioUrl": "/tiktok-sdk/v2/media/stream/t1791863592445",
       "duration": 131,
       "featured": true,
       "demoStart": 0,
@@ -359,13 +374,13 @@
     {
       "id": "t1791863432050",
       "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791863065/music_store/images/aspluzjros4cith1o3vp.png",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875419/music_store/images/cjyibpysm14fakftpffs.jpg",
       "genre": "House",
       "price": 500000,
       "title": "Vết thương ( Slot )",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3",
+      "audioUrl": "/tiktok-sdk/v2/media/stream/t1791863432050",
       "duration": 118,
       "featured": true,
       "demoStart": 0,
@@ -374,13 +389,13 @@
     {
       "id": "t1791863000230",
       "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791862772/music_store/images/uomoz39vvhajiuhuabgt.png",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875428/music_store/images/uwgqvfagnocqmmwnbdfg.jpg",
       "genre": "House",
       "price": 500000,
       "title": "Và thế giới mất đi một người cô đơn ( SLOT)",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3",
+      "audioUrl": "/tiktok-sdk/v2/media/stream/t1791863000230",
       "duration": 108,
       "featured": true,
       "demoStart": 0,
@@ -406,10 +421,10 @@
         "vi": "Mới phát hành"
       },
       "trackIds": [
-        "t1791865022686",
-        "t1791863592445",
         "t1791863432050",
-        "t1791863000230"
+        "t1791863000230",
+        "t1791865022686",
+        "t1791863592445"
       ]
     }
   },

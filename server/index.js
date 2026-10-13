@@ -24,6 +24,12 @@ import {
   sendTelegramOrderAlert,
   sendGmailOrderAlert
 } from "./notifier.js";
+import {
+  createPayPalCheckoutOrder,
+  capturePayPalCheckoutOrder,
+  isPayPalConfigured,
+  vndToUsd
+} from "./paypal.js";
 
 dotenv.config();
 
@@ -125,7 +131,7 @@ app.use((req, res, next) => {
     }
 
     // Nếu cố tình gọi trực tiếp các route nội bộ (không qua proxy và không phải webhook / health / download)
-    const isDirectInternal = ["/tracks", "/producer", "/albums", "/store-info", "/sections", "/orders"].some(
+    const isDirectInternal = ["/tracks", "/producer", "/albums", "/store-info", "/sections", "/orders", "/paypal"].some(
       (p) => pathname === p || pathname.startsWith(`${p}/`)
     );
     const hasAdminToken = (req.headers["authorization"] || "").startsWith("Bearer ");
@@ -144,6 +150,9 @@ app.use((req, res, next) => {
   else if (pathname === "/v19.0/pixel/attribution") req.url = `/store-info${qs}`;
   else if (pathname === "/v19.0/pixel/placements") req.url = `/sections${qs}`;
   else if (pathname === "/v2/events/initiate") req.url = `/orders${qs}`;
+  else if (pathname === "/v2/events/paypal/config") req.url = `/paypal/config${qs}`;
+  else if (pathname === "/v2/events/paypal/create-order") req.url = `/paypal/create-order${qs}`;
+  else if (pathname === "/v2/events/paypal/capture-order") req.url = `/paypal/capture-order${qs}`;
   else if (pathname.startsWith("/v2/events/status/")) {
     const id = pathname.slice("/v2/events/status/".length);
     req.url = `/orders/${id}${qs}`;
@@ -326,6 +335,7 @@ app.get("/health", (req, res) => {
     status: "ok",
     supabase: isSupabaseConfigured,
     cloudinary: isCloudinaryConfigured,
+    paypal: isPayPalConfigured(),
     ntfyConfigured: true,
     ntfyTopic: (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim(),
     gmailConfigured: Boolean(process.env.GMAIL_SCRIPT_URL || process.env.RESEND_API_KEY),
@@ -429,9 +439,18 @@ app.get("/tracks/:id/demo-stream", async (req, res) => {
   if (!db) return res.status(500).end();
 
   const track = (db.tracks || []).find((t) => t.id === id);
-  if (!track || !track.audioUrl) return res.status(404).end();
+  if (!track) return res.status(404).end();
 
-  const targetUrl = buildCloudinaryDemoUrl(track.audioUrl, track.demoStart, track.demoEnd);
+  const rawAudio =
+    track.audioUrl && track.audioUrl.startsWith("http")
+      ? track.audioUrl
+      : track.fullAudioUrl && track.fullAudioUrl.startsWith("http")
+        ? track.fullAudioUrl
+        : track.audioUrl;
+
+  if (!rawAudio || !rawAudio.startsWith("http")) return res.status(404).end();
+
+  const targetUrl = buildCloudinaryDemoUrl(rawAudio, track.demoStart, track.demoEnd);
   try {
     const upstreamHeaders = {};
     if (req.headers.range) {
@@ -715,6 +734,170 @@ app.get("/orders/:id", (req, res) => {
   if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng." });
 
   res.json(sanitizeOrderForClient(order, db.tracks));
+});
+
+// GET /paypal/config — Trả về cấu hình PayPal Client ID & trạng thái kích hoạt
+app.get("/paypal/config", (req, res) => {
+  const configured = isPayPalConfigured();
+  res.json({
+    configured,
+    clientId: configured ? (process.env.PAYPAL_CLIENT_ID || "") : "",
+    currency: "USD",
+    mode: process.env.PAYPAL_MODE || "sandbox"
+  });
+});
+
+// POST /paypal/create-order — Khởi tạo PayPal Checkout order để khách quẹt thẻ Visa/Mastercard
+app.post("/paypal/create-order", async (req, res) => {
+  const { trackId, email } = req.body || {};
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const track = (db.tracks || []).find((t) => t.id === trackId);
+  if (!track) return res.status(404).json({ message: "Không tìm thấy bài hát." });
+
+  const trackPrice = Math.max(0, Math.floor(Number(track.price) || 0));
+  if (trackPrice <= 0) {
+    return res.status(400).json({ message: "Bài hát miễn phí không cần thanh toán." });
+  }
+
+  if (!isPayPalConfigured()) {
+    return res.status(503).json({
+      message: "Cổng thanh toán thẻ Visa / Mastercard & PayPal chưa được cấu hình. Vui lòng thanh toán qua VietQR hoặc liên hệ Zalo 0333 025 864."
+    });
+  }
+
+  const orderId = `ord_pp_${Date.now()}`;
+  const cleanEmail = email ? String(email).trim() : undefined;
+
+  try {
+    const ppOrder = await createPayPalCheckoutOrder({
+      orderId,
+      trackTitle: track.title,
+      amountVnd: trackPrice,
+      customerEmail: cleanEmail
+    });
+
+    const order = {
+      id: orderId,
+      trackId,
+      amount: trackPrice,
+      amountUsd: ppOrder.amountUsd,
+      currency: "USD",
+      paymentMethod: "paypal_card",
+      paypalOrderId: ppOrder.paypalOrderId,
+      transferNote: `NGHAO VISA ${orderId.slice(-6).toUpperCase()}`,
+      bank: {
+        bankId: "CARD",
+        bankName: "Visa / Mastercard (PayPal)",
+        accountNo: "Thẻ Quốc tế",
+        accountName: "NGHAO Music Store"
+      },
+      email: cleanEmail,
+      status: "pending_verification",
+      createdAt: new Date().toISOString()
+    };
+
+    if (!db.orders) db.orders = [];
+    db.orders.push(order);
+    writeDb(db);
+
+    return res.json({
+      orderId: order.id,
+      paypalOrderId: ppOrder.paypalOrderId,
+      amountUsd: ppOrder.amountUsd,
+      currency: "USD"
+    });
+  } catch (err) {
+    console.error("PayPal create order error:", err.message);
+    return res.status(502).json({
+      message: `Không thể tạo giao dịch thẻ Quốc tế: ${err.message}`
+    });
+  }
+});
+
+// POST /paypal/capture-order — Xác nhận thanh toán thẻ từ PayPal sau khi khách nhập thẻ
+app.post("/paypal/capture-order", async (req, res) => {
+  const { orderId, paypalOrderId, email } = req.body || {};
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const order = (db.orders || []).find(
+    (o) => o.id === orderId || (paypalOrderId && o.paypalOrderId === paypalOrderId)
+  );
+  if (!order) {
+    return res.status(404).json({ message: "Không tìm thấy đơn hàng cần thanh toán." });
+  }
+
+  if (order.status === "paid") {
+    return res.json({
+      success: true,
+      orderId: order.id,
+      status: order.status,
+      email: order.email,
+      message: "Đơn hàng đã được thanh toán thành công trước đó."
+    });
+  }
+
+  const targetPaypalId = order.paypalOrderId || paypalOrderId;
+  if (!targetPaypalId) {
+    return res.status(400).json({ message: "Thiếu mã PayPal Order ID." });
+  }
+
+  try {
+    const captureResult = await capturePayPalCheckoutOrder({ paypalOrderId: targetPaypalId });
+
+    order.status = "paid";
+    order.paidAmount = order.amount;
+    order.paidAmountUsd = captureResult.paidAmountUsd;
+    order.paypalCaptureId = captureResult.captureId;
+    order.reconciledVia = `paypal_${captureResult.captureId}`;
+    order.reconciledAt = new Date().toISOString();
+    order.paidAt = new Date().toISOString();
+
+    if (!order.email && captureResult.payerEmail) {
+      order.email = captureResult.payerEmail;
+    }
+    if (email && (!order.email || order.email.length === 0)) {
+      order.email = String(email).trim();
+    }
+    if (captureResult.payerName) {
+      order.payerName = captureResult.payerName;
+    }
+
+    writeDb(db);
+
+    const track = (db.tracks || []).find((t) => t.id === order.trackId);
+
+    // Báo chuông ntfy điện thoại, Telegram và Gmail cho Nghao Producer ngay tức thì!
+    notifyAdminNewPaidOrder({
+      order,
+      track,
+      transaction: {
+        transactionId: captureResult.captureId,
+        amount: order.amount,
+        content: `Thẻ Visa/Mastercard: $${captureResult.paidAmountUsd} USD (${order.transferNote})`
+      },
+      writeDb,
+      db
+    }).catch((err) => {
+      console.error("PayPal notify admin error:", err.message);
+    });
+
+    return res.json({
+      success: true,
+      orderId: order.id,
+      status: order.status,
+      email: order.email,
+      amountUsd: captureResult.paidAmountUsd,
+      message: "Thanh toán thẻ Visa/Mastercard thành công!"
+    });
+  } catch (err) {
+    console.error("PayPal capture error:", err.message);
+    return res.status(502).json({
+      message: `Xác nhận thanh toán thẻ thất bại: ${err.message}`
+    });
+  }
 });
 
 // GET /orders/:id/download?token=... — Link tải MP3 Full bảo mật (chỉ gửi qua Gmail cho đơn đã thanh toán)
@@ -1373,14 +1556,18 @@ app.patch("/tracks/:id", requireAdmin, (req, res) => {
     patch.price = Math.max(0, Math.floor(Number(patch.price) || 0));
   }
 
-  // Bảo vệ: Nếu client gửi lên URL proxy ngụy trang (/v2/media/...) thay vì link Cloudinary mới, giữ nguyên Cloudinary gốc
-  if (patch.audioUrl && (patch.audioUrl.startsWith("/v2/media/") || patch.audioUrl.startsWith("/tracks/"))) {
+  // Bảo vệ: Nếu client gửi lên URL proxy ngụy trang (/tiktok-sdk, /v2/media/...) thay vì link Cloudinary mới, giữ nguyên Cloudinary gốc
+  const isProxyUrl = (url) =>
+    typeof url === "string" &&
+    (url.includes("/media/") || url.includes("/tiktok-sdk") || url.includes("/fb-tr") || url.startsWith("/tracks/"));
+
+  if (patch.audioUrl && isProxyUrl(patch.audioUrl)) {
     delete patch.audioUrl;
   }
-  if (patch.fullAudioUrl && (patch.fullAudioUrl.startsWith("/v2/media/") || patch.fullAudioUrl.startsWith("/tracks/"))) {
+  if (patch.fullAudioUrl && isProxyUrl(patch.fullAudioUrl)) {
     delete patch.fullAudioUrl;
   }
-  if (patch.cover && (patch.cover.startsWith("/v2/media/") || patch.cover.startsWith("/tracks/"))) {
+  if (patch.cover && isProxyUrl(patch.cover)) {
     delete patch.cover;
   }
 

@@ -470,6 +470,11 @@ export function ReconciliationManager() {
                             )}
                           </div>
                         )}
+                        {order.paymentMethod === "paypal_card" && (
+                          <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                            <span>💳 Thẻ Visa/Mastercard (PayPal {order.amountUsd ? `$${order.amountUsd}` : ""})</span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-4 py-3.5">
@@ -478,6 +483,9 @@ export function ReconciliationManager() {
 
                       <td className="whitespace-nowrap px-4 py-3.5 tabular-nums">
                         <div className="font-semibold text-ember">{formatPrice(order.amount)}</div>
+                        {order.amountUsd && (
+                          <div className="text-[11px] text-emerald-400 font-medium">${order.amountUsd} USD</div>
+                        )}
                         {(order.paidAmount || 0) > 0 && (
                           <div className="mt-0.5 text-xs text-white/70">
                             Đã nhận: <strong className="text-emerald-300">{formatPrice(order.paidAmount || 0)}</strong>

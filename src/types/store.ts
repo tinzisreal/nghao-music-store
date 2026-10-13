@@ -75,8 +75,14 @@ export interface Order {
   trackId: string;
   amount: number;
   transferNote: string;
-  qrUrl: string;
+  qrUrl?: string;
   payUrl?: string;
+  paymentMethod?: "vietqr" | "paypal_card" | string;
+  amountUsd?: string;
+  currency?: string;
+  paypalOrderId?: string;
+  paypalCaptureId?: string;
+  payerName?: string;
   apipayPublicId?: string;
   status?: OrderStatus;
   paymentResolution?: PaymentResolution;
@@ -97,7 +103,30 @@ export interface Order {
   adminNote?: string;
   trackTitle?: string;
   trackCover?: string;
-  bank: BankAccount;
+  bank?: BankAccount;
+}
+
+export interface PayPalConfig {
+  configured: boolean;
+  clientId: string;
+  currency: string;
+  mode: string;
+}
+
+export interface PayPalCreateOrderResult {
+  orderId: string;
+  paypalOrderId: string;
+  amountUsd: string;
+  currency: string;
+}
+
+export interface PayPalCaptureResult {
+  success: boolean;
+  orderId: string;
+  status: OrderStatus;
+  email?: string;
+  amountUsd?: string;
+  message?: string;
 }
 
 export interface OrderConfirmation {
