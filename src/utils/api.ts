@@ -179,10 +179,10 @@ function resolveTrackMedia(track: Track): Track {
   if (!track) return track;
   let audioUrl = track.audioUrl;
   let cover = track.cover;
-  if (audioUrl && audioUrl.startsWith("/")) {
+  if (audioUrl && audioUrl.startsWith("/") && !audioUrl.startsWith("/tiktok-sdk") && !audioUrl.startsWith("/fb-tr") && !audioUrl.startsWith(MEDIA_PROXY_BASE)) {
     audioUrl = `${MEDIA_PROXY_BASE}${audioUrl}`;
   }
-  if (cover && cover.startsWith("/")) {
+  if (cover && cover.startsWith("/") && !cover.startsWith("/tiktok-sdk") && !cover.startsWith("/fb-tr") && !cover.startsWith(MEDIA_PROXY_BASE)) {
     cover = `${MEDIA_PROXY_BASE}${cover}`;
   }
   return {

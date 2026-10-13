@@ -493,7 +493,8 @@ function DemoPreviewPlayer({
       <audio
         ref={audioRef}
         src={audioSrc}
-        preload="metadata"
+        preload="auto"
+        playsInline
         onTimeUpdate={handleTimeUpdate}
         onEnded={() => {
           if (isLooping && audioRef.current) {

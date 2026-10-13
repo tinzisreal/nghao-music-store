@@ -30,7 +30,17 @@
       }
     ]
   },
-  "albums": [],
+  "albums": [
+    {
+      "id": "alb_1791883971390",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791883961/music_store/images/ej59fs6k2i7ozklzilg5.jpg",
+      "title": "SLOT",
+      "artist": "Nghao",
+      "createdAt": "2026-10-13T09:32:51.390Z",
+      "description": "",
+      "releaseYear": 2026
+    }
+  ],
   "orders": [
     {
       "id": "ord_1791771639112",
@@ -366,6 +376,96 @@
   ],
   "tracks": [
     {
+      "id": "t1791883926651",
+      "album": "Nghao Collection",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791883740/music_store/images/lc744c5ovfykcpd6miou.jpg",
+      "genre": "House",
+      "price": 600000,
+      "title": "Không thể quên - Vstra [remix by. Nghao & Knam]",
+      "artist": "Nghao",
+      "demoEnd": 210,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791883812/music_store/audios/tadccxfr0tqdet2bhxdj.mp3",
+      "duration": 382,
+      "featured": true,
+      "demoStart": 120,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791883812/music_store/audios/tadccxfr0tqdet2bhxdj.mp3"
+    },
+    {
+      "id": "t1791882490980",
+      "album": "Freedown",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791882271/music_store/images/vku75nimt8n30frl5wgb.png",
+      "genre": "House",
+      "price": 0,
+      "title": "Bâng Khuâng - Justatee",
+      "artist": "Nghao",
+      "demoEnd": 195,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791882324/music_store/audios/rpwiw7by8xcnsjngnl8m.mp3",
+      "duration": 319,
+      "featured": false,
+      "demoStart": 160,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791882324/music_store/audios/rpwiw7by8xcnsjngnl8m.mp3"
+    },
+    {
+      "id": "t1791881994825",
+      "album": "Freedown",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791881691/music_store/images/ueaeuyltfebv90ofljxq.png",
+      "genre": "House",
+      "price": 0,
+      "title": "Ngàn năm ánh sáng",
+      "artist": "Nghao",
+      "demoEnd": 170,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881885/music_store/audios/bp5hartpdj0dtjnm86ab.wav",
+      "duration": 271,
+      "featured": false,
+      "demoStart": 80,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881885/music_store/audios/bp5hartpdj0dtjnm86ab.wav"
+    },
+    {
+      "id": "t1791881576650",
+      "album": "Freedown",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791881253/music_store/images/vvvhgndlak0cffvf7snt.png",
+      "genre": "House",
+      "price": 0,
+      "title": "Em đang nghĩ gì - Hoàng Tôn",
+      "artist": "Nghao",
+      "demoEnd": 120,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881495/music_store/audios/gwlopximg4hxbyoai65r.wav",
+      "duration": 266,
+      "featured": false,
+      "demoStart": 0,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881495/music_store/audios/gwlopximg4hxbyoai65r.wav"
+    },
+    {
+      "id": "t1791881192161",
+      "album": "Freedown",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791880871/music_store/images/n7modsroqjkvbdbc08gp.png",
+      "genre": "House",
+      "price": 0,
+      "title": "CLME - Hoàng tôn [remix by. Nghao & Phùng Báo)",
+      "artist": "Nghao",
+      "demoEnd": 150,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881080/music_store/audios/hewbnahvxhgwtblgyyzb.wav",
+      "duration": 288,
+      "featured": false,
+      "demoStart": 60,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881080/music_store/audios/hewbnahvxhgwtblgyyzb.wav"
+    },
+    {
+      "id": "t1791880340329",
+      "album": "Nghao Collection",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791879917/music_store/images/n3vxqw9xvqbzdvuh0gdt.jpg",
+      "genre": "House",
+      "price": 500000,
+      "title": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)",
+      "artist": "Nghao",
+      "demoEnd": 145,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791880175/music_store/audios/kzdaylmig76degxvsxwe.mp3",
+      "duration": 257,
+      "featured": true,
+      "demoStart": 55,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791880175/music_store/audios/kzdaylmig76degxvsxwe.mp3"
+    },
+    {
       "id": "t1791879579077",
       "album": "Nghao & River",
       "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791878158/music_store/images/xxaz09bach9izw7lio96.png",
@@ -401,7 +501,7 @@
       "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791876958/music_store/images/jzwjvdksrn0cmd7dr9qs.png",
       "genre": "House",
       "price": 0,
-      "title": "Real love remix",
+      "title": "Real love",
       "artist": "Nghao",
       "demoEnd": 120,
       "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791867947/music_store/audios/jefwhwk34b90zjbcr1y4.mp3",
@@ -421,7 +521,7 @@
       "demoEnd": 178,
       "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791866933/music_store/audios/xelhxhks0hd5lcybb2ka.mp3",
       "duration": 336,
-      "featured": true,
+      "featured": false,
       "demoStart": 122,
       "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791866933/music_store/audios/xelhxhks0hd5lcybb2ka.mp3"
     },
@@ -436,7 +536,7 @@
       "demoEnd": 120,
       "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791864854/music_store/audios/vzrhnnwdg2ypfel1syx0.wav",
       "duration": 154,
-      "featured": true,
+      "featured": false,
       "demoStart": 30,
       "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791864854/music_store/audios/vzrhnnwdg2ypfel1syx0.wav"
     },
@@ -449,8 +549,8 @@
       "title": "Dù có cách xa ( Slot )",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "/tiktok-sdk/v2/media/stream/t1791863592445",
-      "duration": 131,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3",
+      "duration": 300,
       "featured": true,
       "demoStart": 0,
       "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3"
@@ -464,7 +564,7 @@
       "title": "Vết thương ( Slot )",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "/tiktok-sdk/v2/media/stream/t1791863432050",
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3",
       "duration": 118,
       "featured": true,
       "demoStart": 0,
@@ -479,7 +579,7 @@
       "title": "Và thế giới mất đi một người cô đơn ( SLOT)",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "/tiktok-sdk/v2/media/stream/t1791863000230",
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3",
       "duration": 108,
       "featured": true,
       "demoStart": 0,
@@ -505,9 +605,10 @@
         "vi": "Mới phát hành"
       },
       "trackIds": [
+        "t1791883926651",
+        "t1791880340329",
         "t1791863432050",
         "t1791863000230",
-        "t1791865022686",
         "t1791863592445"
       ]
     }

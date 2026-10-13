@@ -142,15 +142,36 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
       toast.error("Bài hát này chưa có file nhạc.");
       return;
     }
-    const src = rawAudio.startsWith("http") ? rawAudio : `${MEDIA_PROXY_BASE}${rawAudio}`;
+    const src = rawAudio.startsWith("http")
+      ? rawAudio
+      : rawAudio.startsWith("/tiktok-sdk") || rawAudio.startsWith("/fb-tr")
+      ? rawAudio
+      : `${MEDIA_PROXY_BASE}${rawAudio}`;
+
+    audio.pause();
     audio.src = src;
     const start = t.demoStart || 0;
-    audio.currentTime = start;
+
+    const applySeek = () => {
+      if (start > 0 && Number.isFinite(audio.duration) && audio.duration > start) {
+        audio.currentTime = start;
+      }
+    };
+
+    if (start > 0) {
+      audio.addEventListener("loadedmetadata", applySeek, { once: true });
+    }
+
+    // Call play() immediately within the user's click handler for mobile compatibility
     audio
       .play()
-      .then(() => setPlayingId(t.id))
-      .catch(() => {
-        toast.error("Không thể phát nhạc nghe thử.");
+      .then(() => {
+        setPlayingId(t.id);
+        applySeek();
+      })
+      .catch((err) => {
+        console.warn("Mobile preview play prevented:", err);
+        toast.error("Không thể phát nhạc nghe thử trên trình duyệt này.");
         setPlayingId(null);
       });
   };
@@ -454,7 +475,8 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
       {/* Audio element phát nhạc nghe thử trong danh sách Admin */}
       <audio
         ref={listAudioRef}
-        preload="none"
+        preload="auto"
+        playsInline
         onTimeUpdate={handleAudioTimeUpdate}
         onEnded={() => {
           if (listAudioRef.current && playingId) {

@@ -305,10 +305,17 @@ function buildCloudinaryDemoUrl(rawUrl, demoStart = 0, demoEnd = 0) {
   const end = Math.max(0, Math.floor(Number(demoEnd) || 0));
   if (
     rawUrl.includes("res.cloudinary.com") &&
-    rawUrl.includes("/upload/") &&
-    end > start
+    rawUrl.includes("/upload/")
   ) {
-    return rawUrl.replace("/upload/", `/upload/so_${start},eo_${end}/`);
+    // Đảm bảo đuôi file thành .mp3 để Cloudinary nén & cắt audio chuẩn xác, tương thích 100% với iOS Safari & Android
+    let mp3Url = rawUrl.replace(/\.[a-zA-Z0-9]+(?=([?#]|$))/, ".mp3");
+    if (!mp3Url.includes(".mp3")) {
+      mp3Url = `${mp3Url}.mp3`;
+    }
+    if (end > start) {
+      return mp3Url.replace("/upload/", `/upload/so_${start},eo_${end}/`);
+    }
+    return mp3Url;
   }
   return rawUrl;
 }
@@ -499,6 +506,15 @@ app.get("/tracks/:id/demo-stream", async (req, res) => {
     if (contentRange) res.setHeader("Content-Range", contentRange);
     res.setHeader("Accept-Ranges", upstream.headers.get("accept-ranges") || "bytes");
     res.setHeader("Cache-Control", "public, max-age=3600");
+
+    if (req.method === "HEAD") {
+      return res.end();
+    }
+
+    if (upstream.body) {
+      const { Readable } = await import("node:stream");
+      return Readable.fromWeb(upstream.body).pipe(res);
+    }
 
     const arrayBuffer = await upstream.arrayBuffer();
     return res.send(Buffer.from(arrayBuffer));
