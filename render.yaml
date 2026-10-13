@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: nghao-music-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server/index.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: APIPAY_ACCESS_KEY
+        sync: false
+      - key: APIPAY_SECRET_KEY
+        sync: false
+      - key: APIPAY_BANK_PUBLIC_ID
+        value: cmv615pke0c4001sxipdu87dw
+      - key: APIPAY_WEBHOOK_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
