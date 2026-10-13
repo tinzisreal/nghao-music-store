@@ -279,27 +279,8 @@ function writeDb(data) {
 }
 
 async function triggerEmailIfPaid(order, db, { force = false } = {}) {
-  if (!order || order.status !== "paid" || !order.email) {
-    return { sent: false, reason: "missing_email_or_unpaid" };
-  }
-  if (!force && order.emailSentAt) {
-    return { sent: true, alreadySent: true };
-  }
-  const track = (db?.tracks || []).find((t) => t.id === order.trackId);
-  const res = await sendOrderFulfillmentEmail({
-    order,
-    track,
-    webhookSecret: process.env.APIPAY_WEBHOOK_SECRET
-  });
-  if (res.sent) {
-    order.emailSentAt = new Date().toISOString();
-    order.emailDeliveryError = undefined;
-    writeDb(db);
-  } else {
-    order.emailDeliveryError = res.reason;
-    writeDb(db);
-  }
-  return res;
+  // Chế độ gửi email thủ công theo yêu cầu: Khách để lại Gmail, Nghao Producer tự mở Gmail gửi file thủ công từ trang Admin
+  return { sent: false, reason: "manual_mode" };
 }
 
 function buildCloudinaryDemoUrl(rawUrl, demoStart = 0, demoEnd = 0) {
@@ -818,13 +799,11 @@ app.post("/orders/:id/confirm", async (req, res) => {
     emailDeliveryReason = mailResult.reason;
   }
 
-  let message = "Hệ thống đã lưu Gmail của bạn và đang chờ xác nhận giao dịch từ ngân hàng (tự động gửi file qua Gmail trong vài giây sau khi chuyển khoản).";
+  let message = "Hệ thống đã ghi nhận Gmail của bạn. Nghao Producer sẽ gửi trực tiếp bản MP3 Full qua Gmail cho bạn sau khi xác nhận thanh toán!";
   if (isPaid) {
-    const emailNotice = emailSent
-      ? `File MP3 Full đã được gửi tự động tới Gmail ${order.email}.`
-      : order.email
-        ? `Đã ghi nhận Gmail ${order.email}. Bạn có thể bấm "Gửi lại vào Gmail" hoặc liên hệ Zalo/Facebook nếu chưa thấy thư trong Hộp thư đến / Spam.`
-        : "Vui lòng nhập Gmail để hệ thống gửi file MP3 Full cho bạn.";
+    const emailNotice = order.email
+      ? `Đã ghi nhận Gmail (${order.email}). Nghao Producer sẽ gửi trực tiếp bản MP3 Full chất lượng cao qua Gmail cho bạn!`
+      : "Vui lòng nhập Gmail để Nghao gửi file nhạc cho bạn.";
     message =
       order.overpaidAmount > 0
         ? `Thanh toán đã xác nhận thành công (Chuyển dư +${Number(order.overpaidAmount).toLocaleString("vi-VN")} ₫). ${emailNotice}`
