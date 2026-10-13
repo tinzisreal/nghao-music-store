@@ -1,5 +1,17 @@
 import React, { useMemo, useRef, useState } from "react";
-import { MusicIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  ChevronsUpIcon,
+  MusicIcon,
+  PauseIcon,
+  PencilIcon,
+  PlayIcon,
+  PlusIcon,
+  SearchIcon,
+  Trash2Icon
+} from "lucide-react";
 import { toast } from "sonner";
 import { TrackEditor } from "./TrackEditor";
 import { Track, TrackInput } from "../../types/track";
@@ -14,9 +26,10 @@ interface TrackManagerProps {
   onSave: (input: TrackInput, id?: string) => Promise<unknown>;
   onPatch: (id: string, patch: Partial<TrackInput>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onReorder?: (trackIds: string[]) => Promise<unknown>;
 }
 
-export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }: TrackManagerProps) {
+export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, onReorder }: TrackManagerProps) {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Track | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -31,11 +44,78 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
     return q ? tracks.filter((t) => `${t.title} ${t.album} ${t.genre}`.toLowerCase().includes(q)) : tracks;
   }, [tracks, query]);
 
+  const [reordering, setReordering] = useState(false);
+
   const stopPreview = () => {
     if (listAudioRef.current) {
       listAudioRef.current.pause();
     }
     setPlayingId(null);
+  };
+
+  const moveTrack = async (fromIndex: number, dir: -1 | 1) => {
+    if (query) {
+      toast.info("Xóa ô tìm kiếm trước khi sắp xếp thứ tự để thấy đầy đủ danh sách.");
+      return;
+    }
+    const toIndex = fromIndex + dir;
+    if (toIndex < 0 || toIndex >= tracks.length || !onReorder) return;
+    const nextTracks = [...tracks];
+    const [moved] = nextTracks.splice(fromIndex, 1);
+    nextTracks.splice(toIndex, 0, moved);
+    const newIds = nextTracks.map((t) => t.id);
+    setReordering(true);
+    try {
+      await onReorder(newIds);
+      toast.success(`Đã chuyển “${moved.title}” sang vị trí #${toIndex + 1}`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Không thể sắp xếp bài hát."));
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const moveToTop = async (fromIndex: number) => {
+    if (query) {
+      toast.info("Xóa ô tìm kiếm trước khi sắp xếp thứ tự để thấy đầy đủ danh sách.");
+      return;
+    }
+    if (fromIndex === 0 || !onReorder) return;
+    const nextTracks = [...tracks];
+    const [moved] = nextTracks.splice(fromIndex, 1);
+    nextTracks.unshift(moved);
+    const newIds = nextTracks.map((t) => t.id);
+    setReordering(true);
+    try {
+      await onReorder(newIds);
+      toast.success(`Đã đưa “${moved.title}” lên vị trí đầu tiên (#1)`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Không thể sắp xếp bài hát."));
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const applyQuickSort = async (type: "price-desc" | "price-asc" | "title") => {
+    if (!onReorder) return;
+    const nextTracks = [...tracks];
+    if (type === "price-desc") {
+      nextTracks.sort((a, b) => b.price - a.price);
+    } else if (type === "price-asc") {
+      nextTracks.sort((a, b) => a.price - b.price);
+    } else if (type === "title") {
+      nextTracks.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    const newIds = nextTracks.map((t) => t.id);
+    setReordering(true);
+    try {
+      await onReorder(newIds);
+      toast.success("Đã cập nhật thứ tự danh sách hiển thị trên Cửa hàng!");
+    } catch (err) {
+      toast.error(errorMessage(err, "Không thể lưu thứ tự bài hát."));
+    } finally {
+      setReordering(false);
+    }
   };
 
   const openNew = () => {
@@ -155,8 +235,48 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
         </div>
       </div>
 
+      {/* Thanh công cụ sắp xếp thứ tự hiển thị */}
+      {tracks.length > 1 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="flex items-center gap-1.5 font-medium text-white/90">
+              <ArrowUpDownIcon className="h-3.5 w-3.5 text-ember" aria-hidden />
+              Sắp xếp nhanh:
+            </span>
+            <button
+              type="button"
+              disabled={reordering || !!query}
+              onClick={() => applyQuickSort("price-desc")}
+              className="rounded-full bg-white/[0.06] px-3 py-1 font-medium text-white/80 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-40"
+            >
+              Giá cao ➔ thấp
+            </button>
+            <button
+              type="button"
+              disabled={reordering || !!query}
+              onClick={() => applyQuickSort("price-asc")}
+              className="rounded-full bg-white/[0.06] px-3 py-1 font-medium text-white/80 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-40"
+            >
+              Giá thấp ➔ cao
+            </button>
+            <button
+              type="button"
+              disabled={reordering || !!query}
+              onClick={() => applyQuickSort("title")}
+              className="rounded-full bg-white/[0.06] px-3 py-1 font-medium text-white/80 ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-40"
+            >
+              Tên A ➔ Z
+            </button>
+          </div>
+          <p className="text-[11px] text-white/45">
+            💡 Dùng nút mũi tên <span className="font-mono text-ember font-semibold">↑ ↓ 🔝</span> ở từng bài để xếp thứ tự theo ý muốn. Cửa hàng sẽ hiển thị đúng theo thứ tự này.
+          </p>
+        </div>
+      )}
+
       <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
-        <div className="hidden grid-cols-[3.5rem_minmax(0,1fr)_7rem_6rem_4rem_10rem_6rem] items-center gap-4 border-b border-white/10 px-4 py-3 text-xs text-white/45 lg:grid">
+        <div className="hidden grid-cols-[6rem_3.5rem_minmax(0,1fr)_6.5rem_5.5rem_4rem_6.5rem_5.5rem] items-center gap-4 border-b border-white/10 px-4 py-3 text-xs text-white/45 lg:grid">
+          <span># Thứ tự</span>
           <span />
           <span>Bài hát</span>
           <span>Thể loại</span>
@@ -166,126 +286,169 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
           <span />
         </div>
 
-        {filtered.length === 0 ?
-        <div className="flex flex-col items-center px-6 py-16 text-center">
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center px-6 py-16 text-center">
             <MusicIcon className="h-8 w-8 text-white/40" aria-hidden />
             <p className="mt-3 text-white/70">{tracks.length === 0 ? "Chưa có bài hát nào." : "Không tìm thấy bài phù hợp."}</p>
-            {tracks.length === 0 &&
-          <button type="button" onClick={openNew} className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black">
+            {tracks.length === 0 && (
+              <button type="button" onClick={openNew} className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-black">
                 Thêm bài đầu tiên
               </button>
-          }
-          </div> :
-
-        <ul className="divide-y divide-white/[0.06]">
+            )}
+          </div>
+        ) : (
+          <ul className="divide-y divide-white/[0.06]">
             {filtered.map((t) => {
-            const busy = busyId === t.id;
-            const confirming = confirmId === t.id;
-            return (
-              <li
-                key={t.id}
-                className={`grid grid-cols-[3.5rem_minmax(0,1fr)_auto] items-center gap-4 px-4 py-3 transition-opacity duration-150 lg:grid-cols-[3.5rem_minmax(0,1fr)_7rem_6rem_4rem_10rem_6rem] ${
-                busy ? "opacity-60" : ""}`
-                }>
-                
-                <div className="relative group h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-black/40">
-                  <img src={t.cover} alt="" className="h-full w-full object-cover" />
-                  {(t.audioUrl || t.fullAudioUrl) && (
+              const busy = busyId === t.id;
+              const confirming = confirmId === t.id;
+              const realIndex = tracks.findIndex((item) => item.id === t.id);
+              const isFirst = realIndex === 0;
+              const isLast = realIndex === tracks.length - 1;
+
+              return (
+                <li
+                  key={t.id}
+                  className={`grid grid-cols-[auto_3.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 transition-opacity duration-150 lg:grid-cols-[6rem_3.5rem_minmax(0,1fr)_6.5rem_5.5rem_4rem_6.5rem_5.5rem] lg:gap-4 lg:px-4 ${
+                    busy ? "opacity-60" : ""
+                  }`}
+                >
+                  {/* Cột Thứ tự & Nút di chuyển */}
+                  <div className="flex items-center gap-1">
+                    <span className="w-6 shrink-0 text-center font-mono text-xs font-semibold text-white/50">
+                      #{realIndex + 1}
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        disabled={isFirst || reordering || !!query}
+                        onClick={() => moveTrack(realIndex, -1)}
+                        title={query ? "Xoá ô tìm kiếm để di chuyển" : "Đẩy bài lên trên 1 bậc"}
+                        aria-label={`Đẩy bài ${t.title} lên trên`}
+                        className="flex h-5 w-5 items-center justify-center rounded bg-white/[0.04] text-white/70 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-20 transition-colors"
+                      >
+                        <ArrowUpIcon className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isLast || reordering || !!query}
+                        onClick={() => moveTrack(realIndex, 1)}
+                        title={query ? "Xoá ô tìm kiếm để di chuyển" : "Đẩy bài xuống dưới 1 bậc"}
+                        aria-label={`Đẩy bài ${t.title} xuống dưới`}
+                        className="flex h-5 w-5 items-center justify-center rounded bg-white/[0.04] text-white/70 hover:bg-white/15 hover:text-white disabled:pointer-events-none disabled:opacity-20 transition-colors"
+                      >
+                        <ArrowDownIcon className="h-3 w-3" />
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => handleTogglePlay(t)}
-                      title={playingId === t.id ? "Tạm dừng nghe thử" : "Nghe thử đoạn Demo đã căn"}
-                      className={`absolute inset-0 flex items-center justify-center bg-black/60 transition-opacity duration-150 ${
-                        playingId === t.id ? "opacity-100 ring-2 ring-ember" : "opacity-0 group-hover:opacity-100"
-                      }`}
+                      disabled={isFirst || reordering || !!query}
+                      onClick={() => moveToTop(realIndex)}
+                      title={query ? "Xoá ô tìm kiếm để di chuyển" : "Đưa thẳng lên đầu bảng (#1)"}
+                      aria-label={`Đưa bài ${t.title} lên vị trí số 1`}
+                      className="ml-0.5 hidden h-7 w-7 items-center justify-center rounded-md bg-white/[0.04] text-white/60 hover:bg-white/15 hover:text-ember disabled:pointer-events-none disabled:opacity-20 transition-colors sm:flex"
                     >
-                      {playingId === t.id ? (
-                        <PauseIcon className="h-5 w-5 fill-ember text-ember" />
-                      ) : (
-                        <PlayIcon className="h-5 w-5 fill-white text-white ml-0.5" />
-                      )}
+                      <ChevronsUpIcon className="h-3.5 w-3.5" />
                     </button>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{t.title}</p>
-                  <p className="truncate text-sm text-white/55">
-                    {t.album}
-                    <span className="lg:hidden">
-                      {" "}
-                      · {formatPrice(t.price)}
-                    </span>
-                  </p>
-                  {!t.audioUrl && !t.fullAudioUrl ? (
-                    <p className="mt-0.5 text-xs text-white/40">Chưa có file nhạc</p>
-                  ) : (
-                    <div className="mt-1 flex items-center gap-1.5">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono tabular-nums ${
-                          playingId === t.id
-                            ? "bg-ember/25 text-ember font-semibold border border-ember/40 animate-pulse"
-                            : "bg-white/10 text-white/70"
+                  </div>
+
+                  <div className="relative group h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-black/40">
+                    <img src={t.cover} alt="" className="h-full w-full object-cover" />
+                    {(t.audioUrl || t.fullAudioUrl) && (
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePlay(t)}
+                        title={playingId === t.id ? "Tạm dừng nghe thử" : "Nghe thử đoạn Demo đã căn"}
+                        className={`absolute inset-0 flex items-center justify-center bg-black/60 transition-opacity duration-150 ${
+                          playingId === t.id ? "opacity-100 ring-2 ring-ember" : "opacity-0 group-hover:opacity-100"
                         }`}
                       >
-                        Demo: {formatTime(t.demoStart || 0)} ➔ {formatTime(t.demoEnd || Math.min(t.duration || 90, 90))}
-                        {playingId === t.id && " (Đang phát)"}
+                        {playingId === t.id ? (
+                          <PauseIcon className="h-5 w-5 fill-ember text-ember" />
+                        ) : (
+                          <PlayIcon className="h-5 w-5 fill-white text-white ml-0.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{t.title}</p>
+                    <p className="truncate text-sm text-white/55">
+                      {t.album}
+                      <span className="lg:hidden">
+                        {" "}
+                        · {formatPrice(t.price)}
                       </span>
-                    </div>
-                  )}
-                </div>
+                    </p>
+                    {!t.audioUrl && !t.fullAudioUrl ? (
+                      <p className="mt-0.5 text-xs text-white/40">Chưa có file nhạc</p>
+                    ) : (
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono tabular-nums ${
+                            playingId === t.id
+                              ? "bg-ember/25 text-ember font-semibold border border-ember/40 animate-pulse"
+                              : "bg-white/10 text-white/70"
+                          }`}
+                        >
+                          Demo: {formatTime(t.demoStart || 0)} ➔ {formatTime(t.demoEnd || Math.min(t.duration || 90, 90))}
+                          {playingId === t.id && " (Đang phát)"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <span className="hidden truncate text-sm text-white/70 lg:block">{t.genre}</span>
                   <span className="hidden text-right text-sm tabular-nums text-white/70 lg:block">{formatPrice(t.price)}</span>
                   <span className="hidden text-right text-sm tabular-nums text-white/70 lg:block">{formatTime(t.duration)}</span>
-                  <div className="col-span-2 col-start-2 row-start-2 flex gap-1.5 lg:col-span-1 lg:col-start-auto lg:row-start-auto">
+                  <div className="col-span-2 col-start-3 row-start-2 flex gap-1.5 lg:col-span-1 lg:col-start-auto lg:row-start-auto">
                     <FlagChip active={!!t.featured} disabled={busy} onClick={() => toggleFlag(t, "featured")}>
                       Nổi bật
                     </FlagChip>
                   </div>
                   <div className="flex justify-end gap-1">
-                    {confirming ?
-                  <>
+                    {confirming ? (
+                      <>
                         <button
-                      type="button"
-                      onClick={() => remove(t)}
-                      disabled={busy}
-                      className="whitespace-nowrap rounded-full bg-ember px-3 py-1.5 text-xs font-semibold text-black">
-                      
+                          type="button"
+                          onClick={() => remove(t)}
+                          disabled={busy}
+                          className="whitespace-nowrap rounded-full bg-ember px-3 py-1.5 text-xs font-semibold text-black"
+                        >
                           Xoá
                         </button>
                         <button
-                      type="button"
-                      onClick={() => setConfirmId(null)}
-                      className="whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs text-white/70 hover:text-white">
-                      
+                          type="button"
+                          onClick={() => setConfirmId(null)}
+                          className="whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs text-white/70 hover:text-white"
+                        >
                           Huỷ
                         </button>
-                      </> :
-
-                  <>
+                      </>
+                    ) : (
+                      <>
                         <button
-                      type="button"
-                      onClick={() => openEdit(t)}
-                      aria-label={`Sửa ${t.title}`}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-white">
-                      
+                          type="button"
+                          onClick={() => openEdit(t)}
+                          aria-label={`Sửa ${t.title}`}
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-white"
+                        >
                           <PencilIcon className="h-4 w-4" aria-hidden />
                         </button>
                         <button
-                      type="button"
-                      onClick={() => setConfirmId(t.id)}
-                      aria-label={`Xoá ${t.title}`}
-                      className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-ember">
-                      
+                          type="button"
+                          onClick={() => setConfirmId(t.id)}
+                          aria-label={`Xoá ${t.title}`}
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-ember"
+                        >
                           <Trash2Icon className="h-4 w-4" aria-hidden />
                         </button>
                       </>
-                  }
+                    )}
                   </div>
-                </li>);
-
-          })}
+                </li>
+              );
+            })}
           </ul>
-        }
+        )}
       </div>
 
       {/* Audio element phát nhạc nghe thử trong danh sách Admin */}

@@ -469,6 +469,27 @@ export const api = {
     return mock(undefined, 300);
   },
 
+  reorderTracks(trackIds: string[]): Promise<Track[]> {
+    if (!USE_MOCK) {
+      return request<Track[]>("/tracks/reorder", {
+        method: "PUT",
+        body: JSON.stringify({ trackIds })
+      });
+    }
+    const map = new Map(db.tracks.map((t) => [t.id, t]));
+    const reordered: Track[] = [];
+    for (const id of trackIds) {
+      const t = map.get(id);
+      if (t) {
+        reordered.push(t);
+        map.delete(id);
+      }
+    }
+    for (const t of map.values()) reordered.push(t);
+    db.tracks = reordered;
+    return mock(db.tracks, 200);
+  },
+
   createAlbum(input: AlbumInput): Promise<Album> {
     if (!USE_MOCK) return request<Album>("/albums", { method: "POST", body: JSON.stringify(input) });
     const album: Album = { ...input, id: `alb_${Date.now()}`, artist: db.producer.name };

@@ -52,6 +52,26 @@ export function useAdminStore() {
     }));
   }, []);
 
+  const reorderTracks = useCallback(async (trackIds: string[]) => {
+    // Optimistic update local state first
+    update((d) => {
+      const map = new Map(d.tracks.map((t) => [t.id, t]));
+      const reordered: Track[] = [];
+      for (const id of trackIds) {
+        const t = map.get(id);
+        if (t) {
+          reordered.push(t);
+          map.delete(id);
+        }
+      }
+      for (const t of map.values()) reordered.push(t);
+      return { ...d, tracks: reordered };
+    });
+    const updated = await api.reorderTracks(trackIds);
+    update((d) => ({ ...d, tracks: updated }));
+    return updated;
+  }, []);
+
   const saveSections = useCallback(async (sections: StoreSections) => {
     const saved = await api.updateSections(sections);
     update((d) => ({ ...d, sections: saved }));
@@ -86,5 +106,5 @@ export function useAdminStore() {
     }));
   }, []);
 
-  return { state, retry, saveTrack, patchTrack, deleteTrack, saveAlbum, deleteAlbum, saveProducer, saveInfo, saveSections };
+  return { state, retry, saveTrack, patchTrack, deleteTrack, reorderTracks, saveAlbum, deleteAlbum, saveProducer, saveInfo, saveSections };
 }

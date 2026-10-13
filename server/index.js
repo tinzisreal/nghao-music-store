@@ -1590,6 +1590,37 @@ app.post("/tracks", requireAdmin, (req, res) => {
   res.status(201).json(newTrack);
 });
 
+// PUT /tracks/reorder — Sắp xếp lại thứ tự bài hát hiển thị trên Store
+app.put("/tracks/reorder", requireAdmin, (req, res) => {
+  const { trackIds } = req.body;
+  if (!Array.isArray(trackIds)) {
+    return res.status(400).json({ message: "trackIds phải là mảng id bài hát." });
+  }
+
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const existingMap = new Map((db.tracks || []).map((t) => [t.id, t]));
+  const reordered = [];
+
+  for (const id of trackIds) {
+    if (existingMap.has(id)) {
+      reordered.push(existingMap.get(id));
+      existingMap.delete(id);
+    }
+  }
+
+  // Bổ sung những bài còn lại nếu client chưa gửi hết (đảm bảo an toàn không bao giờ mất bài)
+  for (const remaining of existingMap.values()) {
+    reordered.push(remaining);
+  }
+
+  db.tracks = reordered;
+  writeDb(db);
+
+  res.json(db.tracks);
+});
+
 // PATCH /tracks/:id
 app.patch("/tracks/:id", requireAdmin, (req, res) => {
   const { id } = req.params;

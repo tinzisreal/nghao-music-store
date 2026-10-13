@@ -236,6 +236,7 @@ function AdminDashboard({
                 onSave={admin.saveTrack}
                 onPatch={admin.patchTrack}
                 onDelete={admin.deleteTrack}
+                onReorder={admin.reorderTracks}
               />
             )}
             {tab === "albums" && (
