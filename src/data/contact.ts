@@ -4,7 +4,7 @@ export const storeInfo: StoreInfo = {
   contact: {
     phone: "0333 025 864",
     phoneHref: "tel:0333025864",
-    email: "nhai74314@gmail.com",
+    email: "nghaoproducer@gmail.com",
     hours: { vi: "9:00 – 22:00 mỗi ngày", en: "9:00 – 22:00 daily" }
   },
   socials: [

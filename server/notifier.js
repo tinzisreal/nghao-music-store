@@ -2,7 +2,7 @@
  * Module thông báo tức thì khi có đơn hàng thanh toán thành công:
  * 1. ntfy (ntfy.sh) — Báo chuông điện thoại tức thì (không cần tài khoản, cài app 5MB, cả 2 bạn cùng nhận đồng thời).
  * 2. Telegram Bot — Báo qua Telegram (nếu cấu hình).
- * 3. Gmail Alert — Gửi email thông báo về Gmail chủ shop (nhai74314@gmail.com).
+ * 3. Gmail Alert — Gửi email thông báo về Gmail chủ shop (nghaoproducer@gmail.com).
  */
 
 export const DEFAULT_NTFY_TOPIC = "nghao-orders-2026";
@@ -201,10 +201,10 @@ export async function sendTelegramOrderAlert({ order, track, transaction = null,
 }
 
 /**
- * 3. Gửi email thông báo đơn mới đến Gmail của chủ shop (nhai74314@gmail.com)
+ * 3. Gửi email thông báo đơn mới đến Gmail của chủ shop (nghaoproducer@gmail.com)
  */
 export async function sendGmailOrderAlert({ order, track, transaction = null, fetchImpl = globalThis.fetch }) {
-  const adminEmail = (process.env.ADMIN_ALERT_EMAIL || "nhai74314@gmail.com").trim();
+  const adminEmail = (process.env.ADMIN_ALERT_EMAIL || "nghaoproducer@gmail.com").trim();
   const scriptUrl = (process.env.GMAIL_SCRIPT_URL || "").trim();
   const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
 

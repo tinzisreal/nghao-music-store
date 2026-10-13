@@ -976,7 +976,7 @@ function ensureAdminTotpSecret(db) {
 
 function buildTotpSetupInfo(secret) {
   const issuer = "Nghao Producer";
-  const account = "nhai74314@gmail.com";
+  const account = "nghaoproducer@gmail.com";
   const label = `${encodeURIComponent(issuer)}:${encodeURIComponent(account)}`;
   const otpauthUrl = `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(otpauthUrl)}`;
