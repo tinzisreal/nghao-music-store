@@ -77,6 +77,10 @@ app.use((req, res, next) => {
   const isTtDisguised = rawPath.startsWith("/tiktok-sdk/") || pathname.startsWith("/v2/events/");
   const isMediaStream = pathname.startsWith("/v2/media/stream/");
   const isMediaAsset = pathname.startsWith("/v2/media/asset/");
+  const isMediaCover = pathname.startsWith("/v2/media/cover/") || pathname.startsWith("/v2/media/album-cover/");
+  const isMediaQr = pathname.startsWith("/v2/media/qr/");
+  const isMediaCheckout = pathname.startsWith("/v2/events/checkout/");
+  const isMediaRoute = isMediaStream || isMediaAsset || isMediaCover || isMediaQr || isMediaCheckout;
   const hasClientCodec = req.headers["x-fb-codec"] === "1";
   const acceptHeader = req.headers["accept"] || "";
   const isBrowserNav =
@@ -85,7 +89,7 @@ app.use((req, res, next) => {
     req.headers["sec-fetch-mode"] === "navigate";
 
   // 1. Nếu mở trực tiếp link ngụy trang trên trình duyệt hoặc không có client handshake hợp lệ
-  if (!isMediaStream && !isMediaAsset) {
+  if (!isMediaRoute) {
     if (isFbDisguised && !hasClientCodec) {
       if (isBrowserNav) {
         return res.redirect(302, "https://www.facebook.com/tr/");
@@ -139,12 +143,24 @@ app.use((req, res, next) => {
   } else if (pathname.startsWith("/v2/events/complete/")) {
     const id = pathname.slice("/v2/events/complete/".length);
     req.url = `/orders/${id}/confirm${qs}`;
+  } else if (pathname.startsWith("/v2/events/checkout/")) {
+    const id = pathname.slice("/v2/events/checkout/".length);
+    req.url = `/orders/${id}/checkout${qs}`;
   } else if (pathname.startsWith("/v2/media/stream/")) {
     const id = pathname.slice("/v2/media/stream/".length);
     req.url = `/tracks/${id}/demo-stream${qs}`;
   } else if (pathname.startsWith("/v2/media/asset/")) {
     const id = pathname.slice("/v2/media/asset/".length);
     req.url = `/tracks/${id}/free-download${qs}`;
+  } else if (pathname.startsWith("/v2/media/cover/")) {
+    const id = pathname.slice("/v2/media/cover/".length);
+    req.url = `/tracks/${id}/cover${qs}`;
+  } else if (pathname.startsWith("/v2/media/album-cover/")) {
+    const id = pathname.slice("/v2/media/album-cover/".length);
+    req.url = `/albums/${id}/cover${qs}`;
+  } else if (pathname.startsWith("/v2/media/qr/")) {
+    const id = pathname.slice("/v2/media/qr/".length);
+    req.url = `/orders/${id}/qr-image${qs}`;
   }
 
   // Nếu client gửi header x-fb-codec: 1, mã hóa payload phản hồi dạng nhị phân XOR giả lập Facebook Telemetry
@@ -310,6 +326,7 @@ function sanitizeTrackForPublic(track) {
 
   return {
     ...rest,
+    cover: track.cover ? `/v2/media/cover/${encodeURIComponent(track.id)}` : "",
     audioUrl: track.audioUrl ? `/v2/media/stream/${encodeURIComponent(track.id)}` : "",
     demoStart: 0,
     demoEnd: demoDuration
@@ -489,11 +506,107 @@ app.get("/tracks/:id/free-download", async (req, res) => {
   }
 });
 
-// GET /albums
+// GET /tracks/:id/cover — Proxy ảnh bìa bài hát (ẩn tuyệt đối link Cloudinary đối với người dùng)
+app.get("/tracks/:id/cover", async (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db) return res.status(500).end();
+
+  const track = (db.tracks || []).find((t) => t.id === id);
+  if (!track || !track.cover) return res.status(404).end();
+
+  if (track.cover.startsWith("/")) {
+    const localPath = path.join(__dirname, "../public", track.cover);
+    if (fs.existsSync(localPath)) return res.sendFile(localPath);
+    return res.redirect(302, track.cover);
+  }
+
+  try {
+    const upstream = await fetch(track.cover);
+    if (!upstream.ok) return res.status(upstream.status).end();
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    const arrayBuffer = await upstream.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch {
+    return res.status(502).end();
+  }
+});
+
+// GET /albums — Ẩn hoàn toàn link Cloudinary ảnh bìa album
 app.get("/albums", (req, res) => {
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
-  res.json(db.albums || []);
+  const safeAlbums = (db.albums || []).map((alb) => ({
+    ...alb,
+    cover: alb.cover ? `/v2/media/album-cover/${encodeURIComponent(alb.id)}` : ""
+  }));
+  res.json(safeAlbums);
+});
+
+// GET /albums/:id/cover — Proxy ảnh bìa album
+app.get("/albums/:id/cover", async (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db) return res.status(500).end();
+
+  const album = (db.albums || []).find((a) => a.id === id);
+  if (!album || !album.cover) return res.status(404).end();
+
+  if (album.cover.startsWith("/")) {
+    const localPath = path.join(__dirname, "../public", album.cover);
+    if (fs.existsSync(localPath)) return res.sendFile(localPath);
+    return res.redirect(302, album.cover);
+  }
+
+  try {
+    const upstream = await fetch(album.cover);
+    if (!upstream.ok) return res.status(upstream.status).end();
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    const arrayBuffer = await upstream.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch {
+    return res.status(502).end();
+  }
+});
+
+// GET /orders/:id/qr-image — Proxy ảnh mã QR VietQR / ApiPay (ẩn hoàn toàn domain cổng thanh toán)
+app.get("/orders/:id/qr-image", async (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db) return res.status(500).end();
+
+  const order = (db.orders || []).find((o) => o.id === id);
+  if (!order || !order.qrUrl) return res.status(404).end();
+
+  if (order.qrUrl.startsWith("/")) {
+    const localPath = path.join(__dirname, "../public", order.qrUrl);
+    if (fs.existsSync(localPath)) return res.sendFile(localPath);
+    return res.redirect(302, order.qrUrl);
+  }
+
+  try {
+    const upstream = await fetch(order.qrUrl);
+    if (!upstream.ok) return res.status(upstream.status).end();
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/png");
+    res.setHeader("Cache-Control", "public, max-age=600");
+    const arrayBuffer = await upstream.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch {
+    return res.status(502).end();
+  }
+});
+
+// GET /orders/:id/checkout — Chuyển tiếp cổng thanh toán bảo mật
+app.get("/orders/:id/checkout", (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db) return res.status(500).end();
+
+  const order = (db.orders || []).find((o) => o.id === id);
+  if (!order || !order.payUrl) return res.status(404).send("Không tìm thấy link thanh toán.");
+  return res.redirect(302, order.payUrl);
 });
 
 // GET /store-info

@@ -459,7 +459,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                     target="_blank"
                     rel="noreferrer"
                     className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/20 sm:mt-3">
-                    Mở trang thanh toán ApiPay ↗
+                    Mở cổng thanh toán bảo mật ↗
                   </a>
                 )}
               </div>

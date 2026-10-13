@@ -172,15 +172,43 @@ function buildVietQr(bankId: string, accountNo: string, accountName: string, amo
   )}&accountName=${encodeURIComponent(accountName)}`;
 }
 
-function resolveTrackAudioUrl(track: Track): Track {
-  if (!track?.audioUrl) return track;
-  if (track.audioUrl.startsWith("/")) {
-    return {
-      ...track,
-      audioUrl: `${MEDIA_PROXY_BASE}${track.audioUrl}`
-    };
+function resolveTrackMedia(track: Track): Track {
+  if (!track) return track;
+  let audioUrl = track.audioUrl;
+  let cover = track.cover;
+  if (audioUrl && audioUrl.startsWith("/")) {
+    audioUrl = `${MEDIA_PROXY_BASE}${audioUrl}`;
   }
-  return track;
+  if (cover && cover.startsWith("/")) {
+    cover = `${MEDIA_PROXY_BASE}${cover}`;
+  }
+  return {
+    ...track,
+    audioUrl,
+    cover
+  };
+}
+
+function resolveAlbumMedia(album: Album): Album {
+  if (!album) return album;
+  let cover = album.cover;
+  if (cover && cover.startsWith("/")) {
+    cover = `${MEDIA_PROXY_BASE}${cover}`;
+  }
+  return { ...album, cover };
+}
+
+function resolveOrderMedia(order: Order): Order {
+  if (!order) return order;
+  let qrUrl = order.qrUrl;
+  let payUrl = order.payUrl;
+  if (qrUrl && qrUrl.startsWith("/")) {
+    qrUrl = `${MEDIA_PROXY_BASE}${qrUrl}`;
+  }
+  if (payUrl && payUrl.startsWith("/")) {
+    payUrl = `${MEDIA_PROXY_BASE}${payUrl}`;
+  }
+  return { ...order, qrUrl, payUrl };
 }
 
 /* ───────── Public API (Camouflaged via /fb-tr & /tiktok-sdk) ───────── */
@@ -194,11 +222,13 @@ export const api = {
     if (USE_MOCK) return mock(db.tracks);
     const query = options?.admin ? "?admin=1" : "";
     const tracks = await request<Track[]>(`/v19.0/pixel/catalog${query}`);
-    return tracks.map(resolveTrackAudioUrl);
+    return tracks.map(resolveTrackMedia);
   },
 
-  getAlbums(): Promise<Album[]> {
-    return USE_MOCK ? mock([]) : request<Album[]>("/v19.0/pixel/collections");
+  async getAlbums(): Promise<Album[]> {
+    if (USE_MOCK) return mock([]);
+    const albums = await request<Album[]>("/v19.0/pixel/collections");
+    return albums.map(resolveAlbumMedia);
   },
 
   getStoreInfo(): Promise<StoreInfo> {
@@ -224,9 +254,9 @@ export const api = {
     return `${MEDIA_PROXY_BASE}/v2/media/asset/${encodeURIComponent(trackId)}`;
   },
 
-  createOrder(trackId: string, redirectUrl?: string, email?: string): Promise<Order> {
+  async createOrder(trackId: string, redirectUrl?: string, email?: string): Promise<Order> {
     if (!USE_MOCK) {
-      return request<Order>(
+      const ord = await request<Order>(
         "/v2/events/initiate",
         {
           method: "POST",
@@ -234,6 +264,7 @@ export const api = {
         },
         MEDIA_PROXY_BASE
       );
+      return resolveOrderMedia(ord);
     }
     const track = db.tracks.find((t) => t.id === trackId);
     if (!track) return Promise.reject(new ApiError("Không tìm thấy bài hát."));
@@ -248,9 +279,10 @@ export const api = {
     });
   },
 
-  getOrder(orderId: string): Promise<Order> {
+  async getOrder(orderId: string): Promise<Order> {
     if (!USE_MOCK) {
-      return request<Order>(`/v2/events/status/${encodeURIComponent(orderId)}`, {}, MEDIA_PROXY_BASE);
+      const ord = await request<Order>(`/v2/events/status/${encodeURIComponent(orderId)}`, {}, MEDIA_PROXY_BASE);
+      return resolveOrderMedia(ord);
     }
     return Promise.reject(new ApiError("Mock mode"));
   },

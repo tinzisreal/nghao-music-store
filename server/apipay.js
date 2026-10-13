@@ -392,6 +392,15 @@ export function sanitizeOrderForClient(order, tracks = [], { includeDownloadUrl 
   } else {
     delete safeOrder.downloadUrl;
   }
+  // Ngụy trang QR thanh toán và link checkout sang chuẩn TikTok SDK
+  if (safeOrder.id) {
+    if (order.qrUrl) {
+      safeOrder.qrUrl = `/v2/media/qr/${encodeURIComponent(order.id)}`;
+    }
+    if (order.payUrl) {
+      safeOrder.payUrl = `/v2/events/checkout/${encodeURIComponent(order.id)}`;
+    }
+  }
   return safeOrder;
 }
 
