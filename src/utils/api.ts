@@ -370,10 +370,12 @@ export const api = {
   },
 
   testNotifications(): Promise<{
+    ntfy: { sent: boolean; reason?: string; topic?: string; appUrl?: string };
     telegram: { sent: boolean; reason?: string; message?: string };
     gmail: { sent: boolean; reason?: string; message?: string };
   }> {
     return request<{
+      ntfy: { sent: boolean; reason?: string; topic?: string; appUrl?: string };
       telegram: { sent: boolean; reason?: string; message?: string };
       gmail: { sent: boolean; reason?: string; message?: string };
     }>("/admin/notifications/test", { method: "POST" });

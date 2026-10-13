@@ -36,15 +36,16 @@ export function ReconciliationManager() {
     setTestingNotification(true);
     try {
       const res = await api.testNotifications();
+      if (res.ntfy?.sent) {
+        toast.success(`📲 Đã bắn chuông tới app ntfy điện thoại (kênh: ${res.ntfy.topic || "nghao-orders-2026"})!`);
+      } else if (res.ntfy) {
+        toast.error(`Ntfy: ${res.ntfy.reason || "Lỗi gửi thông báo"}`);
+      }
       if (res.telegram?.sent) {
-        toast.success("✅ Đã gửi thông báo thử nghiệm tới Telegram của bạn!");
-      } else {
-        toast.error(`Telegram: ${res.telegram?.message || res.telegram?.reason || "Chưa cấu hình"}`);
+        toast.success("✅ Đã gửi thông báo thử nghiệm tới Telegram!");
       }
       if (res.gmail?.sent) {
-        toast.success("✅ Đã gửi email thử nghiệm tới Gmail của bạn!");
-      } else {
-        toast.error(`Gmail: ${res.gmail?.message || res.gmail?.reason || "Chưa cấu hình"}`);
+        toast.success("✅ Đã gửi email thử nghiệm tới Gmail!");
       }
     } catch (err) {
       toast.error(errorMessage(err, "Không thể gửi thông báo thử nghiệm."));
@@ -244,7 +245,7 @@ export function ReconciliationManager() {
             className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10 active:scale-95 disabled:opacity-50"
             title="Gửi thông báo giả lập đơn mới tới Telegram và Gmail để kiểm tra chuông điện thoại">
             <BellIcon className={`h-3.5 w-3.5 text-ember ${testingNotification ? "animate-pulse" : ""}`} />
-            <span>{testingNotification ? "Đang gửi thử..." : "Bắn thử thông báo (Tele & Gmail)"}</span>
+            <span>{testingNotification ? "Đang phát chuông..." : "Bắn thử chuông ntfy điện thoại"}</span>
           </button>
 
           <button
@@ -298,6 +299,41 @@ export function ReconciliationManager() {
             {data?.processedTransactions?.length || 0}
           </p>
           <p className="mt-1 text-xs text-white/45">Chống trùng lặp bằng transactionId</p>
+        </div>
+      </div>
+
+      {/* Hộp hướng dẫn nhận thông báo điện thoại tức thì qua app ntfy */}
+      <div className="rounded-3xl border border-cyan-500/30 bg-cyan-950/20 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-cyan-400 animate-ping" />
+              <h3 className="font-semibold text-white">Chuông thông báo điện thoại tức thì (App ntfy)</h3>
+            </div>
+            <p className="text-xs leading-relaxed text-white/70">
+              Cả bạn và bạn của bạn cùng tải app <strong>ntfy</strong> (trên App Store hoặc Google Play, miễn phí 100%, không cần tạo tài khoản), đăng ký kênh{" "}
+              <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-cyan-300">nghao-orders-2026</code> để cả 2 máy cùng reo chuông ting ting khi khách thanh toán thành công!
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleCopy("nghao-orders-2026")}
+              className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-500/20">
+              {copiedText === "nghao-orders-2026" ? <CheckIcon className="h-3.5 w-3.5 text-emerald-400" /> : <CopyIcon className="h-3.5 w-3.5" />}
+              <span>{copiedText === "nghao-orders-2026" ? "Đã chép kênh" : "Chép tên kênh: nghao-orders-2026"}</span>
+            </button>
+
+            <a
+              href="https://ntfy.sh/nghao-orders-2026"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-white/10">
+              <ExternalLinkIcon className="h-3.5 w-3.5" />
+              <span>Mở web ntfy</span>
+            </a>
+          </div>
         </div>
       </div>
 

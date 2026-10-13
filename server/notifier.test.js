@@ -3,10 +3,35 @@ import assert from "node:assert/strict";
 import {
   formatVnd,
   buildCustomerComposeMailUrl,
+  sendNtfyOrderAlert,
   sendTelegramOrderAlert,
   sendGmailOrderAlert,
   notifyAdminNewPaidOrder
 } from "./notifier.js";
+
+test("sendNtfyOrderAlert publishes urgent alert to ntfy topic", async () => {
+  let capturedUrl = "";
+  let capturedBody = null;
+
+  const mockFetch = async (url, options) => {
+    capturedUrl = url;
+    capturedBody = JSON.parse(options.body);
+    return { ok: true, text: async () => "ok" };
+  };
+
+  const result = await sendNtfyOrderAlert({
+    order: { id: "ord_ntfy_1", amount: 1000, transferNote: "NGHAO NTFY1", email: "fan@gmail.com" },
+    track: { title: "Ai ngoài anh" },
+    fetchImpl: mockFetch
+  });
+
+  assert.equal(result.sent, true);
+  assert.equal(capturedUrl, "https://ntfy.sh");
+  assert.equal(capturedBody.topic, "nghao-orders-2026");
+  assert.equal(capturedBody.priority, 5);
+  assert.ok(capturedBody.actions.some((a) => a.url.includes("mail.google.com")));
+  assert.ok(capturedBody.message.includes("Ai ngoài anh"));
+});
 
 test("formatVnd formats number in Vietnamese Dong correctly", () => {
   assert.equal(formatVnd(1000), "1.000 ₫");
@@ -75,6 +100,7 @@ test("notifyAdminNewPaidOrder skips duplicate notifications if already notified"
   const order = {
     id: "ord_1",
     status: "paid",
+    ntfyNotifiedAt: "2026-10-13T05:00:00Z",
     telegramNotifiedAt: "2026-10-13T05:00:00Z",
     adminEmailNotifiedAt: "2026-10-13T05:00:00Z"
   };

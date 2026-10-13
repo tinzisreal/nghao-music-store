@@ -18,7 +18,9 @@ import {
 } from "./apipay.js";
 import { sendOrderFulfillmentEmail, verifyOrderDownloadToken } from "./mailer.js";
 import {
+  DEFAULT_NTFY_TOPIC,
   notifyAdminNewPaidOrder,
+  sendNtfyOrderAlert,
   sendTelegramOrderAlert,
   sendGmailOrderAlert
 } from "./notifier.js";
@@ -324,6 +326,8 @@ app.get("/health", (req, res) => {
     status: "ok",
     supabase: isSupabaseConfigured,
     cloudinary: isCloudinaryConfigured,
+    ntfyConfigured: true,
+    ntfyTopic: (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim(),
     gmailConfigured: Boolean(process.env.GMAIL_SCRIPT_URL || process.env.RESEND_API_KEY),
     telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
   });
@@ -1247,7 +1251,7 @@ app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
   res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
 });
 
-// POST /admin/notifications/test — Gửi thông báo thử nghiệm tới Telegram & Gmail
+// POST /admin/notifications/test — Gửi thông báo thử nghiệm tới ntfy điện thoại, Telegram & Gmail
 app.post("/admin/notifications/test", requireAdmin, async (req, res) => {
   const dummyOrder = {
     id: `test_${Date.now()}`,
@@ -1261,21 +1265,28 @@ app.post("/admin/notifications/test", requireAdmin, async (req, res) => {
     title: "Bản nhạc Thử nghiệm (Test Track)"
   };
 
-  const teleResult = await sendTelegramOrderAlert({
-    order: dummyOrder,
-    track: dummyTrack,
-    transaction: { transactionId: "TEST_TX_12345" }
-  });
-
-  const mailResult = await sendGmailOrderAlert({
-    order: dummyOrder,
-    track: dummyTrack,
-    transaction: { transactionId: "TEST_TX_12345" }
-  });
+  const [ntfyResult, teleResult, mailResult] = await Promise.allSettled([
+    sendNtfyOrderAlert({
+      order: dummyOrder,
+      track: dummyTrack,
+      transaction: { transactionId: "TEST_TX_12345" }
+    }),
+    sendTelegramOrderAlert({
+      order: dummyOrder,
+      track: dummyTrack,
+      transaction: { transactionId: "TEST_TX_12345" }
+    }),
+    sendGmailOrderAlert({
+      order: dummyOrder,
+      track: dummyTrack,
+      transaction: { transactionId: "TEST_TX_12345" }
+    })
+  ]);
 
   res.json({
-    telegram: teleResult,
-    gmail: mailResult
+    ntfy: ntfyResult.status === "fulfilled" ? ntfyResult.value : { sent: false, error: ntfyResult.reason?.message },
+    telegram: teleResult.status === "fulfilled" ? teleResult.value : { sent: false, error: teleResult.reason?.message },
+    gmail: mailResult.status === "fulfilled" ? mailResult.value : { sent: false, error: mailResult.reason?.message }
   });
 });
 

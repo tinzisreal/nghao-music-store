@@ -1,8 +1,11 @@
 /**
  * Module thông báo tức thì khi có đơn hàng thanh toán thành công:
- * 1. Telegram Bot — Báo chuông điện thoại tức thì, kèm Gmail khách và nút bấm 1-chạm mở Gmail gửi nhạc.
- * 2. Gmail Alert — Gửi email khẩn về Gmail chủ shop (nhai74314@gmail.com) qua Google Apps Script Webhook hoặc Resend.
+ * 1. ntfy (ntfy.sh) — Báo chuông điện thoại tức thì (không cần tài khoản, cài app 5MB, cả 2 bạn cùng nhận đồng thời).
+ * 2. Telegram Bot — Báo qua Telegram (nếu cấu hình).
+ * 3. Gmail Alert — Gửi email thông báo về Gmail chủ shop (nhai74314@gmail.com).
  */
+
+export const DEFAULT_NTFY_TOPIC = "nghao-orders-2026";
 
 export function formatVnd(amount) {
   return `${Number(amount || 0).toLocaleString("vi-VN")} ₫`;
@@ -22,7 +25,97 @@ export function buildCustomerComposeMailUrl({ customerEmail, trackTitle, transfe
 }
 
 /**
- * Gửi thông báo đến Telegram Bot
+ * 1. Gửi thông báo đến app ntfy trên điện thoại (iPhone / Android)
+ * Hoạt động ngay tức thì, không cần tài khoản hay API key!
+ */
+export async function sendNtfyOrderAlert({ order, track, transaction = null, fetchImpl = globalThis.fetch }) {
+  const topic = (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim();
+  if (!topic) {
+    return { sent: false, reason: "ntfy_not_configured" };
+  }
+
+  const trackTitle = track?.title || "Bản nhạc";
+  const amountStr = formatVnd(order.amount);
+  const customerEmail = order.email || "Khách chưa để lại email";
+  const transferNote = order.transferNote || "N/A";
+  const transId = transaction?.transactionId || order.reconciledVia || "N/A";
+  const siteUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.duckdns.org").replace(/\/+$/, "");
+  const adminUrl = `${siteUrl}/admin`;
+
+  const hasEmail = Boolean(customerEmail && customerEmail.includes("@"));
+  const composeUrl = hasEmail
+    ? buildCustomerComposeMailUrl({ customerEmail, trackTitle, transferNote })
+    : adminUrl;
+
+  const body = [
+    `🎵 Bài hát: ${trackTitle}`,
+    `💰 Số tiền: ${amountStr}`,
+    `📧 Gmail khách: ${customerEmail}`,
+    `📝 Nội dung CK: ${transferNote}`,
+    `🏦 Mã GD: ${transId}`
+  ].join("\n");
+
+  const actions = hasEmail
+    ? `view, Mở Gmail gửi nhạc, ${composeUrl}, clear=true; view, Bảng Quản trị, ${adminUrl}`
+    : `view, Bảng Quản trị, ${adminUrl}`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const ntfyPayload = {
+      topic,
+      title: `🔔 Đơn mới: ${trackTitle} (${amountStr})`,
+      message: body,
+      priority: 5, // urgent (phát chuông to + rung mạnh trên điện thoại)
+      tags: ["musical_note", "moneybag", "bell"],
+      click: composeUrl,
+      actions: hasEmail
+        ? [
+            {
+              action: "view",
+              label: "Mở Gmail gửi nhạc",
+              url: composeUrl,
+              clear: true
+            },
+            {
+              action: "view",
+              label: "Bảng Quản trị",
+              url: adminUrl
+            }
+          ]
+        : [
+            {
+              action: "view",
+              label: "Bảng Quản trị",
+              url: adminUrl
+            }
+          ]
+    };
+
+    const res = await fetchImpl("https://ntfy.sh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(ntfyPayload),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      console.error("[ntfy] Publish error:", res.status);
+      return { sent: false, reason: `http_${res.status}` };
+    }
+
+    console.log(`[ntfy] Alert published successfully to topic "${topic}" for order ${order.id}`);
+    return { sent: true, topic, appUrl: `https://ntfy.sh/${topic}` };
+  } catch (err) {
+    console.error("[ntfy] Network error:", err.message);
+    return { sent: false, reason: err.message };
+  }
+}
+
+/**
+ * 2. Gửi thông báo đến Telegram Bot (tùy chọn nếu cấu hình)
  */
 export async function sendTelegramOrderAlert({ order, track, transaction = null, fetchImpl = globalThis.fetch }) {
   const botToken = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
@@ -108,7 +201,7 @@ export async function sendTelegramOrderAlert({ order, track, transaction = null,
 }
 
 /**
- * Gửi email thông báo đơn mới đến Gmail của chủ shop (nhai74314@gmail.com)
+ * 3. Gửi email thông báo đơn mới đến Gmail của chủ shop (nhai74314@gmail.com)
  */
 export async function sendGmailOrderAlert({ order, track, transaction = null, fetchImpl = globalThis.fetch }) {
   const adminEmail = (process.env.ADMIN_ALERT_EMAIL || "nhai74314@gmail.com").trim();
@@ -172,7 +265,7 @@ export async function sendGmailOrderAlert({ order, track, transaction = null, fe
 </html>
   `.trim();
 
-  // 1. Nếu có Google Apps Script Webhook
+  // 1. Google Apps Script Webhook
   if (scriptUrl) {
     try {
       const res = await fetchImpl(scriptUrl, {
@@ -199,7 +292,7 @@ export async function sendGmailOrderAlert({ order, track, transaction = null, fe
     }
   }
 
-  // 2. Nếu có Resend API Key
+  // 2. Resend API Key
   if (resendApiKey) {
     try {
       const res = await fetchImpl("https://api.resend.com/emails", {
@@ -230,7 +323,7 @@ export async function sendGmailOrderAlert({ order, track, transaction = null, fe
 }
 
 /**
- * Gửi đồng thời cả Telegram Bot và Gmail Notification khi đơn hàng được xác nhận thanh toán
+ * Gửi đồng thời ntfy, Telegram và Gmail khi đơn hàng được xác nhận thanh toán
  */
 export async function notifyAdminNewPaidOrder({ order, track, transaction = null, writeDb = null, db = null }) {
   if (!order || order.status !== "paid") {
@@ -238,16 +331,20 @@ export async function notifyAdminNewPaidOrder({ order, track, transaction = null
   }
 
   // Tránh gửi lặp nếu đơn này đã được thông báo trước đó
+  const alreadyNotifiedNtfy = Boolean(order.ntfyNotifiedAt);
   const alreadyNotifiedTelegram = Boolean(order.telegramNotifiedAt);
   const alreadyNotifiedEmail = Boolean(order.adminEmailNotifiedAt);
 
-  if (alreadyNotifiedTelegram && alreadyNotifiedEmail) {
+  if (alreadyNotifiedNtfy && alreadyNotifiedTelegram && alreadyNotifiedEmail) {
     return { notified: true, skipped: true, reason: "already_notified" };
   }
 
   console.log(`[Notifier] Triggering alerts for order ${order.id} (${order.transferNote})...`);
 
-  const [teleResult, mailResult] = await Promise.allSettled([
+  const [ntfyResult, teleResult, mailResult] = await Promise.allSettled([
+    !alreadyNotifiedNtfy
+      ? sendNtfyOrderAlert({ order, track, transaction })
+      : Promise.resolve({ sent: true, skipped: true }),
     !alreadyNotifiedTelegram
       ? sendTelegramOrderAlert({ order, track, transaction })
       : Promise.resolve({ sent: true, skipped: true }),
@@ -256,9 +353,13 @@ export async function notifyAdminNewPaidOrder({ order, track, transaction = null
       : Promise.resolve({ sent: true, skipped: true })
   ]);
 
+  const ntfySuccess = ntfyResult.status === "fulfilled" && ntfyResult.value?.sent;
   const teleSuccess = teleResult.status === "fulfilled" && teleResult.value?.sent;
   const mailSuccess = mailResult.status === "fulfilled" && mailResult.value?.sent;
 
+  if (ntfySuccess) {
+    order.ntfyNotifiedAt = new Date().toISOString();
+  }
   if (teleSuccess) {
     order.telegramNotifiedAt = new Date().toISOString();
   }
@@ -266,12 +367,13 @@ export async function notifyAdminNewPaidOrder({ order, track, transaction = null
     order.adminEmailNotifiedAt = new Date().toISOString();
   }
 
-  if ((teleSuccess || mailSuccess) && typeof writeDb === "function" && db) {
+  if ((ntfySuccess || teleSuccess || mailSuccess) && typeof writeDb === "function" && db) {
     writeDb(db);
   }
 
   return {
     notified: true,
+    ntfy: ntfyResult.status === "fulfilled" ? ntfyResult.value : { sent: false, error: ntfyResult.reason?.message },
     telegram: teleResult.status === "fulfilled" ? teleResult.value : { sent: false, error: teleResult.reason?.message },
     gmail: mailResult.status === "fulfilled" ? mailResult.value : { sent: false, error: mailResult.reason?.message }
   };
