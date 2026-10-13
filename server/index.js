@@ -17,6 +17,11 @@ import {
   verifyRedirectPayload
 } from "./apipay.js";
 import { sendOrderFulfillmentEmail, verifyOrderDownloadToken } from "./mailer.js";
+import {
+  notifyAdminNewPaidOrder,
+  sendTelegramOrderAlert,
+  sendGmailOrderAlert
+} from "./notifier.js";
 
 dotenv.config();
 
@@ -319,7 +324,8 @@ app.get("/health", (req, res) => {
     status: "ok",
     supabase: isSupabaseConfigured,
     cloudinary: isCloudinaryConfigured,
-    gmailConfigured: Boolean(process.env.GMAIL_SCRIPT_URL)
+    gmailConfigured: Boolean(process.env.GMAIL_SCRIPT_URL || process.env.RESEND_API_KEY),
+    telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
   });
 });
 
@@ -343,9 +349,16 @@ app.post("/api/apipay/webhook", express.raw({ type: "*/*" }), (req, res) => {
   if (result.statusCode === 200 && result.body?.orderId && result.body?.orderStatus === "paid") {
     const db = readDb();
     const matchedOrder = (db?.orders || []).find((o) => o.id === result.body.orderId);
-    if (matchedOrder && matchedOrder.email) {
-      triggerEmailIfPaid(matchedOrder, db).catch((err) => {
-        console.error("Webhook auto-email error:", err.message);
+    if (matchedOrder) {
+      const track = (db?.tracks || []).find((t) => t.id === matchedOrder.trackId);
+      notifyAdminNewPaidOrder({
+        order: matchedOrder,
+        track,
+        transaction: result.body.transaction,
+        writeDb,
+        db
+      }).catch((err) => {
+        console.error("Webhook notify admin error:", err.message);
       });
     }
   }
@@ -1119,8 +1132,9 @@ async function buildReconciliationResponse(db, syncWithApiPay = true) {
       if (newlyMatchedCount > 0) {
         writeDb(db);
         for (const ord of db.orders || []) {
-          if (ord.status === "paid" && ord.email && !ord.emailSentAt) {
-            triggerEmailIfPaid(ord, db).catch(() => {});
+          if (ord.status === "paid" && (!ord.telegramNotifiedAt || !ord.adminEmailNotifiedAt)) {
+            const track = (db.tracks || []).find((t) => t.id === ord.trackId);
+            notifyAdminNewPaidOrder({ order: ord, track, writeDb, db }).catch(() => {});
           }
         }
       }
@@ -1206,8 +1220,9 @@ app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
 
   writeDb(db);
 
-  if (status === "paid" && order.email && !order.emailSentAt) {
-    await triggerEmailIfPaid(order, db);
+  if (status === "paid") {
+    const track = (db.tracks || []).find((t) => t.id === order.trackId);
+    notifyAdminNewPaidOrder({ order, track, writeDb, db }).catch(() => {});
   }
 
   res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
@@ -1230,6 +1245,38 @@ app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
   writeDb(db);
 
   res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
+});
+
+// POST /admin/notifications/test — Gửi thông báo thử nghiệm tới Telegram & Gmail
+app.post("/admin/notifications/test", requireAdmin, async (req, res) => {
+  const dummyOrder = {
+    id: `test_${Date.now()}`,
+    amount: 1000,
+    transferNote: "NGHAO TEST999",
+    email: "khachhang_test@gmail.com",
+    status: "paid"
+  };
+  const dummyTrack = {
+    id: "test_track",
+    title: "Bản nhạc Thử nghiệm (Test Track)"
+  };
+
+  const teleResult = await sendTelegramOrderAlert({
+    order: dummyOrder,
+    track: dummyTrack,
+    transaction: { transactionId: "TEST_TX_12345" }
+  });
+
+  const mailResult = await sendGmailOrderAlert({
+    order: dummyOrder,
+    track: dummyTrack,
+    transaction: { transactionId: "TEST_TX_12345" }
+  });
+
+  res.json({
+    telegram: teleResult,
+    gmail: mailResult
+  });
 });
 
 // DELETE /admin/orders/:id — Xoá đơn hàng rác / thử nghiệm

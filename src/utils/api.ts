@@ -369,6 +369,16 @@ export const api = {
     });
   },
 
+  testNotifications(): Promise<{
+    telegram: { sent: boolean; reason?: string; message?: string };
+    gmail: { sent: boolean; reason?: string; message?: string };
+  }> {
+    return request<{
+      telegram: { sent: boolean; reason?: string; message?: string };
+      gmail: { sent: boolean; reason?: string; message?: string };
+    }>("/admin/notifications/test", { method: "POST" });
+  },
+
   /* ───────── Admin ───────── */
 
   uploadFile(file: File, kind: "image" | "audio"): Promise<{url: string;}> {

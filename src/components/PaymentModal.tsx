@@ -56,6 +56,7 @@ export function PaymentModal({ track, onClose }: PaymentModalProps) {
 type Phase = "creating" | "ready" | "confirming" | "done" | "error";
 
 function PaymentContent({ track, onClose }: { track: Track; onClose: () => void }) {
+  const { t } = useLanguage();
   const trackPrice = Math.max(0, Math.floor(Number(track?.price) || 0));
   const isFreeTrack = trackPrice <= 0;
   const freeDownloadUrl = api.getFreeDownloadUrl(track.id);

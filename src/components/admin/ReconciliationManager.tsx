@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangleIcon,
+  BellIcon,
   CheckCircle2Icon,
   ClockIcon,
   CopyIcon,
@@ -29,6 +30,28 @@ export function ReconciliationManager() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [testingNotification, setTestingNotification] = useState(false);
+
+  const handleTestNotifications = async () => {
+    setTestingNotification(true);
+    try {
+      const res = await api.testNotifications();
+      if (res.telegram?.sent) {
+        toast.success("✅ Đã gửi thông báo thử nghiệm tới Telegram của bạn!");
+      } else {
+        toast.error(`Telegram: ${res.telegram?.message || res.telegram?.reason || "Chưa cấu hình"}`);
+      }
+      if (res.gmail?.sent) {
+        toast.success("✅ Đã gửi email thử nghiệm tới Gmail của bạn!");
+      } else {
+        toast.error(`Gmail: ${res.gmail?.message || res.gmail?.reason || "Chưa cấu hình"}`);
+      }
+    } catch (err) {
+      toast.error(errorMessage(err, "Không thể gửi thông báo thử nghiệm."));
+    } finally {
+      setTestingNotification(false);
+    }
+  };
 
   const loadData = useCallback(async (isManualSync = false) => {
     if (isManualSync) setSyncing(true);
@@ -213,14 +236,26 @@ export function ReconciliationManager() {
           </p>
         </div>
 
-        <button
-          type="button"
-          disabled={syncing}
-          onClick={() => loadData(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-ember px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-ember/20 transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50">
-          <RefreshCwIcon className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} aria-hidden />
-          <span>{syncing ? "Đang đồng bộ ApiPay..." : "Đồng bộ & Rà soát với ApiPay"}</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={testingNotification}
+            onClick={handleTestNotifications}
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10 active:scale-95 disabled:opacity-50"
+            title="Gửi thông báo giả lập đơn mới tới Telegram và Gmail để kiểm tra chuông điện thoại">
+            <BellIcon className={`h-3.5 w-3.5 text-ember ${testingNotification ? "animate-pulse" : ""}`} />
+            <span>{testingNotification ? "Đang gửi thử..." : "Bắn thử thông báo (Tele & Gmail)"}</span>
+          </button>
+
+          <button
+            type="button"
+            disabled={syncing}
+            onClick={() => loadData(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-ember px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-ember/20 transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50">
+            <RefreshCwIcon className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} aria-hidden />
+            <span>{syncing ? "Đang đồng bộ ApiPay..." : "Đồng bộ & Rà soát với ApiPay"}</span>
+          </button>
+        </div>
       </div>
 
       {/* 4 Thẻ thống kê tổng quan */}
