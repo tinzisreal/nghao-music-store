@@ -313,6 +313,17 @@ function buildCloudinaryDemoUrl(rawUrl, demoStart = 0, demoEnd = 0) {
   return rawUrl;
 }
 
+function getMediaVersion(mediaUrl) {
+  if (!mediaUrl || typeof mediaUrl !== "string") return "";
+  const vMatch = mediaUrl.match(/\/v(\d+)\//);
+  const fileMatch = mediaUrl.match(/\/([^/?#]+)(?:\.[a-zA-Z0-9]+)?$/);
+  if (vMatch && fileMatch) {
+    return `${vMatch[1]}-${fileMatch[1].replace(/[^a-zA-Z0-9]/g, "").slice(-6)}`;
+  }
+  if (fileMatch) return fileMatch[1].replace(/[^a-zA-Z0-9]/g, "").slice(-8);
+  return crypto.createHash("md5").update(mediaUrl).digest("hex").slice(0, 8);
+}
+
 function sanitizeTrackForPublic(track) {
   if (!track) return null;
   const { fullAudioUrl: _fullAudioUrl, ...rest } = track;
@@ -321,10 +332,17 @@ function sanitizeTrackForPublic(track) {
   const hasDemoSlice = rawEnd > rawStart;
   const demoDuration = hasDemoSlice ? rawEnd - rawStart : Number(track.duration) || 30;
 
+  const coverVer = getMediaVersion(track.cover);
+  const audioVer = getMediaVersion(track.audioUrl || track.fullAudioUrl);
+
   return {
     ...rest,
-    cover: track.cover ? `/v2/media/cover/${encodeURIComponent(track.id)}` : "",
-    audioUrl: (track.audioUrl || track.fullAudioUrl) ? `/v2/media/stream/${encodeURIComponent(track.id)}` : "",
+    cover: track.cover
+      ? `/v2/media/cover/${encodeURIComponent(track.id)}${coverVer ? `?v=${coverVer}` : ""}`
+      : "",
+    audioUrl: (track.audioUrl || track.fullAudioUrl)
+      ? `/v2/media/stream/${encodeURIComponent(track.id)}${audioVer ? `?v=${audioVer}` : ""}`
+      : "",
     demoStart: 0,
     demoEnd: demoDuration
   };
@@ -565,10 +583,15 @@ app.get("/albums", (req, res) => {
   res.setHeader("Expires", "0");
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
-  const safeAlbums = (db.albums || []).map((alb) => ({
-    ...alb,
-    cover: alb.cover ? `/v2/media/album-cover/${encodeURIComponent(alb.id)}` : ""
-  }));
+  const safeAlbums = (db.albums || []).map((alb) => {
+    const albVer = getMediaVersion(alb.cover);
+    return {
+      ...alb,
+      cover: alb.cover
+        ? `/v2/media/album-cover/${encodeURIComponent(alb.id)}${albVer ? `?v=${albVer}` : ""}`
+        : ""
+    };
+  });
   res.json(safeAlbums);
 });
 
