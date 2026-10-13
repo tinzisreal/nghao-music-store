@@ -48,14 +48,85 @@ if (isCloudinaryConfigured) {
 
 app.use(cors());
 
+// Secret salt dùng để xáo trộn (XOR) nhị phân giả lập gói tin telemetry Facebook/TikTok
+const TELEMETRY_SALT = "nghao_fb_telemetry_2024_secure_salt_k9x";
+
+function encryptTelemetry(data) {
+  const jsonStr = JSON.stringify(data);
+  const input = Buffer.from(jsonStr, "utf8");
+  const key = Buffer.from(TELEMETRY_SALT, "utf8");
+  const output = Buffer.alloc(input.length);
+  for (let i = 0; i < input.length; i++) {
+    output[i] = input[i] ^ key[i % key.length];
+  }
+  return output.toString("base64");
+}
+
 // Ngụy trang đường dẫn API sang chuẩn Facebook Pixel / TikTok SDK & mã hóa payload phản hồi
 app.use((req, res, next) => {
-  // Bỏ tiền tố proxy nếu gọi trực tiếp
+  const originalUrl = req.url;
+  const rawPath = originalUrl.split("?")[0];
+
+  // Bỏ tiền tố proxy nếu gọi trực tiếp hoặc qua Vercel proxy (/fb-tr, /tiktok-sdk, /api-proxy)
   req.url = req.url.replace(/^\/(fb-tr|tiktok-sdk|api-proxy)(?=\/|$)/, "") || "/";
 
-  // Ánh xạ các đường dẫn ngụy trang Facebook/TikTok về route nội bộ
   const [pathname, search = ""] = req.url.split("?");
   const qs = search ? `?${search}` : "";
+
+  const isFbDisguised = rawPath.startsWith("/fb-tr/") || pathname.startsWith("/v19.0/");
+  const isTtDisguised = rawPath.startsWith("/tiktok-sdk/") || pathname.startsWith("/v2/events/");
+  const isMediaStream = pathname.startsWith("/v2/media/stream/");
+  const isMediaAsset = pathname.startsWith("/v2/media/asset/");
+  const hasClientCodec = req.headers["x-fb-codec"] === "1";
+  const acceptHeader = req.headers["accept"] || "";
+  const isBrowserNav =
+    acceptHeader.includes("text/html") ||
+    req.headers["sec-fetch-dest"] === "document" ||
+    req.headers["sec-fetch-mode"] === "navigate";
+
+  // 1. Nếu mở trực tiếp link ngụy trang trên trình duyệt hoặc không có client handshake hợp lệ
+  if (!isMediaStream && !isMediaAsset) {
+    if (isFbDisguised && !hasClientCodec) {
+      if (isBrowserNav) {
+        return res.redirect(302, "https://www.facebook.com/tr/");
+      }
+      return res.status(400).json({
+        error: {
+          message:
+            "Unsupported get request. Object with ID 'v19.0' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
+          type: "GraphMethodException",
+          code: 100,
+          error_subcode: 33,
+          fbtrace_id: "F" + Math.random().toString(36).slice(2, 10)
+        }
+      });
+    }
+
+    if (isTtDisguised && !hasClientCodec) {
+      if (isBrowserNav) {
+        return res.redirect(302, "https://analytics.tiktok.com/");
+      }
+      return res.status(401).json({
+        code: 40101,
+        message: "Access token is invalid or expired.",
+        data: null
+      });
+    }
+
+    // Nếu cố tình gọi trực tiếp các route nội bộ (không qua proxy và không phải webhook / health / download)
+    const isDirectInternal = ["/tracks", "/producer", "/albums", "/store-info", "/sections", "/orders"].some(
+      (p) => pathname === p || pathname.startsWith(`${p}/`)
+    );
+    const hasAdminToken = (req.headers["authorization"] || "").startsWith("Bearer ");
+    if (isDirectInternal && !hasClientCodec && !hasAdminToken && !pathname.includes("/download")) {
+      if (isBrowserNav) {
+        return res.redirect(302, "https://nghaoproducer.duckdns.org/");
+      }
+      return res.status(404).json({ error: "Not found" });
+    }
+  }
+
+  // Ánh xạ các đường dẫn ngụy trang Facebook/TikTok về route nội bộ
   if (pathname === "/v19.0/pixel/config") req.url = `/producer${qs}`;
   else if (pathname === "/v19.0/pixel/catalog") req.url = `/tracks${qs}`;
   else if (pathname === "/v19.0/pixel/collections") req.url = `/albums${qs}`;
@@ -76,12 +147,12 @@ app.use((req, res, next) => {
     req.url = `/tracks/${id}/free-download${qs}`;
   }
 
-  // Nếu client gửi header x-fb-codec: 1, bọc JSON phản hồi thành gói telemetry mã hóa Base64
-  if (req.headers["x-fb-codec"] === "1") {
+  // Nếu client gửi header x-fb-codec: 1, mã hóa payload phản hồi dạng nhị phân XOR giả lập Facebook Telemetry
+  if (hasClientCodec) {
     const origJson = res.json.bind(res);
     res.json = (body) => {
       if (body && typeof body === "object" && !body._p) {
-        const encoded = Buffer.from(JSON.stringify(body), "utf8").toString("base64");
+        const encoded = encryptTelemetry(body);
         return origJson({
           fb_trace_id: `fb.1.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
           tt_sdk_ver: "2.4.1",

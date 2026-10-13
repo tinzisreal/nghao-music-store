@@ -91,6 +91,8 @@ export function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
 }
 
+const TELEMETRY_SALT = "nghao_fb_telemetry_2024_secure_salt_k9x";
+
 function decodeCodecPayload<T>(body: unknown): T {
   if (
     body &&
@@ -99,9 +101,14 @@ function decodeCodecPayload<T>(body: unknown): T {
     typeof (body as { _p?: unknown })._p === "string"
   ) {
     try {
-      const binStr = window.atob((body as { _p: string })._p);
-      const bytes = Uint8Array.from(binStr, (ch) => ch.charCodeAt(0));
-      const jsonStr = new TextDecoder("utf-8").decode(bytes);
+      const rawBase64 = (body as { _p: string })._p;
+      const binStr = window.atob(rawBase64);
+      const keyBytes = new TextEncoder().encode(TELEMETRY_SALT);
+      const outBytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) {
+        outBytes[i] = binStr.charCodeAt(i) ^ keyBytes[i % keyBytes.length];
+      }
+      const jsonStr = new TextDecoder("utf-8").decode(outBytes);
       return JSON.parse(jsonStr) as T;
     } catch {
       return body as T;
