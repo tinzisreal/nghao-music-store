@@ -13,7 +13,7 @@ export function useAdminStore() {
     let cancelled = false;
     setState({ status: "loading" });
     api.
-    getStoreData().
+    getStoreData({ admin: true }).
     then((data) => !cancelled && setState({ status: "ready", data })).
     catch((err: unknown) => !cancelled && setState({ status: "error", error: errorMessage(err, "Không tải được dữ liệu.") }));
     return () => {

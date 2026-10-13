@@ -239,10 +239,13 @@ test("4. handleApiPayWebhook verifies signature, updates order to paid, and dedu
   assert.equal(dbState.orders[0].transactionId, "550e8400-e29b-41d4-a716-446655440000");
   assert.equal(dbState.processedTransactions.length, 1);
 
-  // Sanitized client order includes downloadUrl and hides redirectSecret
+  // Sanitized public client order hides both redirectSecret and raw downloadUrl (delivered via Gmail only)
   const clientOrder = sanitizeOrderForClient(dbState.orders[0], dbState.tracks);
   assert.equal(clientOrder.redirectSecret, undefined);
-  assert.equal(clientOrder.downloadUrl, "https://res.cloudinary.com/demo/full.mp3");
+  assert.equal(clientOrder.downloadUrl, undefined);
+
+  const adminOrder = sanitizeOrderForClient(dbState.orders[0], dbState.tracks, { includeDownloadUrl: true });
+  assert.equal(adminOrder.downloadUrl, "https://res.cloudinary.com/demo/full.mp3");
 
   // Second webhook delivery with identical transactionId -> deduplicated without writing again
   const duplicateResult = handleApiPayWebhook({
@@ -424,9 +427,11 @@ test("7. handleApiPayWebhook handles underpayment (chuyển thiếu) and cumulat
   assert.equal(dbState.orders[0].paymentResolution, "exact");
   assert.equal(dbState.orders[0].paymentHistory.length, 2);
 
-  // Verify MP3 downloadUrl IS unlocked now
+  // Verify public response hides raw downloadUrl while Admin response includes it
   const clientOrderPaid = sanitizeOrderForClient(dbState.orders[0], dbState.tracks);
-  assert.equal(clientOrderPaid.downloadUrl, "https://res.cloudinary.com/demo/beat_full.mp3");
+  assert.equal(clientOrderPaid.downloadUrl, undefined);
+  const adminOrderPaid = sanitizeOrderForClient(dbState.orders[0], dbState.tracks, { includeDownloadUrl: true });
+  assert.equal(adminOrderPaid.downloadUrl, "https://res.cloudinary.com/demo/beat_full.mp3");
 });
 
 test("8. handleApiPayWebhook handles overpayment (chuyển thừa), unlocks MP3, and records overpaidAmount", () => {
@@ -485,8 +490,12 @@ test("8. handleApiPayWebhook handles overpayment (chuyển thừa), unlocks MP3,
   assert.equal(dbState.orders[0].paymentResolution, "overpaid");
 
   const clientOrder = sanitizeOrderForClient(dbState.orders[0], dbState.tracks);
-  assert.equal(clientOrder.downloadUrl, "https://res.cloudinary.com/demo/over_full.mp3");
+  assert.equal(clientOrder.downloadUrl, undefined);
   assert.equal(clientOrder.overpaidAmount, 5000);
+
+  const adminOrder = sanitizeOrderForClient(dbState.orders[0], dbState.tracks, { includeDownloadUrl: true });
+  assert.equal(adminOrder.downloadUrl, "https://res.cloudinary.com/demo/over_full.mp3");
 });
+
 
 

@@ -82,6 +82,8 @@ export interface Order {
   paymentResolution?: PaymentResolution;
   downloadUrl?: string;
   email?: string;
+  emailSentAt?: string;
+  emailDeliveryError?: string;
   createdAt?: string;
   paidAt?: string;
   lastPaymentAt?: string;
@@ -101,12 +103,16 @@ export interface Order {
 export interface OrderConfirmation {
   orderId: string;
   status: OrderStatus;
+  email?: string;
+  emailSent?: boolean;
+  emailSentAt?: string;
+  emailDeliveryReason?: string;
   paidAmount?: number;
   shortfallAmount?: number;
   overpaidAmount?: number;
   paymentResolution?: PaymentResolution;
   message?: string;
-  downloadUrl?: string; // Link tải file Full bàn giao cho khách
+  downloadUrl?: string;
 }
 
 export interface ProcessedTransaction {

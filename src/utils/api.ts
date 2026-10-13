@@ -46,8 +46,7 @@ import { storeInfo as mockStoreInfo } from "../data/contact";
 import { bankAccount as mockBank } from "../data/payment";
 
 export const API_BASE_URL = String(
-  import.meta.env.VITE_API_BASE_URL ||
-    (import.meta.env.PROD ? "https://nghao-music-backend.onrender.com" : "http://localhost:5000")
+  import.meta.env.PROD ? "/api-proxy" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
 const USE_MOCK = false;
 
@@ -139,6 +138,17 @@ function buildVietQr(bankId: string, accountNo: string, accountName: string, amo
   )}&accountName=${encodeURIComponent(accountName)}`;
 }
 
+function resolveTrackAudioUrl(track: Track): Track {
+  if (!track?.audioUrl) return track;
+  if (track.audioUrl.startsWith("/")) {
+    return {
+      ...track,
+      audioUrl: `${API_BASE_URL}${track.audioUrl}`
+    };
+  }
+  return track;
+}
+
 /* ───────── Public API ───────── */
 
 export const api = {
@@ -146,8 +156,11 @@ export const api = {
     return USE_MOCK ? mock(db.producer) : request<Producer>("/producer");
   },
 
-  getTracks(): Promise<Track[]> {
-    return USE_MOCK ? mock(db.tracks) : request<Track[]>("/tracks");
+  async getTracks(options?: { admin?: boolean }): Promise<Track[]> {
+    if (USE_MOCK) return mock(db.tracks);
+    const query = options?.admin ? "?admin=1" : "";
+    const tracks = await request<Track[]>(`/tracks${query}`);
+    return tracks.map(resolveTrackAudioUrl);
   },
 
   getAlbums(): Promise<Album[]> {
@@ -162,10 +175,10 @@ export const api = {
     return USE_MOCK ? mock(db.sections) : request<StoreSections>("/sections");
   },
 
-  async getStoreData(): Promise<StoreData> {
+  async getStoreData(options?: { admin?: boolean }): Promise<StoreData> {
     const [producer, tracks, albums, info, sections] = await Promise.all([
       api.getProducer(),
-      api.getTracks(),
+      api.getTracks(options),
       api.getAlbums().catch(() => [] as Album[]),
       api.getStoreInfo(),
       api.getSections()
@@ -173,11 +186,11 @@ export const api = {
     return { producer, tracks, albums, info, sections };
   },
 
-  createOrder(trackId: string, redirectUrl?: string): Promise<Order> {
+  createOrder(trackId: string, redirectUrl?: string, email?: string): Promise<Order> {
     if (!USE_MOCK) {
       return request<Order>("/orders", {
         method: "POST",
-        body: JSON.stringify({ trackId, redirectUrl })
+        body: JSON.stringify({ trackId, redirectUrl, email })
       });
     }
     const track = db.tracks.find((t) => t.id === trackId);
@@ -208,6 +221,19 @@ export const api = {
       });
     }
     return mock({ orderId, status: "pending_verification" as const }, 700);
+  },
+
+  resendOrderEmail(
+    orderId: string,
+    email?: string
+  ): Promise<{ orderId: string; email: string; sent: boolean; emailSentAt?: string; message: string }> {
+    return request<{ orderId: string; email: string; sent: boolean; emailSentAt?: string; message: string }>(
+      `/orders/${encodeURIComponent(orderId)}/resend-email`,
+      {
+        method: "POST",
+        body: JSON.stringify({ email })
+      }
+    );
   },
 
   /* ───────── Admin Auth (Google Authenticator TOTP) ───────── */

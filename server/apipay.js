@@ -383,12 +383,14 @@ export function applyPaymentToOrder(
 /**
  * Loại bỏ các trường nhạy cảm phía server (như redirectSecret) trước khi trả Order về client.
  */
-export function sanitizeOrderForClient(order, tracks = []) {
+export function sanitizeOrderForClient(order, tracks = [], { includeDownloadUrl = false } = {}) {
   if (!order) return null;
   const { redirectSecret: _secret, ...safeOrder } = order;
-  if (order.status === "paid") {
+  if (includeDownloadUrl && order.status === "paid") {
     const track = tracks.find((t) => t.id === order.trackId);
     safeOrder.downloadUrl = track?.fullAudioUrl || track?.audioUrl || "";
+  } else {
+    delete safeOrder.downloadUrl;
   }
   return safeOrder;
 }

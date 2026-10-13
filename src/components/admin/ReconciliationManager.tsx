@@ -8,6 +8,7 @@ import {
   ExternalLinkIcon,
   InfoIcon,
   Loader2Icon,
+  MailIcon,
   RefreshCwIcon,
   SearchIcon,
   Trash2Icon,
@@ -82,6 +83,21 @@ export function ReconciliationManager() {
       await loadData(false);
     } catch (err) {
       toast.error(errorMessage(err, "Cập nhật trạng thái đơn hàng thất bại."));
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
+  const handleResendEmail = async (order: Order) => {
+    const targetEmail = order.email || window.prompt("Nhập địa chỉ Gmail của khách hàng để gửi file MP3 Full:") || "";
+    if (!targetEmail.trim()) return;
+    setUpdatingOrderId(order.id);
+    try {
+      const res = await api.resendOrderEmail(order.id, targetEmail.trim());
+      toast.success(res.message);
+      await loadData(false);
+    } catch (err) {
+      toast.error(errorMessage(err, "Không thể gửi Gmail cho đơn hàng này."));
     } finally {
       setUpdatingOrderId(null);
     }
@@ -376,9 +392,20 @@ export function ReconciliationManager() {
 
                       <td className="px-4 py-3.5 text-xs text-white/70">
                         {order.email ? (
-                          <span className="text-white">{order.email}</span>
+                          <div>
+                            <div className="font-medium text-white">{order.email}</div>
+                            {order.emailSentAt ? (
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                                ✓ Đã gửi Gmail
+                              </span>
+                            ) : isPaid ? (
+                              <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                                Chờ gửi Gmail
+                              </span>
+                            ) : null}
+                          </div>
                         ) : (
-                          <span className="text-white/35">Không nhập email</span>
+                          <span className="text-white/35">Chưa nhập Gmail</span>
                         )}
                       </td>
 
@@ -430,6 +457,18 @@ export function ReconciliationManager() {
 
                       <td className="whitespace-nowrap px-4 py-3.5 text-right">
                         <div className="inline-flex items-center gap-2">
+                          {isPaid && (
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleResendEmail(order)}
+                              title="Gửi / Gửi lại link MP3 Full qua Gmail"
+                              className="inline-flex items-center gap-1 rounded-full bg-ember/20 px-3 py-1.5 text-xs font-semibold text-ember transition-colors hover:bg-ember hover:text-white disabled:opacity-50">
+                              <MailIcon className="h-3.5 w-3.5" />
+                              <span>{order.emailSentAt ? "Gửi lại Gmail" : "Gửi Gmail"}</span>
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             disabled={isUpdating}

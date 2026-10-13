@@ -16,6 +16,7 @@ import {
   sanitizeOrderForClient,
   verifyRedirectPayload
 } from "./apipay.js";
+import { sendOrderFulfillmentEmail, verifyOrderDownloadToken } from "./mailer.js";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const app = express();
+app.disable("x-powered-by");
 const PORT = process.env.PORT || 5000;
 
 // Cloudinary setup
@@ -142,11 +144,66 @@ function writeDb(data) {
   return true;
 }
 
+async function triggerEmailIfPaid(order, db, { force = false } = {}) {
+  if (!order || order.status !== "paid" || !order.email) {
+    return { sent: false, reason: "missing_email_or_unpaid" };
+  }
+  if (!force && order.emailSentAt) {
+    return { sent: true, alreadySent: true };
+  }
+  const track = (db?.tracks || []).find((t) => t.id === order.trackId);
+  const res = await sendOrderFulfillmentEmail({
+    order,
+    track,
+    webhookSecret: process.env.APIPAY_WEBHOOK_SECRET
+  });
+  if (res.sent) {
+    order.emailSentAt = new Date().toISOString();
+    order.emailDeliveryError = undefined;
+    writeDb(db);
+  } else {
+    order.emailDeliveryError = res.reason;
+    writeDb(db);
+  }
+  return res;
+}
+
+function buildCloudinaryDemoUrl(rawUrl, demoStart = 0, demoEnd = 0) {
+  if (!rawUrl || typeof rawUrl !== "string") return "";
+  const start = Math.max(0, Math.floor(Number(demoStart) || 0));
+  const end = Math.max(0, Math.floor(Number(demoEnd) || 0));
+  if (
+    rawUrl.includes("res.cloudinary.com") &&
+    rawUrl.includes("/upload/") &&
+    end > start
+  ) {
+    return rawUrl.replace("/upload/", `/upload/so_${start},eo_${end}/`);
+  }
+  return rawUrl;
+}
+
+function sanitizeTrackForPublic(track) {
+  if (!track) return null;
+  const { fullAudioUrl: _fullAudioUrl, ...rest } = track;
+  const rawStart = Math.max(0, Math.floor(Number(track.demoStart) || 0));
+  const rawEnd = Math.max(0, Math.floor(Number(track.demoEnd) || 0));
+  const hasDemoSlice = rawEnd > rawStart;
+  const demoDuration = hasDemoSlice ? rawEnd - rawStart : Number(track.duration) || 30;
+
+  return {
+    ...rest,
+    audioUrl: track.audioUrl ? `/tracks/${encodeURIComponent(track.id)}/demo-stream` : "",
+    demoStart: 0,
+    demoEnd: demoDuration
+  };
+}
+
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     supabase: isSupabaseConfigured,
-    cloudinary: isCloudinaryConfigured
+    cloudinary: isCloudinaryConfigured,
+    gmailConfigured: Boolean(process.env.GMAIL_SCRIPT_URL)
   });
 });
 
@@ -166,6 +223,16 @@ app.post("/api/apipay/webhook", express.raw({ type: "*/*" }), (req, res) => {
     readDb,
     writeDb
   });
+
+  if (result.statusCode === 200 && result.body?.orderId && result.body?.orderStatus === "paid") {
+    const db = readDb();
+    const matchedOrder = (db?.orders || []).find((o) => o.id === result.body.orderId);
+    if (matchedOrder && matchedOrder.email) {
+      triggerEmailIfPaid(matchedOrder, db).catch((err) => {
+        console.error("Webhook auto-email error:", err.message);
+      });
+    }
+  }
 
   return res.status(result.statusCode).json(result.body);
 });
@@ -205,11 +272,58 @@ app.get("/producer", (req, res) => {
   res.json(db.producer);
 });
 
-// GET /tracks
+// GET /tracks — Ẩn hoàn toàn link Cloudinary & fullAudioUrl đối với khách truy cập
 app.get("/tracks", (req, res) => {
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
-  res.json(db.tracks);
+
+  const isAdminQuery = req.query.admin === "1";
+  if (isAdminQuery) {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    if (verifyAdminToken(token, db)) {
+      return res.json(db.tracks);
+    }
+  }
+
+  res.json((db.tracks || []).map(sanitizeTrackForPublic));
+});
+
+// GET /tracks/:id/demo-stream — Proxy phát bản nhạc Demo đã cắt phía server (ẩn hoàn toàn link Cloudinary gốc)
+app.get("/tracks/:id/demo-stream", async (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db) return res.status(500).end();
+
+  const track = (db.tracks || []).find((t) => t.id === id);
+  if (!track || !track.audioUrl) return res.status(404).end();
+
+  const targetUrl = buildCloudinaryDemoUrl(track.audioUrl, track.demoStart, track.demoEnd);
+  try {
+    const upstreamHeaders = {};
+    if (req.headers.range) {
+      upstreamHeaders.Range = req.headers.range;
+    }
+    const upstream = await fetch(targetUrl, { headers: upstreamHeaders });
+    if (!upstream.ok && upstream.status !== 206) {
+      return res.status(upstream.status).end();
+    }
+
+    res.status(upstream.status);
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "audio/mpeg");
+    const contentLength = upstream.headers.get("content-length");
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    const contentRange = upstream.headers.get("content-range");
+    if (contentRange) res.setHeader("Content-Range", contentRange);
+    res.setHeader("Accept-Ranges", upstream.headers.get("accept-ranges") || "bytes");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+
+    const arrayBuffer = await upstream.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    console.error("Demo stream proxy error:", err.message);
+    return res.status(502).end();
+  }
 });
 
 // GET /albums
@@ -235,7 +349,7 @@ app.get("/sections", (req, res) => {
 
 // POST /orders — Tạo yêu cầu thanh toán qua ApiPay
 app.post("/orders", async (req, res) => {
-  const { trackId, redirectUrl } = req.body || {};
+  const { trackId, redirectUrl, email } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -286,6 +400,8 @@ app.post("/orders", async (req, res) => {
       }
     : defaultBank;
 
+  const cleanEmail = email ? String(email).trim() : undefined;
+
   const order = {
     id: orderId,
     trackId,
@@ -296,6 +412,7 @@ app.post("/orders", async (req, res) => {
     payUrl: apipayData?.payUrl || undefined,
     apipayPublicId: apipayData?.publicId || undefined,
     redirectSecret: apipayData?.redirectSecret || undefined,
+    email: cleanEmail || undefined,
     status: "pending_verification",
     createdAt: apipayData?.createdAt || new Date().toISOString()
   };
@@ -319,6 +436,56 @@ app.get("/orders/:id", (req, res) => {
   res.json(sanitizeOrderForClient(order, db.tracks));
 });
 
+// GET /orders/:id/download?token=... — Link tải MP3 Full bảo mật (chỉ gửi qua Gmail cho đơn đã thanh toán)
+app.get("/orders/:id/download", async (req, res) => {
+  const { id } = req.params;
+  const { token } = req.query;
+  const db = readDb();
+  if (!db) return res.status(500).send("Lỗi máy chủ.");
+
+  const order = (db.orders || []).find((o) => o.id === id);
+  if (!order || order.status !== "paid") {
+    return res.status(403).send("Đơn hàng chưa được xác nhận thanh toán hoặc không tồn tại.");
+  }
+
+  const isValidToken = verifyOrderDownloadToken(id, String(token || ""), process.env.APIPAY_WEBHOOK_SECRET);
+  if (!isValidToken) {
+    return res.status(403).send("Đường dẫn tải nhạc không hợp lệ hoặc đã hết hạn.");
+  }
+
+  const track = (db.tracks || []).find((t) => t.id === order.trackId);
+  const fullUrl = track?.fullAudioUrl || track?.audioUrl;
+  if (!fullUrl) {
+    return res.status(404).send("Không tìm thấy file nhạc gốc cho đơn hàng này.");
+  }
+
+  try {
+    const upstream = await fetch(fullUrl);
+    if (!upstream.ok) {
+      return res.status(502).send("Không thể tải file nhạc từ máy chủ lưu trữ.");
+    }
+    const safeTitle =
+      String(track?.title || "Track")
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+        .trim() || "Track";
+    const filenameUtf8 = encodeURIComponent(`${safeTitle} - NGHAO Full.mp3`);
+
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "audio/mpeg");
+    const contentLength = upstream.headers.get("content-length");
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="NGHAO-Full.mp3"; filename*=UTF-8''${filenameUtf8}`
+    );
+
+    const arrayBuffer = await upstream.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    console.error("Full audio download proxy error:", err.message);
+    return res.status(502).send("Lỗi kết nối khi tải file nhạc.");
+  }
+});
+
 // GET /api/apipay/redirect-verify — Xác minh data & signature khi khách quay lại từ redirectUrl
 app.get("/api/apipay/redirect-verify", (req, res) => {
   const { orderId, data, signature } = req.query;
@@ -332,15 +499,12 @@ app.get("/api/apipay/redirect-verify", (req, res) => {
 
   try {
     const payload = verifyRedirectPayload({ data, signature }, order.redirectSecret);
-    const isPaid = order.status === "paid";
-    const track = db.tracks.find((t) => t.id === order.trackId);
 
     return res.json({
       verified: true,
       redirectStatus: payload.status,
       orderId: order.id,
-      status: order.status,
-      downloadUrl: isPaid ? track?.fullAudioUrl || track?.audioUrl || "" : undefined
+      status: order.status
     });
   } catch (err) {
     const status = err instanceof ApiPayError ? err.statusCode : 400;
@@ -349,8 +513,8 @@ app.get("/api/apipay/redirect-verify", (req, res) => {
   }
 });
 
-// POST /orders/:id/confirm — Lưu email khách hàng và kiểm tra trạng thái thanh toán từ webhook
-app.post("/orders/:id/confirm", (req, res) => {
+// POST /orders/:id/confirm — Lưu Gmail khách hàng, kiểm tra thanh toán và tự động gửi file MP3 Full qua Gmail
+app.post("/orders/:id/confirm", async (req, res) => {
   const { id } = req.params;
   const { email } = req.body || {};
   const db = readDb();
@@ -369,15 +533,26 @@ app.post("/orders/:id/confirm", (req, res) => {
 
   const isPaid = order.status === "paid";
   const isUnderpaid = order.status === "underpaid";
-  const track = db.tracks.find((t) => t.id === order.trackId);
-  const downloadUrl = isPaid ? track?.fullAudioUrl || track?.audioUrl || "" : "";
+  let emailSent = Boolean(order.emailSentAt);
+  let emailDeliveryReason = undefined;
 
-  let message = "Hệ thống đang chờ xác nhận giao dịch từ ngân hàng (tự động cập nhật trong vài giây sau khi chuyển khoản).";
+  if (isPaid && order.email) {
+    const mailResult = await triggerEmailIfPaid(order, db);
+    emailSent = Boolean(mailResult.sent || order.emailSentAt);
+    emailDeliveryReason = mailResult.reason;
+  }
+
+  let message = "Hệ thống đã lưu Gmail của bạn và đang chờ xác nhận giao dịch từ ngân hàng (tự động gửi file qua Gmail trong vài giây sau khi chuyển khoản).";
   if (isPaid) {
+    const emailNotice = emailSent
+      ? `File MP3 Full đã được gửi tự động tới Gmail ${order.email}.`
+      : order.email
+        ? `Đã ghi nhận Gmail ${order.email}. Bạn có thể bấm "Gửi lại vào Gmail" hoặc liên hệ Zalo/Facebook nếu chưa thấy thư trong Hộp thư đến / Spam.`
+        : "Vui lòng nhập Gmail để hệ thống gửi file MP3 Full cho bạn.";
     message =
       order.overpaidAmount > 0
-        ? `Thanh toán đã xác nhận thành công (Hệ thống ghi nhận bạn chuyển dư +${Number(order.overpaidAmount).toLocaleString("vi-VN")} ₫).`
-        : "Thanh toán đã được xác nhận thành công.";
+        ? `Thanh toán đã xác nhận thành công (Chuyển dư +${Number(order.overpaidAmount).toLocaleString("vi-VN")} ₫). ${emailNotice}`
+        : `Thanh toán đã được xác nhận thành công. ${emailNotice}`;
   } else if (isUnderpaid) {
     message = `Hệ thống đã nhận ${Number(order.paidAmount || 0).toLocaleString("vi-VN")} ₫ nhưng đơn hàng còn thiếu ${Number(order.shortfallAmount || 0).toLocaleString("vi-VN")} ₫. Vui lòng chuyển thêm phần còn thiếu với cùng nội dung "${order.transferNote}" hoặc liên hệ Zalo 0333 025 864.`;
   }
@@ -385,12 +560,55 @@ app.post("/orders/:id/confirm", (req, res) => {
   res.json({
     orderId: id,
     status: order.status,
+    email: order.email,
+    emailSent,
+    emailSentAt: order.emailSentAt,
+    emailDeliveryReason,
     paidAmount: order.paidAmount,
     shortfallAmount: order.shortfallAmount,
     overpaidAmount: order.overpaidAmount,
     paymentResolution: order.paymentResolution,
-    downloadUrl: downloadUrl || undefined,
     message
+  });
+});
+
+// POST /orders/:id/resend-email — Gửi lại hoặc cập nhật Gmail nhận file MP3 Full cho đơn hàng đã thanh toán
+app.post("/orders/:id/resend-email", async (req, res) => {
+  const { id } = req.params;
+  const { email } = req.body || {};
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const order = (db.orders || []).find((o) => o.id === id);
+  if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng." });
+
+  if (email) {
+    const clean = String(email).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) {
+      return res.status(400).json({ message: "Địa chỉ Gmail không hợp lệ." });
+    }
+    order.email = clean;
+    writeDb(db);
+  }
+
+  if (!order.email) {
+    return res.status(400).json({ message: "Vui lòng nhập địa chỉ Gmail để nhận file nhạc." });
+  }
+
+  if (order.status !== "paid") {
+    return res.status(400).json({ message: "Đơn hàng chưa hoàn tất thanh toán nên chưa thể gửi file." });
+  }
+
+  const mailResult = await triggerEmailIfPaid(order, db, { force: true });
+  return res.json({
+    orderId: order.id,
+    email: order.email,
+    sent: Boolean(mailResult.sent),
+    emailSentAt: order.emailSentAt,
+    reason: mailResult.reason,
+    message: mailResult.sent
+      ? `Đã gửi link tải MP3 Full tới Gmail ${order.email}! Vui lòng kiểm tra cả mục Hộp thư đến và Thư rác (Spam).`
+      : "Đã ghi nhận yêu cầu gửi Gmail. Nếu sau 1-2 phút chưa nhận được, vui lòng nhắn trực tiếp qua Facebook hoặc Zalo để được gửi file ngay."
   });
 });
 
@@ -552,8 +770,21 @@ app.get("/admin/auth/status", (req, res) => {
   });
 });
 
+const loginAttempts = new Map();
+
 // POST /admin/auth/login — Đăng nhập bằng mã 6 số Google Authenticator (TOTP)
 app.post("/admin/auth/login", (req, res) => {
+  const clientIp = String(req.headers["x-forwarded-for"] || req.ip || "unknown")
+    .split(",")[0]
+    .trim();
+  const now = Date.now();
+  const attemptRecord = loginAttempts.get(clientIp);
+  if (attemptRecord && attemptRecord.count >= 5 && now - attemptRecord.firstAt < 5 * 60 * 1000) {
+    return res.status(429).json({
+      message: "Bạn đã nhập sai quá 5 lần. Vui lòng đợi 5 phút trước khi thử lại."
+    });
+  }
+
   const { otp, passkey } = req.body || {};
   const code = String(otp || passkey || "").replace(/\s+/g, "");
   const db = readDb();
@@ -561,10 +792,18 @@ app.post("/admin/auth/login", (req, res) => {
 
   const secret = ensureAdminTotpSecret(db);
   if (!verifyTotpCode(code, secret, 1)) {
+    const prev = loginAttempts.get(clientIp);
+    if (!prev || now - prev.firstAt >= 5 * 60 * 1000) {
+      loginAttempts.set(clientIp, { count: 1, firstAt: now });
+    } else {
+      prev.count += 1;
+    }
     return res.status(401).json({
       message: "Mã 6 số Google Authenticator không chính xác hoặc đã hết hạn (mã đổi mới mỗi 30 giây)."
     });
   }
+
+  loginAttempts.delete(clientIp);
 
   if (!db.adminTotpConfigured) {
     db.adminTotpConfigured = true;
@@ -617,6 +856,11 @@ async function buildReconciliationResponse(db, syncWithApiPay = true) {
       newlyMatchedCount = syncResult.newlyMatchedCount;
       if (newlyMatchedCount > 0) {
         writeDb(db);
+        for (const ord of db.orders || []) {
+          if (ord.status === "paid" && ord.email && !ord.emailSentAt) {
+            triggerEmailIfPaid(ord, db).catch(() => {});
+          }
+        }
       }
     } catch (err) {
       console.error("Reconciliation ApiPay sync warning:", err.message);
@@ -627,7 +871,7 @@ async function buildReconciliationResponse(db, syncWithApiPay = true) {
   const orders = (db.orders || [])
     .map((ord) => {
       const track = tracks.find((t) => t.id === ord.trackId);
-      const safe = sanitizeOrderForClient(ord, tracks);
+      const safe = sanitizeOrderForClient(ord, tracks, { includeDownloadUrl: true });
       return {
         ...safe,
         status: safe.status || "pending_verification",
@@ -670,7 +914,7 @@ app.post("/admin/reconciliation/sync", requireAdmin, async (req, res) => {
 });
 
 // PATCH /admin/orders/:id/status — Duyệt thủ công hoặc đặt lại trạng thái đơn hàng
-app.patch("/admin/orders/:id/status", requireAdmin, (req, res) => {
+app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { status, note } = req.body || {};
   if (status !== "paid" && status !== "pending_verification") {
@@ -699,7 +943,12 @@ app.patch("/admin/orders/:id/status", requireAdmin, (req, res) => {
   }
 
   writeDb(db);
-  res.json(sanitizeOrderForClient(order, db.tracks));
+
+  if (status === "paid" && order.email && !order.emailSentAt) {
+    await triggerEmailIfPaid(order, db);
+  }
+
+  res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
 });
 
 // DELETE /admin/orders/:id — Xoá đơn hàng rác / thử nghiệm

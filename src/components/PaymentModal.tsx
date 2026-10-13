@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CopyIcon, Loader2Icon, XIcon } from "lucide-react";
+import { AlertCircleIcon, CheckCircle2Icon, CheckIcon, CopyIcon, Loader2Icon, MailIcon, SendIcon, XIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Track } from "../types/track";
 import { Order } from "../types/store";
@@ -54,7 +54,8 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
   const [error, setError] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [email, setEmail] = useState("");
-  const [downloadUrl, setDownloadUrl] = useState<string>("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState("");
 
   const createOrder = useCallback(() => {
     setPhase("creating");
@@ -65,8 +66,8 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
     createOrder(track.id, redirectUrl).
     then((o) => {
       setOrder(o);
+      if (o.email) setEmail(o.email);
       if (o.status === "paid") {
-        if (o.downloadUrl) setDownloadUrl(o.downloadUrl);
         setPhase("done");
       } else {
         setPhase("ready");
@@ -90,8 +91,19 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
       then((updated) => {
         if (updated.status === "paid") {
           setOrder(updated);
-          if (updated.downloadUrl) setDownloadUrl(updated.downloadUrl);
           setPhase("done");
+          const cleanMail = email.trim();
+          if (cleanMail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanMail) && !updated.emailSentAt) {
+            api.
+            resendOrderEmail(updated.id, cleanMail).
+            then((mailRes) => {
+              setOrder((prev) =>
+                prev ? { ...prev, email: mailRes.email, emailSentAt: mailRes.emailSentAt } : prev
+              );
+              setEmailFeedback(mailRes.message);
+            }).
+            catch(() => {});
+          }
         } else if (
           updated.status === "underpaid" &&
           (updated.paidAmount !== order.paidAmount || order.status !== "underpaid")
@@ -105,27 +117,29 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
     }, 3000);
 
     return () => window.clearInterval(timer);
-  }, [order, phase]);
+  }, [order, phase, email]);
 
   const confirm = () => {
     if (!order) return;
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Email không hợp lệ. Bạn có thể nhập đúng định dạng hoặc để trống.");
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError("Vui lòng nhập đúng địa chỉ Gmail để hệ thống tự động gửi file MP3 Full sau khi thanh toán.");
       return;
     }
     setPhase("confirming");
     setError("");
     setStatusNote("");
     api.
-    confirmOrder(order.id, email.trim()).
+    confirmOrder(order.id, cleanEmail).
     then((res) => {
-      if (res?.downloadUrl) setDownloadUrl(res.downloadUrl);
       if (res?.status === "paid") {
         setOrder((prev) =>
           prev
             ? {
                 ...prev,
                 status: "paid",
+                email: res.email || cleanEmail,
+                emailSentAt: res.emailSentAt || prev.emailSentAt,
                 paidAmount: res.paidAmount ?? prev.paidAmount,
                 overpaidAmount: res.overpaidAmount ?? prev.overpaidAmount,
                 shortfallAmount: 0,
@@ -133,6 +147,7 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
               }
             : prev
         );
+        if (res.message) setEmailFeedback(res.message);
         setPhase("done");
       } else {
         if (res?.status === "underpaid") {
@@ -140,6 +155,7 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
             prev
               ? {
                   ...prev,
+                  email: cleanEmail,
                   status: "underpaid",
                   paidAmount: res.paidAmount ?? prev.paidAmount,
                   shortfallAmount: res.shortfallAmount ?? prev.shortfallAmount,
@@ -147,10 +163,12 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
                 }
               : prev
           );
+        } else {
+          setOrder((prev) => (prev ? { ...prev, email: cleanEmail } : prev));
         }
         setStatusNote(
           res?.message ||
-          "Đang chờ ngân hàng xác nhận giao dịch qua ApiPay. Trang sẽ tự động mở khóa tải file ngay khi nhận được thanh toán."
+          `Đã lưu Gmail (${cleanEmail}). Hệ thống sẽ tự động gửi file MP3 Full vào Gmail ngay khi nhận được thanh toán.`
         );
         setPhase("ready");
       }
@@ -158,6 +176,31 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
     catch((err: unknown) => {
       setError(errorMessage(err, t("confirmError")));
       setPhase("ready");
+    });
+  };
+
+  const handleSendOrResendEmail = () => {
+    if (!order) return;
+    const cleanEmail = email.trim() || order.email || "";
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError("Vui lòng nhập đúng địa chỉ Gmail để nhận file MP3 Full.");
+      return;
+    }
+    setSendingEmail(true);
+    setError("");
+    api.
+    resendOrderEmail(order.id, cleanEmail).
+    then((res) => {
+      setOrder((prev) =>
+        prev ? { ...prev, email: res.email, emailSentAt: res.emailSentAt || prev.emailSentAt } : prev
+      );
+      setEmailFeedback(res.message);
+    }).
+    catch((err: unknown) => {
+      setError(errorMessage(err, "Không thể gửi lại email lúc này."));
+    }).
+    finally(() => {
+      setSendingEmail(false);
     });
   };
 
@@ -184,12 +227,12 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
       </button>
 
       {phase === "done" ?
-      <div className="flex flex-col items-center px-4 py-10 text-center">
+      <div className="flex flex-col items-center px-3 py-8 text-center sm:px-6 sm:py-10">
           <CheckCircle2Icon className="h-12 w-12 text-ember" aria-hidden />
           <h2 id="payment-title" className="mt-4 text-2xl font-semibold">
             {t("thanks")}
           </h2>
-          <p className="mt-2 max-w-sm text-white/70">
+          <p className="mt-2 max-w-md text-sm text-white/75">
             Thanh toán bài hát <strong>{track.title}</strong> đã được xác nhận thành công!
           </p>
 
@@ -205,33 +248,93 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
             </div>
           )}
 
-          {downloadUrl ? (
-            <a
-              href={downloadUrl}
-              download={`${track.title} - Full.mp3`}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-6 flex items-center gap-2 rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-ember/25 transition-transform duration-150 hover:scale-105 active:scale-95">
-              <span>Tải bản MP3 Full ({track.title})</span>
-            </a>
-          ) : (
-            <p className="mt-4 text-xs text-white/50">Hệ thống đã ghi nhận đơn hàng của bạn.</p>
-          )}
+          {/* Hộp thông báo & gửi file MP3 Full qua Gmail (Không tải trực tiếp trên web) */}
+          <div className="mt-5 w-full max-w-md rounded-3xl border border-ember/35 bg-ember/[0.08] p-5 text-left">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-ember/20 text-ember">
+                <MailIcon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold text-white">
+                  Nhận bản nhạc MP3 Full qua Gmail
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-white/70">
+                  Để bảo mật bản quyền âm thanh gốc, file MP3 Full chỉ được gửi riêng qua Gmail của bạn (không tải trực tiếp trên trình duyệt).
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-white/70">
+                Địa chỉ Gmail nhận file MP3 Full
+              </label>
+              <div className="mt-1.5 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nhapgmailcuaban@gmail.com"
+                  className="flex-1 rounded-2xl bg-black/40 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                />
+                <button
+                  type="button"
+                  disabled={sendingEmail}
+                  onClick={handleSendOrResendEmail}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-2xl bg-ember px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-ember/25 transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-50">
+                  {sendingEmail ? (
+                    <Loader2Icon className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <SendIcon className="h-3.5 w-3.5" />
+                  )}
+                  <span>{order?.emailSentAt ? "Gửi lại vào Gmail" : "Gửi vào Gmail ngay"}</span>
+                </button>
+              </div>
+            </div>
+
+            {emailFeedback && (
+              <p className="mt-3 rounded-xl bg-emerald-500/15 px-3 py-2 text-xs text-emerald-300">
+                {emailFeedback}
+              </p>
+            )}
+
+            {error && (
+              <p className="mt-3 text-xs text-ember" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
 
           <button
-          type="button"
-          onClick={onClose}
-          className="mt-6 rounded-full bg-white/10 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20">
-          
+            type="button"
+            onClick={onClose}
+            className="mt-6 rounded-full bg-white/10 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20">
             {t("backToMusic")}
           </button>
 
-          <p className="mt-4 text-xs text-white/50">
-            Có thắc mắc hoặc cần hỗ trợ? Liên hệ Zalo:{" "}
-            <a href="https://zalo.me/0333025864" target="_blank" rel="noreferrer" className="text-ember underline">
-              0333 025 864
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs text-white/55">
+            <span>Hỗ trợ trực tiếp:</span>
+            <a
+              href="https://www.facebook.com/nghao205/"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-white/[0.06] px-3 py-1 font-medium text-white/85 hover:bg-white/15">
+              Facebook
             </a>
-          </p>
+            <a
+              href="https://www.tiktok.com/@nghao.wav"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-white/[0.06] px-3 py-1 font-medium text-white/85 hover:bg-white/15">
+              TikTok
+            </a>
+            <a
+              href="https://zalo.me/0333025864"
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-full bg-ember/20 px-3 py-1 font-medium text-ember hover:bg-ember/30">
+              Zalo 0333 025 864
+            </a>
+          </div>
         </div> :
 
       <>
@@ -242,7 +345,7 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
                 {t("buyTitle", { title: track.title })}
               </h2>
               <p className="truncate text-sm text-white/60">
-                {track.album} · {t("lossless")}
+                {track.album} · Bản Full gửi qua Gmail
               </p>
             </div>
           </div>
@@ -299,7 +402,7 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
                     <p className="mt-1 text-white/80">
                       Vui lòng chuyển thêm đúng <strong>{formatPrice(order.shortfallAmount || 0)}</strong> với nội dung{" "}
                       <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-ember">{order.transferNote}</code>{" "}
-                      để hệ thống tự động cộng dồn và mở khóa tải nhạc.
+                      để hệ thống tự động cộng dồn và gửi nhạc qua Gmail.
                     </p>
                   </div>
                 )}
@@ -312,13 +415,20 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
                 </dl>
 
                 <label className="mt-4 block">
-                  <span className="text-sm text-white/60">Email nhận hóa đơn & file (không bắt buộc)</span>
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-white/85 sm:text-sm">
+                    <MailIcon className="h-3.5 w-3.5 text-ember" aria-hidden />
+                    <span>Gmail nhận bản nhạc MP3 Full <span className="text-ember">*</span></span>
+                  </span>
                   <input
                     type="email"
+                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@example.com"
-                    className="mt-1.5 w-full rounded-2xl bg-black/30 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-white/40" />
+                    placeholder="nhapgmailcuaban@gmail.com"
+                    className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember" />
+                  <span className="mt-1 block text-[11px] text-white/50">
+                    Sau khi chuyển khoản thành công, link tải bản MP3 Full sẽ được gửi tự động vào Gmail này.
+                  </span>
                 </label>
 
                 {error &&
@@ -340,16 +450,26 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
                   onClick={confirm}
                   className="mt-4 flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform duration-150 hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50">
                   {phase === "confirming" && <Loader2Icon className="h-4 w-4 animate-spin" aria-hidden />}
-                  {phase === "confirming" ? "Đang kiểm tra..." : "Tôi đã chuyển khoản — Tải nhạc ngay"}
+                  {phase === "confirming" ? "Đang kiểm tra & gửi Gmail..." : "Tôi đã chuyển khoản — Nhận nhạc qua Gmail"}
                 </button>
 
                 <div className="mt-3 rounded-2xl bg-white/[0.04] p-3 text-center ring-1 ring-inset ring-white/10">
                   <p className="text-xs text-white/70">
-                    Gặp vấn đề khi thanh toán hoặc tải nhạc?
+                    Gặp vấn đề khi thanh toán hoặc nhận Gmail? Liên hệ ngay:
                   </p>
-                  <p className="mt-1 text-xs font-medium text-ember">
-                    Vui lòng liên hệ Zalo: <a href="https://zalo.me/0333025864" target="_blank" rel="noreferrer" className="underline hover:text-white">0333 025 864</a>
-                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center justify-center gap-3 text-xs font-medium">
+                    <a href="https://zalo.me/0333025864" target="_blank" rel="noreferrer" className="text-ember underline hover:text-white">
+                      Zalo: 0333 025 864
+                    </a>
+                    <span className="text-white/25">·</span>
+                    <a href="https://www.facebook.com/nghao205/" target="_blank" rel="noreferrer" className="text-white/85 underline hover:text-ember">
+                      Facebook
+                    </a>
+                    <span className="text-white/25">·</span>
+                    <a href="https://www.tiktok.com/@nghao.wav" target="_blank" rel="noreferrer" className="text-white/85 underline hover:text-ember">
+                      TikTok
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
