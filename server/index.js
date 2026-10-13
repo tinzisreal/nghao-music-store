@@ -613,6 +613,13 @@ app.post("/orders", async (req, res) => {
   const track = db.tracks.find((t) => t.id === trackId);
   if (!track) return res.status(404).json({ message: "Không tìm thấy bài hát." });
 
+  const trackPrice = Math.max(0, Math.floor(Number(track.price) || 0));
+  if (trackPrice <= 0) {
+    return res.status(400).json({
+      message: "Bài hát này được phát hành Miễn phí. Bạn có thể tải file MP3 Full trực tiếp mà không cần thanh toán."
+    });
+  }
+
   const defaultBank = db.bankAccount || {
     bankId: "MB",
     bankName: "MBBank",
@@ -636,7 +643,7 @@ app.post("/orders", async (req, res) => {
     try {
       apipayData = await createPaymentRequest({
         bankPublicId: process.env.APIPAY_BANK_PUBLIC_ID,
-        amount: String(track.price),
+        amount: String(trackPrice),
         content: transferNote,
         title: `Thanh toan bai hat ${track.title}`.slice(0, 100),
         redirectUrl
@@ -1278,6 +1285,10 @@ app.post("/tracks", requireAdmin, (req, res) => {
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
+  if (input.price !== undefined) {
+    input.price = Math.max(0, Math.floor(Number(input.price) || 0));
+  }
+
   const newTrack = {
     ...input,
     id: `t${Date.now()}`,
@@ -1299,6 +1310,10 @@ app.patch("/tracks/:id", requireAdmin, (req, res) => {
 
   const idx = db.tracks.findIndex((t) => t.id === id);
   if (idx === -1) return res.status(404).json({ message: "Không tìm thấy bài hát." });
+
+  if (patch.price !== undefined) {
+    patch.price = Math.max(0, Math.floor(Number(patch.price) || 0));
+  }
 
   db.tracks[idx] = { ...db.tracks[idx], ...patch };
   writeDb(db);
