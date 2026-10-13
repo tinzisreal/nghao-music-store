@@ -469,7 +469,7 @@ app.get("/tracks", (req, res) => {
   res.json((db.tracks || []).map(sanitizeTrackForPublic));
 });
 
-// GET /tracks/:id/demo-stream — Proxy phát bản nhạc Demo đã cắt phía server (ẩn hoàn toàn link Cloudinary gốc)
+// GET /tracks/:id/demo-stream — Trực tiếp qua Cloudinary Edge CDN với 302 redirect để triệt tiêu hoàn toàn độ trễ (latency)
 app.get("/tracks/:id/demo-stream", async (req, res) => {
   const { id } = req.params;
   const db = readDb();
@@ -488,40 +488,9 @@ app.get("/tracks/:id/demo-stream", async (req, res) => {
   if (!rawAudio || !rawAudio.startsWith("http")) return res.status(404).end();
 
   const targetUrl = buildCloudinaryDemoUrl(rawAudio, track.demoStart, track.demoEnd);
-  try {
-    const upstreamHeaders = {};
-    if (req.headers.range) {
-      upstreamHeaders.Range = req.headers.range;
-    }
-    const upstream = await fetch(targetUrl, { headers: upstreamHeaders });
-    if (!upstream.ok && upstream.status !== 206) {
-      return res.status(upstream.status).end();
-    }
 
-    res.status(upstream.status);
-    res.setHeader("Content-Type", upstream.headers.get("content-type") || "audio/mpeg");
-    const contentLength = upstream.headers.get("content-length");
-    if (contentLength) res.setHeader("Content-Length", contentLength);
-    const contentRange = upstream.headers.get("content-range");
-    if (contentRange) res.setHeader("Content-Range", contentRange);
-    res.setHeader("Accept-Ranges", upstream.headers.get("accept-ranges") || "bytes");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-
-    if (req.method === "HEAD") {
-      return res.end();
-    }
-
-    if (upstream.body) {
-      const { Readable } = await import("node:stream");
-      return Readable.fromWeb(upstream.body).pipe(res);
-    }
-
-    const arrayBuffer = await upstream.arrayBuffer();
-    return res.send(Buffer.from(arrayBuffer));
-  } catch (err) {
-    console.error("Demo stream proxy error:", err.message);
-    return res.status(502).end();
-  }
+  res.setHeader("Cache-Control", "public, max-age=86400");
+  return res.redirect(302, targetUrl);
 });
 
 // GET /tracks/:id/free-download — Tự động tải file MP3 Full đối với các bài nhạc Miễn phí (price <= 0)

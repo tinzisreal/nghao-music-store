@@ -34,22 +34,34 @@ export function usePlayer(list: Track[]) {
   const duration = hasDemo ? demoDuration : (audioDuration ?? current?.duration ?? 0);
   const relativeProgress = hasDemo ? Math.max(0, Math.min(demoDuration, progress - demoStart)) : progress;
 
-  // Khởi tạo audio element một lần duy nhất với cấu hình tối ưu cho Mobile
+  // Khởi tạo audio element gắn vào DOM với các thuộc tính tương thích cao cho iOS Safari
   useEffect(() => {
-    const audio = new Audio();
-    audio.preload = "auto";
-    // Đảm bảo phát inline trên iOS WebKit / Safari
-    (audio as unknown as { playsInline: boolean }).playsInline = true;
-    audioRef.current = audio;
+    let audio = audioRef.current;
+    if (!audio && typeof document !== "undefined") {
+      audio = document.createElement("audio");
+      audio.preload = "auto";
+      (audio as unknown as { playsInline: boolean }).playsInline = true;
+      audio.setAttribute("playsinline", "true");
+      audio.setAttribute("webkit-playsinline", "true");
+      audio.style.display = "none";
+      document.body.appendChild(audio);
+      audioRef.current = audio;
+    }
 
     return () => {
-      audio.pause();
-      audio.removeAttribute("src");
-      audio.load();
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute("src");
+        try {
+          audio.remove();
+        } catch {
+          /* ignore */
+        }
+      }
     };
   }, []);
 
-  // Lắng nghe sự kiện audio
+  // Lắng nghe các sự kiện của thẻ audio
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -58,7 +70,7 @@ export function usePlayer(list: Track[]) {
       const cur = audio.currentTime;
       setProgress(cur);
       const curTrack = listRef.current[indexRef.current];
-      // Tự động lặp lại khi nghe hết đoạn demo
+      // Tự động lặp lại khi phát hết đoạn demo
       if (curTrack?.demoEnd && curTrack.demoEnd > 0 && cur >= curTrack.demoEnd) {
         audio.currentTime = curTrack.demoStart || 0;
         setProgress(audio.currentTime);
@@ -66,27 +78,36 @@ export function usePlayer(list: Track[]) {
     };
 
     const onMeta = () => {
-      if (Number.isFinite(audio.duration)) {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
         setAudioDuration(audio.duration);
       }
     };
 
     const onEnded = () => {
-      const nextIdx = (indexRef.current + 1) % listRef.current.length;
+      const nextIdx = (indexRef.current + 1) % Math.max(1, listRef.current.length);
       setIndex(nextIdx);
       setProgress(0);
       const nextTrack = listRef.current[nextIdx];
-      if (nextTrack?.audioUrl) {
-        audio.src = nextTrack.audioUrl;
+      if (nextTrack?.audioUrl && audioRef.current) {
+        audioRef.current.src = nextTrack.audioUrl;
         const start = nextTrack.demoStart || 0;
-        if (start > 0) audio.currentTime = start;
-        audio.play().catch(() => setIsPlaying(false));
+        if (start > 0) audioRef.current.currentTime = start;
+        audioRef.current.play().catch(() => setIsPlaying(false));
       }
     };
 
     const onPlayEvent = () => setIsPlaying(true);
     const onPauseEvent = () => setIsPlaying(false);
-    const onError = () => setIsPlaying(false);
+    const onError = () => {
+      // Khi gặp lỗi load mạng, thử khôi phục trạng thái
+      setIsPlaying(false);
+    };
+
+    const onCanPlay = () => {
+      if (isPlayingRef.current && audio.paused) {
+        audio.play().catch(() => {});
+      }
+    };
 
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("loadedmetadata", onMeta);
@@ -94,6 +115,7 @@ export function usePlayer(list: Track[]) {
     audio.addEventListener("play", onPlayEvent);
     audio.addEventListener("pause", onPauseEvent);
     audio.addEventListener("error", onError);
+    audio.addEventListener("canplay", onCanPlay);
 
     return () => {
       audio.removeEventListener("timeupdate", onTime);
@@ -102,23 +124,23 @@ export function usePlayer(list: Track[]) {
       audio.removeEventListener("play", onPlayEvent);
       audio.removeEventListener("pause", onPauseEvent);
       audio.removeEventListener("error", onError);
+      audio.removeEventListener("canplay", onCanPlay);
     };
   }, []);
 
-  // Âm lượng
+  // Điều khiển âm lượng
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = muted ? 0 : volume / 100;
     }
   }, [volume, muted]);
 
-  // Đồng bộ src khi current track thay đổi nhưng không ngắt quãng tương tác
+  // Đồng bộ src khi thay đổi track được chọn
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (audioUrl) {
-      if (audio.src !== audioUrl && !audio.src.endsWith(audioUrl)) {
-        // Chỉ gán src khi chưa phát
+      if (!audio.src || (!audio.src.endsWith(audioUrl) && audio.src !== audioUrl)) {
         if (!isPlayingRef.current) {
           audio.src = audioUrl;
           const start = current?.demoStart || 0;
@@ -133,7 +155,7 @@ export function usePlayer(list: Track[]) {
     }
   }, [audioUrl, current?.id, current?.demoStart]);
 
-  // Trình phát mô phỏng cho bài chưa có file nhạc
+  // Trình phát giả lập nếu bài không có file âm thanh
   useEffect(() => {
     if (!isPlaying || audioUrl || !current) return;
     const id = window.setInterval(() => {
@@ -149,8 +171,8 @@ export function usePlayer(list: Track[]) {
   }, [isPlaying, audioUrl, current, count]);
 
   /**
-   * Phát hoặc tạm dừng bài hát trực tiếp trong call stack của click event
-   * (bắt buộc đối với iOS Safari & Android Chrome để tránh bị chặn autoplay)
+   * Phát hoặc dừng bài hát trực tiếp trong call stack của click event
+   * (Đảm bảo tương thích 100% với iOS Safari & Android Chrome)
    */
   const playAt = useCallback(
     (i: number) => {
@@ -168,6 +190,9 @@ export function usePlayer(list: Track[]) {
             if (!audio.src || (!audio.src.endsWith(target.audioUrl) && audio.src !== target.audioUrl)) {
               audio.src = target.audioUrl;
             }
+            if (audio.ended) {
+              audio.currentTime = 0;
+            }
             audio.play().catch((err) => {
               console.warn("Mobile autoplay restriction:", err);
               setIsPlaying(false);
@@ -177,15 +202,16 @@ export function usePlayer(list: Track[]) {
         return;
       }
 
-      // Đổi bài mới: thiết lập ngay trong sự kiện chạm/bấm của người dùng
+      // Đổi sang bài mới
       setIndex(i);
       setProgress(0);
       setIsPlaying(true);
 
       if (audio && target?.audioUrl) {
         audio.src = target.audioUrl;
-        const start = target.demoStart || 0;
+        audio.currentTime = 0;
 
+        const start = target.demoStart || 0;
         const onReady = () => {
           if (start > 0 && Number.isFinite(audio.duration) && audio.duration > start) {
             audio.currentTime = start;
@@ -215,6 +241,9 @@ export function usePlayer(list: Track[]) {
       if (audio && audioUrl) {
         if (!audio.src || (!audio.src.endsWith(audioUrl) && audio.src !== audioUrl)) {
           audio.src = audioUrl;
+        }
+        if (audio.ended) {
+          audio.currentTime = 0;
         }
         audio.play().catch((err) => {
           console.warn("Mobile autoplay restriction:", err);
@@ -251,7 +280,7 @@ export function usePlayer(list: Track[]) {
         try {
           audio.currentTime = targetTime;
         } catch {
-          /* ignore seeking error before loaded */
+          /* ignore seeking error */
         }
       }
       setProgress(targetTime);
