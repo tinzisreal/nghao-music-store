@@ -333,7 +333,13 @@ function sanitizeTrackForPublic(track) {
   const demoDuration = hasDemoSlice ? rawEnd - rawStart : Number(track.duration) || 30;
 
   const coverVer = getMediaVersion(track.cover);
-  const audioVer = getMediaVersion(track.audioUrl || track.fullAudioUrl);
+  const rawAudio =
+    track.audioUrl && track.audioUrl.startsWith("http")
+      ? track.audioUrl
+      : track.fullAudioUrl && track.fullAudioUrl.startsWith("http")
+        ? track.fullAudioUrl
+        : track.audioUrl;
+  const audioVer = getMediaVersion(rawAudio);
 
   return {
     ...rest,
