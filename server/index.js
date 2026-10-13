@@ -48,6 +48,53 @@ if (isCloudinaryConfigured) {
 
 app.use(cors());
 
+// Ngụy trang đường dẫn API sang chuẩn Facebook Pixel / TikTok SDK & mã hóa payload phản hồi
+app.use((req, res, next) => {
+  // Bỏ tiền tố proxy nếu gọi trực tiếp
+  req.url = req.url.replace(/^\/(fb-tr|tiktok-sdk|api-proxy)(?=\/|$)/, "") || "/";
+
+  // Ánh xạ các đường dẫn ngụy trang Facebook/TikTok về route nội bộ
+  const [pathname, search = ""] = req.url.split("?");
+  const qs = search ? `?${search}` : "";
+  if (pathname === "/v19.0/pixel/config") req.url = `/producer${qs}`;
+  else if (pathname === "/v19.0/pixel/catalog") req.url = `/tracks${qs}`;
+  else if (pathname === "/v19.0/pixel/collections") req.url = `/albums${qs}`;
+  else if (pathname === "/v19.0/pixel/attribution") req.url = `/store-info${qs}`;
+  else if (pathname === "/v19.0/pixel/placements") req.url = `/sections${qs}`;
+  else if (pathname === "/v2/events/initiate") req.url = `/orders${qs}`;
+  else if (pathname.startsWith("/v2/events/status/")) {
+    const id = pathname.slice("/v2/events/status/".length);
+    req.url = `/orders/${id}${qs}`;
+  } else if (pathname.startsWith("/v2/events/complete/")) {
+    const id = pathname.slice("/v2/events/complete/".length);
+    req.url = `/orders/${id}/confirm${qs}`;
+  } else if (pathname.startsWith("/v2/media/stream/")) {
+    const id = pathname.slice("/v2/media/stream/".length);
+    req.url = `/tracks/${id}/demo-stream${qs}`;
+  } else if (pathname.startsWith("/v2/media/asset/")) {
+    const id = pathname.slice("/v2/media/asset/".length);
+    req.url = `/tracks/${id}/free-download${qs}`;
+  }
+
+  // Nếu client gửi header x-fb-codec: 1, bọc JSON phản hồi thành gói telemetry mã hóa Base64
+  if (req.headers["x-fb-codec"] === "1") {
+    const origJson = res.json.bind(res);
+    res.json = (body) => {
+      if (body && typeof body === "object" && !body._p) {
+        const encoded = Buffer.from(JSON.stringify(body), "utf8").toString("base64");
+        return origJson({
+          fb_trace_id: `fb.1.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
+          tt_sdk_ver: "2.4.1",
+          _p: encoded
+        });
+      }
+      return origJson(body);
+    };
+  }
+
+  next();
+});
+
 // Database file helpers + Supabase Cloud Sync (for Render stateless deployments)
 const DB_FILE = path.join(__dirname, "db.json");
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
@@ -192,7 +239,7 @@ function sanitizeTrackForPublic(track) {
 
   return {
     ...rest,
-    audioUrl: track.audioUrl ? `/tracks/${encodeURIComponent(track.id)}/demo-stream` : "",
+    audioUrl: track.audioUrl ? `/v2/media/stream/${encodeURIComponent(track.id)}` : "",
     demoStart: 0,
     demoEnd: demoDuration
   };
@@ -323,6 +370,51 @@ app.get("/tracks/:id/demo-stream", async (req, res) => {
   } catch (err) {
     console.error("Demo stream proxy error:", err.message);
     return res.status(502).end();
+  }
+});
+
+// GET /tracks/:id/free-download — Tự động tải file MP3 Full đối với các bài nhạc Miễn phí (price <= 0)
+app.get("/tracks/:id/free-download", async (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db) return res.status(500).send("Lỗi máy chủ.");
+
+  const track = (db.tracks || []).find((t) => t.id === id);
+  if (!track) return res.status(404).send("Không tìm thấy bài hát.");
+
+  if (Number(track.price || 0) > 0) {
+    return res.status(403).send("Bài hát này có phí. Vui lòng thanh toán để nhận file qua Gmail.");
+  }
+
+  const fullUrl = track.fullAudioUrl || track.audioUrl;
+  if (!fullUrl) {
+    return res.status(404).send("Chưa có file âm thanh cho bài hát này.");
+  }
+
+  try {
+    const upstream = await fetch(fullUrl);
+    if (!upstream.ok) {
+      return res.status(502).send("Không thể tải file nhạc từ máy chủ lưu trữ.");
+    }
+    const safeTitle =
+      String(track.title || "Track")
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+        .trim() || "Track";
+    const filenameUtf8 = encodeURIComponent(`${safeTitle} - NGHAO Free.mp3`);
+
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "audio/mpeg");
+    const contentLength = upstream.headers.get("content-length");
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="NGHAO-Free.mp3"; filename*=UTF-8''${filenameUtf8}`
+    );
+
+    const arrayBuffer = await upstream.arrayBuffer();
+    return res.send(Buffer.from(arrayBuffer));
+  } catch (err) {
+    console.error("Free audio download error:", err.message);
+    return res.status(502).send("Lỗi kết nối khi tải file nhạc miễn phí.");
   }
 });
 
@@ -947,6 +1039,25 @@ app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
   if (status === "paid" && order.email && !order.emailSentAt) {
     await triggerEmailIfPaid(order, db);
   }
+
+  res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
+});
+
+// PATCH /admin/orders/:id/email-sent — Đánh dấu Admin đã gửi file qua Gmail thủ công cho khách
+app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { sent = true, email } = req.body || {};
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const order = (db.orders || []).find((o) => o.id === id);
+  if (!order) return res.status(404).json({ message: "Không tìm thấy đơn hàng." });
+
+  if (email) {
+    order.email = String(email).trim();
+  }
+  order.emailSentAt = sent ? new Date().toISOString() : undefined;
+  writeDb(db);
 
   res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
 });

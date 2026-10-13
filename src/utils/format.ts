@@ -14,5 +14,6 @@ export function parseTime(value: string): number | null {
 }
 
 export function formatPrice(vnd: number): string {
+  if (!vnd || vnd <= 0) return "Miễn phí";
   return `${vnd.toLocaleString("vi-VN")}₫`;
 }

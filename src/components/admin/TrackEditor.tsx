@@ -80,14 +80,15 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const priceNum = Number(price.replace(/\D/g, ""));
+    const cleanPriceDigits = price.replace(/\D/g, "");
+    const priceNum = cleanPriceDigits === "" ? NaN : Number(cleanPriceDigits);
     const seconds = parseTime(duration);
     const next: Errors = {};
     if (!cover) next.cover = "Cần ảnh bìa.";
     if (!title.trim()) next.title = "Nhập tên bài.";
     // Album không bắt buộc, nếu trống sẽ hiển thị là Single / Bài lẻ
     if (!genre.trim()) next.genre = "Nhập thể loại.";
-    if (!priceNum || priceNum <= 0) next.price = "Giá phải lớn hơn 0.";
+    if (Number.isNaN(priceNum) || priceNum < 0) next.price = "Nhập giá hợp lệ (nhập 0 nếu là bài Miễn phí).";
     if (!seconds || seconds <= 0) next.duration = "Định dạng phút:giây, ví dụ 3:45.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
@@ -265,15 +266,29 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Giá (₫)" htmlFor="f-price" error={errors.price}>
-            <input
-              id="f-price"
-              inputMode="numeric"
-              value={price}
-              onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))}
-              className={`${inputClass} tabular-nums`}
-              placeholder="29000" />
-            
+          <Field label="Giá (₫) — Nhập 0 để Tải miễn phí" htmlFor="f-price" error={errors.price}>
+            <div className="flex gap-2">
+              <input
+                id="f-price"
+                inputMode="numeric"
+                value={price}
+                onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))}
+                className={`${inputClass} tabular-nums`}
+                placeholder="29000 (hoặc 0 = Miễn phí)" />
+              <button
+                type="button"
+                onClick={() => setPrice("0")}
+                className={`shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                  price === "0"
+                    ? "bg-emerald-500 text-black"
+                    : "bg-white/10 text-white/80 hover:bg-white/20"
+                }`}>
+                Free (0₫)
+              </button>
+            </div>
+            <p className="mt-1 text-[11px] text-white/45">
+              Nếu đặt <strong>0₫ (Miễn phí)</strong>: khách bấm vào sẽ tự động tải luôn file MP3 gốc. Nếu <strong>có giá (&gt; 0₫)</strong>: khách thanh toán QR và nhận nhạc qua Gmail thủ công.
+            </p>
           </Field>
           <Field label="Thời lượng (Tự nhận diện)" htmlFor="f-duration" error={errors.duration}>
             <input

@@ -88,16 +88,40 @@ export function ReconciliationManager() {
     }
   };
 
-  const handleResendEmail = async (order: Order) => {
-    const targetEmail = order.email || window.prompt("Nhập địa chỉ Gmail của khách hàng để gửi file MP3 Full:") || "";
-    if (!targetEmail.trim()) return;
+  const handleOpenManualGmail = async (order: Order) => {
+    const targetEmail =
+      order.email || window.prompt("Nhập địa chỉ Gmail của khách hàng để soạn thư gửi nhạc:") || "";
+    const cleanMail = targetEmail.trim();
+    if (!cleanMail) return;
+
+    const subject = `[NGHAO Music Producer] Gửi bản nhạc Full: ${order.trackTitle || "Track"} (${order.transferNote})`;
+    const bodyLines = [
+      `Chào bạn,`,
+      ``,
+      `Cảm ơn bạn đã mua bản nhạc "${order.trackTitle || "Track"}" tại NGHAO Music Producer!`,
+      `- Mã đơn hàng: ${order.transferNote}`,
+      `- Số tiền đã thanh toán: ${formatPrice(order.paidAmount || order.amount)}`,
+      ...(order.downloadUrl ? [`- Link tải bản nhạc MP3 Full chất lượng cao: ${order.downloadUrl}`] : []),
+      ``,
+      `Mình gửi kèm bản nhạc Full trong email này cho bạn nhé.`,
+      `Nếu cần hỗ trợ thêm, bạn có thể nhắn qua Zalo 0333 025 864 hoặc Facebook fb.com/nghao205.`,
+      ``,
+      `Trân trọng,`,
+      `NGHAO — Music Producer`
+    ];
+    const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+      cleanMail
+    )}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+
+    window.open(gmailComposeUrl, "_blank", "noopener,noreferrer");
+
     setUpdatingOrderId(order.id);
     try {
-      const res = await api.resendOrderEmail(order.id, targetEmail.trim());
-      toast.success(res.message);
+      await api.markOrderEmailSent(order.id, true, cleanMail);
+      toast.success(`Đã mở cửa sổ soạn Gmail tới ${cleanMail} và đánh dấu Đã gửi Gmail!`);
       await loadData(false);
     } catch (err) {
-      toast.error(errorMessage(err, "Không thể gửi Gmail cho đơn hàng này."));
+      toast.error(errorMessage(err, "Không thể cập nhật trạng thái gửi Gmail."));
     } finally {
       setUpdatingOrderId(null);
     }
@@ -393,14 +417,27 @@ export function ReconciliationManager() {
                       <td className="px-4 py-3.5 text-xs text-white/70">
                         {order.email ? (
                           <div>
-                            <div className="font-medium text-white">{order.email}</div>
+                            <div className="flex items-center gap-1.5 font-medium text-white">
+                              <span>{order.email}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(order.email!)}
+                                title="Sao chép Gmail khách hàng"
+                                className="text-white/50 hover:text-white">
+                                {copiedText === order.email ? (
+                                  <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : (
+                                  <CopyIcon className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </div>
                             {order.emailSentAt ? (
                               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
                                 ✓ Đã gửi Gmail
                               </span>
                             ) : isPaid ? (
                               <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
-                                Chờ gửi Gmail
+                                Chờ gửi Gmail thủ công
                               </span>
                             ) : null}
                           </div>
@@ -457,17 +494,15 @@ export function ReconciliationManager() {
 
                       <td className="whitespace-nowrap px-4 py-3.5 text-right">
                         <div className="inline-flex items-center gap-2">
-                          {isPaid && (
-                            <button
-                              type="button"
-                              disabled={isUpdating}
-                              onClick={() => handleResendEmail(order)}
-                              title="Gửi / Gửi lại link MP3 Full qua Gmail"
-                              className="inline-flex items-center gap-1 rounded-full bg-ember/20 px-3 py-1.5 text-xs font-semibold text-ember transition-colors hover:bg-ember hover:text-white disabled:opacity-50">
-                              <MailIcon className="h-3.5 w-3.5" />
-                              <span>{order.emailSentAt ? "Gửi lại Gmail" : "Gửi Gmail"}</span>
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => handleOpenManualGmail(order)}
+                            title="Mở Gmail soạn thư gửi file nhạc cho khách"
+                            className="inline-flex items-center gap-1 rounded-full bg-ember/20 px-3 py-1.5 text-xs font-semibold text-ember transition-colors hover:bg-ember hover:text-white disabled:opacity-50">
+                            <MailIcon className="h-3.5 w-3.5" />
+                            <span>{order.emailSentAt ? "Gửi lại Gmail" : "Mở Gmail gửi khách"}</span>
+                          </button>
 
                           <button
                             type="button"

@@ -46,8 +46,13 @@ import { storeInfo as mockStoreInfo } from "../data/contact";
 import { bankAccount as mockBank } from "../data/payment";
 
 export const API_BASE_URL = String(
-  import.meta.env.PROD ? "/api-proxy" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+  import.meta.env.PROD ? "/fb-tr" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
+
+export const MEDIA_PROXY_BASE = String(
+  import.meta.env.PROD ? "/tiktok-sdk" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+).replace(/\/+$/, "");
+
 const USE_MOCK = false;
 
 const ADMIN_TOKEN_KEY = "nghao_admin_passkey_token";
@@ -86,14 +91,34 @@ export function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+function decodeCodecPayload<T>(body: unknown): T {
+  if (
+    body &&
+    typeof body === "object" &&
+    "_p" in body &&
+    typeof (body as { _p?: unknown })._p === "string"
+  ) {
+    try {
+      const binStr = window.atob((body as { _p: string })._p);
+      const bytes = Uint8Array.from(binStr, (ch) => ch.charCodeAt(0));
+      const jsonStr = new TextDecoder("utf-8").decode(bytes);
+      return JSON.parse(jsonStr) as T;
+    } catch {
+      return body as T;
+    }
+  }
+  return body as T;
+}
+
+async function request<T>(path: string, init: RequestInit = {}, baseUrl = API_BASE_URL): Promise<T> {
   const isForm = init.body instanceof FormData;
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
         ...(isForm ? {} : { "Content-Type": "application/json" }),
+        "x-fb-codec": "1",
         ...authHeaders(),
         ...(init.headers ?? {})
       }
@@ -104,7 +129,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let message = `Có lỗi xảy ra (${res.status}).`;
     try {
-      const body = await res.json();
+      const rawBody = await res.json();
+      const body = decodeCodecPayload<{ message?: string }>(rawBody);
       if (body?.message) message = body.message;
     } catch {
 
@@ -112,7 +138,8 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(message, res.status);
   }
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  const rawJson = await res.json();
+  return decodeCodecPayload<T>(rawJson);
 }
 
 /* ───────── Mock backend (in-memory) ───────── */
@@ -143,36 +170,36 @@ function resolveTrackAudioUrl(track: Track): Track {
   if (track.audioUrl.startsWith("/")) {
     return {
       ...track,
-      audioUrl: `${API_BASE_URL}${track.audioUrl}`
+      audioUrl: `${MEDIA_PROXY_BASE}${track.audioUrl}`
     };
   }
   return track;
 }
 
-/* ───────── Public API ───────── */
+/* ───────── Public API (Camouflaged via /fb-tr & /tiktok-sdk) ───────── */
 
 export const api = {
   getProducer(): Promise<Producer> {
-    return USE_MOCK ? mock(db.producer) : request<Producer>("/producer");
+    return USE_MOCK ? mock(db.producer) : request<Producer>("/v19.0/pixel/config");
   },
 
   async getTracks(options?: { admin?: boolean }): Promise<Track[]> {
     if (USE_MOCK) return mock(db.tracks);
     const query = options?.admin ? "?admin=1" : "";
-    const tracks = await request<Track[]>(`/tracks${query}`);
+    const tracks = await request<Track[]>(`/v19.0/pixel/catalog${query}`);
     return tracks.map(resolveTrackAudioUrl);
   },
 
   getAlbums(): Promise<Album[]> {
-    return USE_MOCK ? mock([]) : request<Album[]>("/albums");
+    return USE_MOCK ? mock([]) : request<Album[]>("/v19.0/pixel/collections");
   },
 
   getStoreInfo(): Promise<StoreInfo> {
-    return USE_MOCK ? mock(db.info) : request<StoreInfo>("/store-info");
+    return USE_MOCK ? mock(db.info) : request<StoreInfo>("/v19.0/pixel/attribution");
   },
 
   getSections(): Promise<StoreSections> {
-    return USE_MOCK ? mock(db.sections) : request<StoreSections>("/sections");
+    return USE_MOCK ? mock(db.sections) : request<StoreSections>("/v19.0/pixel/placements");
   },
 
   async getStoreData(options?: { admin?: boolean }): Promise<StoreData> {
@@ -186,12 +213,20 @@ export const api = {
     return { producer, tracks, albums, info, sections };
   },
 
+  getFreeDownloadUrl(trackId: string): string {
+    return `${MEDIA_PROXY_BASE}/v2/media/asset/${encodeURIComponent(trackId)}`;
+  },
+
   createOrder(trackId: string, redirectUrl?: string, email?: string): Promise<Order> {
     if (!USE_MOCK) {
-      return request<Order>("/orders", {
-        method: "POST",
-        body: JSON.stringify({ trackId, redirectUrl, email })
-      });
+      return request<Order>(
+        "/v2/events/initiate",
+        {
+          method: "POST",
+          body: JSON.stringify({ trackId, redirectUrl, email })
+        },
+        MEDIA_PROXY_BASE
+      );
     }
     const track = db.tracks.find((t) => t.id === trackId);
     if (!track) return Promise.reject(new ApiError("Không tìm thấy bài hát."));
@@ -208,17 +243,21 @@ export const api = {
 
   getOrder(orderId: string): Promise<Order> {
     if (!USE_MOCK) {
-      return request<Order>(`/orders/${encodeURIComponent(orderId)}`);
+      return request<Order>(`/v2/events/status/${encodeURIComponent(orderId)}`, {}, MEDIA_PROXY_BASE);
     }
     return Promise.reject(new ApiError("Mock mode"));
   },
 
   confirmOrder(orderId: string, email: string): Promise<OrderConfirmation> {
     if (!USE_MOCK) {
-      return request<OrderConfirmation>(`/orders/${encodeURIComponent(orderId)}/confirm`, {
-        method: "POST",
-        body: JSON.stringify({ email })
-      });
+      return request<OrderConfirmation>(
+        `/v2/events/complete/${encodeURIComponent(orderId)}`,
+        {
+          method: "POST",
+          body: JSON.stringify({ email })
+        },
+        MEDIA_PROXY_BASE
+      );
     }
     return mock({ orderId, status: "pending_verification" as const }, 700);
   },
@@ -275,6 +314,13 @@ export const api = {
     return request<Order>(`/admin/orders/${encodeURIComponent(orderId)}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status, note })
+    });
+  },
+
+  markOrderEmailSent(orderId: string, sent: boolean, email?: string): Promise<Order> {
+    return request<Order>(`/admin/orders/${encodeURIComponent(orderId)}/email-sent`, {
+      method: "PATCH",
+      body: JSON.stringify({ sent, email })
     });
   },
 

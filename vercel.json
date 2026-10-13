@@ -14,6 +14,14 @@
   ],
   "rewrites": [
     {
+      "source": "/fb-tr/:path*",
+      "destination": "https://nghao-music-backend.onrender.com/:path*"
+    },
+    {
+      "source": "/tiktok-sdk/:path*",
+      "destination": "https://nghao-music-backend.onrender.com/:path*"
+    },
+    {
       "source": "/api-proxy/:path*",
       "destination": "https://nghao-music-backend.onrender.com/:path*"
     },
