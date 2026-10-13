@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2Icon, XIcon } from "lucide-react";
+import { Loader2Icon, PauseIcon, PlayIcon, RepeatIcon, RotateCcwIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Field, inputClass } from "./Field";
 import { FileUpload } from "./FileUpload";
 import { Track, TrackInput } from "../../types/track";
 import { Album } from "../../types/album";
 import { formatTime, parseTime } from "../../utils/format";
-import { errorMessage } from "../../utils/api";
+import { errorMessage, MEDIA_PROXY_BASE } from "../../utils/api";
 import { MAX_FEATURED } from "../../data/sections";
 
 interface TrackEditorProps {
@@ -160,54 +160,21 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
             }}
             hint="Chỉ cần tải 1 file MP3 gốc duy nhất. Khách nghe thử sẽ chỉ nghe được đoạn bạn chọn dưới đây." />
 
-          {/* Thanh kéo tuỳ chỉnh đoạn Demo nghe thử */}
+          {/* Bộ điều khiển & Nghe thử trực tiếp đoạn Demo */}
           {audioUrl && (
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs text-white/80">
-                <span className="font-semibold text-ember">Khoảng thời gian Demo phát trên Store:</span>
-                <span className="tabular-nums font-mono text-white/80 bg-white/10 px-2 py-0.5 rounded-md">
-                  {formatTime(demoStart)} ➔ {formatTime(demoEnd)} ({demoEnd - demoStart} giây)
-                </span>
-              </div>
-
-              <div className="space-y-2.5 pt-1">
-                <div className="flex items-center gap-3">
-                  <span className="w-16 text-xs text-white/50">Phát từ:</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={durationSec}
-                    value={demoStart}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setDemoStart(Math.min(v, demoEnd - 5));
-                    }}
-                    className="w-full accent-ember cursor-pointer"
-                  />
-                  <span className="w-12 text-right text-xs font-mono tabular-nums text-white/80 font-medium">{formatTime(demoStart)}</span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="w-16 text-xs text-white/50">Dừng ở:</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={durationSec}
-                    value={demoEnd}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      setDemoEnd(Math.max(v, demoStart + 5));
-                    }}
-                    className="w-full accent-ember cursor-pointer"
-                  />
-                  <span className="w-12 text-right text-xs font-mono tabular-nums text-white/80 font-medium">{formatTime(demoEnd)}</span>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-white/50 leading-relaxed border-t border-white/5 pt-2">
-                🎧 Khi khách nghe trên Store, nhạc sẽ chỉ chạy từ <span className="text-white font-medium">{formatTime(demoStart)}</span> đến <span className="text-white font-medium">{formatTime(demoEnd)}</span> rồi tự lặp lại. Sau khi mua hàng, khách sẽ nhận được trọn vẹn toàn bộ file MP3 gốc ({duration || formatTime(durationSec)}).
-              </p>
-            </div>
+            <DemoPreviewPlayer
+              audioSrc={
+                (fullAudioUrl || audioUrl)?.startsWith("http")
+                  ? (fullAudioUrl || audioUrl)!
+                  : `${MEDIA_PROXY_BASE}${fullAudioUrl || audioUrl}`
+              }
+              demoStart={demoStart}
+              demoEnd={demoEnd}
+              durationSec={durationSec}
+              durationFormatted={duration || formatTime(durationSec)}
+              onSetDemoStart={setDemoStart}
+              onSetDemoEnd={setDemoEnd}
+            />
           )}
         </div>
 
@@ -379,4 +346,398 @@ function Toggle({
       </span>
     </label>);
 
+}
+
+interface DemoPreviewPlayerProps {
+  audioSrc: string;
+  demoStart: number;
+  demoEnd: number;
+  durationSec: number;
+  durationFormatted: string;
+  onSetDemoStart: (sec: number) => void;
+  onSetDemoEnd: (sec: number) => void;
+}
+
+function DemoPreviewPlayer({
+  audioSrc,
+  demoStart,
+  demoEnd,
+  durationSec,
+  durationFormatted,
+  onSetDemoStart,
+  onSetDemoEnd
+}: DemoPreviewPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(demoStart);
+  const [isLooping, setIsLooping] = useState(true);
+
+  // Stop playback when audio source changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = demoStart;
+    }
+    setIsPlaying(false);
+    setCurrentTime(demoStart);
+  }, [audioSrc]);
+
+  // Keep playback within bounds if demoStart changes while paused
+  useEffect(() => {
+    if (!isPlaying) {
+      setCurrentTime(demoStart);
+      if (audioRef.current) {
+        audioRef.current.currentTime = demoStart;
+      }
+    }
+  }, [demoStart]);
+
+  const togglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      if (audio.currentTime < demoStart || audio.currentTime >= demoEnd) {
+        audio.currentTime = demoStart;
+        setCurrentTime(demoStart);
+      }
+      audio
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
+    }
+  };
+
+  const handleRestart = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = demoStart;
+    setCurrentTime(demoStart);
+    audio
+      .play()
+      .then(() => setIsPlaying(true))
+      .catch(() => setIsPlaying(false));
+  };
+
+  const handlePreviewLast5s = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const target = Math.max(demoStart, demoEnd - 5);
+    audio.currentTime = target;
+    setCurrentTime(target);
+    audio
+      .play()
+      .then(() => setIsPlaying(true))
+      .catch(() => setIsPlaying(false));
+  };
+
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const cur = audio.currentTime;
+    setCurrentTime(cur);
+
+    if (cur >= demoEnd) {
+      if (isLooping) {
+        audio.currentTime = demoStart;
+        audio.play().catch(() => setIsPlaying(false));
+      } else {
+        audio.pause();
+        audio.currentTime = demoStart;
+        setCurrentTime(demoStart);
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  // Timeline percentages
+  const total = Math.max(durationSec, 1);
+  const startPercent = Math.min(100, Math.max(0, (demoStart / total) * 100));
+  const endPercent = Math.min(100, Math.max(0, (demoEnd / total) * 100));
+  const widthPercent = Math.max(0, endPercent - startPercent);
+  const currentPercent = Math.min(100, Math.max(0, (currentTime / total) * 100));
+
+  // Micro tuning adjustments
+  const adjustStart = (delta: number) => {
+    const next = Math.max(0, Math.min(demoEnd - 3, demoStart + delta));
+    onSetDemoStart(next);
+    if (audioRef.current) {
+      audioRef.current.currentTime = next;
+      setCurrentTime(next);
+    }
+  };
+
+  const adjustEnd = (delta: number) => {
+    const next = Math.min(durationSec, Math.max(demoStart + 3, demoEnd + delta));
+    onSetDemoEnd(next);
+  };
+
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = timelineRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetSec = clickRatio * total;
+    const clamped = Math.max(demoStart, Math.min(demoEnd, targetSec));
+    if (audioRef.current) {
+      audioRef.current.currentTime = clamped;
+    }
+    setCurrentTime(clamped);
+  };
+
+  return (
+    <div className="mt-3 rounded-2xl border border-ember/35 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-4 space-y-4 shadow-xl shadow-black/50">
+      <audio
+        ref={audioRef}
+        src={audioSrc}
+        preload="metadata"
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={() => {
+          if (isLooping && audioRef.current) {
+            audioRef.current.currentTime = demoStart;
+            audioRef.current.play().catch(() => setIsPlaying(false));
+          } else {
+            setIsPlaying(false);
+            setCurrentTime(demoStart);
+          }
+        }}
+      />
+
+      {/* Header with Title and Current Slice Info */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-ember animate-pulse" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-white">
+            Căn chỉnh & Nghe thử đoạn Demo
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums font-mono text-xs font-semibold text-ember bg-ember/15 border border-ember/30 px-2.5 py-1 rounded-full shadow-inner">
+            {formatTime(demoStart)} ➔ {formatTime(demoEnd)} ({demoEnd - demoStart} giây)
+          </span>
+        </div>
+      </div>
+
+      {/* Interactive Visual Timeline Bar */}
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-[11px] font-mono tabular-nums text-white/50">
+          <span>0:00 (Đầu bài)</span>
+          <span className="text-ember font-medium">
+            Đang phát: {formatTime(Math.min(demoEnd, Math.max(demoStart, currentTime)))}
+          </span>
+          <span>{durationFormatted}</span>
+        </div>
+
+        <div
+          ref={timelineRef}
+          onClick={handleTimelineClick}
+          title="Nhấp để chuyển đoạn phát trong vùng Demo"
+          className="relative h-7 w-full rounded-lg bg-black/60 border border-white/10 overflow-hidden cursor-pointer select-none"
+        >
+          {/* Highlighted active demo slice */}
+          <div
+            className="absolute top-0 bottom-0 bg-gradient-to-r from-ember/40 to-ember/60 border-x-2 border-ember shadow-[0_0_12px_rgba(249,115,22,0.35)]"
+            style={{
+              left: `${startPercent}%`,
+              width: `${widthPercent}%`
+            }}
+          />
+
+          {/* Current playhead indicator */}
+          {isPlaying && (
+            <div
+              className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_#ffffff] z-10 transition-[left] duration-75"
+              style={{ left: `${currentPercent}%` }}
+            />
+          )}
+
+          {/* Range label inside the bar */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-[10px] font-medium text-white/90 drop-shadow">
+              Vùng khách sẽ nghe: {demoEnd - demoStart}s
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Playback Controls Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl bg-black/40 border border-white/10 p-2.5">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={togglePlay}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all duration-150 active:scale-95 shadow-md ${
+              isPlaying
+                ? "bg-ember text-black shadow-ember/30"
+                : "bg-white text-black hover:bg-white/90"
+            }`}
+          >
+            {isPlaying ? (
+              <>
+                <PauseIcon className="h-4 w-4 fill-black" />
+                <span>Tạm dừng</span>
+              </>
+            ) : (
+              <>
+                <PlayIcon className="h-4 w-4 fill-black ml-0.5" />
+                <span>Nghe thử Demo</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleRestart}
+            title="Nghe lại từ đầu đoạn cắt"
+            className="flex items-center gap-1.5 rounded-full bg-white/10 hover:bg-white/15 px-3 py-2 text-xs text-white/90 transition-colors"
+          >
+            <RotateCcwIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Về đầu</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePreviewLast5s}
+            title="Nghe 5 giây cuối trước khi đoạn demo kết thúc"
+            className="rounded-full bg-white/10 hover:bg-white/15 px-2.5 py-2 text-xs text-white/80 transition-colors"
+          >
+            <span>5s cuối</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsLooping(!isLooping)}
+            title="Bật/tắt tự động lặp lại đoạn Demo"
+            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors ${
+              isLooping
+                ? "bg-ember/20 text-ember border border-ember/40 font-medium"
+                : "bg-white/5 text-white/50 border border-white/10 hover:text-white/80"
+            }`}
+          >
+            <RepeatIcon className="h-3.5 w-3.5" />
+            <span>Lặp lại: {isLooping ? "Bật" : "Tắt"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Range Sliders with Micro-tuning buttons */}
+      <div className="space-y-3 pt-1">
+        {/* Start Point */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-white/60 font-medium">Bắt đầu phát từ:</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => adjustStart(-5)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                -5s
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustStart(-1)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                -1s
+              </button>
+              <span className="w-14 text-center font-mono tabular-nums text-ember font-bold bg-black/40 px-1 py-0.5 rounded border border-white/10">
+                {formatTime(demoStart)}
+              </span>
+              <button
+                type="button"
+                onClick={() => adjustStart(1)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                +1s
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustStart(5)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                +5s
+              </button>
+            </div>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={durationSec}
+            value={demoStart}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              const next = Math.min(v, demoEnd - 3);
+              onSetDemoStart(next);
+              if (audioRef.current) {
+                audioRef.current.currentTime = next;
+                setCurrentTime(next);
+              }
+            }}
+            className="w-full accent-ember cursor-pointer"
+          />
+        </div>
+
+        {/* End Point */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-white/60 font-medium">Dừng lại ở:</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => adjustEnd(-5)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                -5s
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustEnd(-1)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                -1s
+              </button>
+              <span className="w-14 text-center font-mono tabular-nums text-ember font-bold bg-black/40 px-1 py-0.5 rounded border border-white/10">
+                {formatTime(demoEnd)}
+              </span>
+              <button
+                type="button"
+                onClick={() => adjustEnd(1)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                +1s
+              </button>
+              <button
+                type="button"
+                onClick={() => adjustEnd(5)}
+                className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-white/10 hover:bg-white/20 text-white/70"
+              >
+                +5s
+              </button>
+            </div>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={durationSec}
+            value={demoEnd}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              onSetDemoEnd(Math.max(v, demoStart + 3));
+            }}
+            className="w-full accent-ember cursor-pointer"
+          />
+        </div>
+      </div>
+
+      <p className="text-[11px] text-white/50 leading-relaxed border-t border-white/10 pt-2.5">
+        🎧 <strong className="text-white/80">Khách trên Store:</strong> Sẽ nghe đúng đoạn từ <span className="text-white font-medium">{formatTime(demoStart)}</span> đến <span className="text-white font-medium">{formatTime(demoEnd)}</span> rồi tự động lặp lại. Sau khi mua hàng, khách nhận được trọn vẹn toàn bộ file MP3 gốc ({durationFormatted}).
+      </p>
+    </div>
+  );
 }

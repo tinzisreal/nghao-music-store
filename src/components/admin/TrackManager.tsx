@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from "react";
-import { MusicIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { MusicIcon, PauseIcon, PencilIcon, PlayIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { TrackEditor } from "./TrackEditor";
 import { Track, TrackInput } from "../../types/track";
 import { Album } from "../../types/album";
 import { formatPrice, formatTime } from "../../utils/format";
-import { errorMessage } from "../../utils/api";
+import { errorMessage, MEDIA_PROXY_BASE } from "../../utils/api";
 import { MAX_FEATURED } from "../../data/sections";
 
 interface TrackManagerProps {
@@ -22,6 +22,8 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
   const [editorOpen, setEditorOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const listAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const genres = useMemo(() => Array.from(new Set(tracks.map((t) => t.genre))), [tracks]);
   const filtered = useMemo(() => {
@@ -29,13 +31,61 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
     return q ? tracks.filter((t) => `${t.title} ${t.album} ${t.genre}`.toLowerCase().includes(q)) : tracks;
   }, [tracks, query]);
 
+  const stopPreview = () => {
+    if (listAudioRef.current) {
+      listAudioRef.current.pause();
+    }
+    setPlayingId(null);
+  };
+
   const openNew = () => {
+    stopPreview();
     setEditing(null);
     setEditorOpen(true);
   };
   const openEdit = (t: Track) => {
+    stopPreview();
     setEditing(t);
     setEditorOpen(true);
+  };
+
+  const handleTogglePlay = (t: Track) => {
+    const audio = listAudioRef.current;
+    if (!audio) return;
+    if (playingId === t.id) {
+      audio.pause();
+      setPlayingId(null);
+      return;
+    }
+    const rawAudio = t.audioUrl || t.fullAudioUrl;
+    if (!rawAudio) {
+      toast.error("Bài hát này chưa có file nhạc.");
+      return;
+    }
+    const src = rawAudio.startsWith("http") ? rawAudio : `${MEDIA_PROXY_BASE}${rawAudio}`;
+    audio.src = src;
+    const start = t.demoStart || 0;
+    audio.currentTime = start;
+    audio
+      .play()
+      .then(() => setPlayingId(t.id))
+      .catch(() => {
+        toast.error("Không thể phát nhạc nghe thử.");
+        setPlayingId(null);
+      });
+  };
+
+  const handleAudioTimeUpdate = () => {
+    const audio = listAudioRef.current;
+    if (!audio || !playingId) return;
+    const t = tracks.find((tr) => tr.id === playingId);
+    if (!t) return;
+    const end = t.demoEnd || Math.min(t.duration || 90, 90);
+    const start = t.demoStart || 0;
+    if (audio.currentTime >= end) {
+      audio.currentTime = start;
+      audio.play().catch(() => setPlayingId(null));
+    }
   };
 
   const featuredCount = tracks.filter((t) => t.featured).length;
@@ -138,18 +188,51 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
                 busy ? "opacity-60" : ""}`
                 }>
                 
-                  <img src={t.cover} alt="" className="h-14 w-14 rounded-xl object-cover" />
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{t.title}</p>
-                    <p className="truncate text-sm text-white/55">
-                      {t.album}
-                      <span className="lg:hidden">
-                        {" "}
-                        · {formatPrice(t.price)}
+                <div className="relative group h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-black/40">
+                  <img src={t.cover} alt="" className="h-full w-full object-cover" />
+                  {(t.audioUrl || t.fullAudioUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePlay(t)}
+                      title={playingId === t.id ? "Tạm dừng nghe thử" : "Nghe thử đoạn Demo đã căn"}
+                      className={`absolute inset-0 flex items-center justify-center bg-black/60 transition-opacity duration-150 ${
+                        playingId === t.id ? "opacity-100 ring-2 ring-ember" : "opacity-0 group-hover:opacity-100"
+                      }`}
+                    >
+                      {playingId === t.id ? (
+                        <PauseIcon className="h-5 w-5 fill-ember text-ember" />
+                      ) : (
+                        <PlayIcon className="h-5 w-5 fill-white text-white ml-0.5" />
+                      )}
+                    </button>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{t.title}</p>
+                  <p className="truncate text-sm text-white/55">
+                    {t.album}
+                    <span className="lg:hidden">
+                      {" "}
+                      · {formatPrice(t.price)}
+                    </span>
+                  </p>
+                  {!t.audioUrl && !t.fullAudioUrl ? (
+                    <p className="mt-0.5 text-xs text-white/40">Chưa có file nhạc</p>
+                  ) : (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-mono tabular-nums ${
+                          playingId === t.id
+                            ? "bg-ember/25 text-ember font-semibold border border-ember/40 animate-pulse"
+                            : "bg-white/10 text-white/70"
+                        }`}
+                      >
+                        Demo: {formatTime(t.demoStart || 0)} ➔ {formatTime(t.demoEnd || Math.min(t.duration || 90, 90))}
+                        {playingId === t.id && " (Đang phát)"}
                       </span>
-                    </p>
-                    {!t.audioUrl && <p className="mt-0.5 text-xs text-white/40">Chưa có file nhạc</p>}
-                  </div>
+                    </div>
+                  )}
+                </div>
                   <span className="hidden truncate text-sm text-white/70 lg:block">{t.genre}</span>
                   <span className="hidden text-right text-sm tabular-nums text-white/70 lg:block">{formatPrice(t.price)}</span>
                   <span className="hidden text-right text-sm tabular-nums text-white/70 lg:block">{formatTime(t.duration)}</span>
@@ -204,6 +287,39 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete }:
           </ul>
         }
       </div>
+
+      {/* Audio element phát nhạc nghe thử trong danh sách Admin */}
+      <audio
+        ref={listAudioRef}
+        preload="none"
+        onTimeUpdate={handleAudioTimeUpdate}
+        onEnded={() => {
+          if (listAudioRef.current && playingId) {
+            const t = tracks.find((tr) => tr.id === playingId);
+            if (t) {
+              listAudioRef.current.currentTime = t.demoStart || 0;
+              listAudioRef.current.play().catch(() => setPlayingId(null));
+            }
+          }
+        }}
+      />
+
+      {/* Thanh thông báo khi đang phát nghe thử một bài */}
+      {playingId && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full bg-[#1b1c20]/95 border border-ember/40 px-4 py-2 shadow-2xl backdrop-blur-md">
+          <span className="flex h-2.5 w-2.5 rounded-full bg-ember animate-pulse" />
+          <span className="text-xs text-white/90">
+            Đang nghe thử: <strong className="text-white">{tracks.find((t) => t.id === playingId)?.title}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={stopPreview}
+            className="rounded-full bg-ember px-2.5 py-1 text-xs font-semibold text-black hover:bg-ember/90 transition-colors"
+          >
+            Dừng
+          </button>
+        </div>
+      )}
 
       <TrackEditor open={editorOpen} track={editing}
       genres={genres}
