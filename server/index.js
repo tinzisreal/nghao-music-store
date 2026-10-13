@@ -324,7 +324,7 @@ function sanitizeTrackForPublic(track) {
   return {
     ...rest,
     cover: track.cover ? `/v2/media/cover/${encodeURIComponent(track.id)}` : "",
-    audioUrl: track.audioUrl ? `/v2/media/stream/${encodeURIComponent(track.id)}` : "",
+    audioUrl: (track.audioUrl || track.fullAudioUrl) ? `/v2/media/stream/${encodeURIComponent(track.id)}` : "",
     demoStart: 0,
     demoEnd: demoDuration
   };
@@ -410,6 +410,9 @@ const upload = multer({
 
 // GET /producer
 app.get("/producer", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
   res.json(db.producer);
@@ -417,6 +420,9 @@ app.get("/producer", (req, res) => {
 
 // GET /tracks — Ẩn hoàn toàn link Cloudinary & fullAudioUrl đối với khách truy cập
 app.get("/tracks", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -542,7 +548,9 @@ app.get("/tracks/:id/cover", async (req, res) => {
     const upstream = await fetch(track.cover);
     if (!upstream.ok) return res.status(upstream.status).end();
     res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/png");
-    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     const arrayBuffer = await upstream.arrayBuffer();
     return res.send(Buffer.from(arrayBuffer));
   } catch {
@@ -552,6 +560,9 @@ app.get("/tracks/:id/cover", async (req, res) => {
 
 // GET /albums — Ẩn hoàn toàn link Cloudinary ảnh bìa album
 app.get("/albums", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
   const safeAlbums = (db.albums || []).map((alb) => ({
@@ -580,7 +591,9 @@ app.get("/albums/:id/cover", async (req, res) => {
     const upstream = await fetch(album.cover);
     if (!upstream.ok) return res.status(upstream.status).end();
     res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/png");
-    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     const arrayBuffer = await upstream.arrayBuffer();
     return res.send(Buffer.from(arrayBuffer));
   } catch {
@@ -628,6 +641,9 @@ app.get("/orders/:id/checkout", (req, res) => {
 
 // GET /store-info
 app.get("/store-info", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
   res.json(db.info);
@@ -635,6 +651,9 @@ app.get("/store-info", (req, res) => {
 
 // GET /sections
 app.get("/sections", (req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
   res.json(db.sections);
@@ -1559,7 +1578,7 @@ app.patch("/tracks/:id", requireAdmin, (req, res) => {
   // Bảo vệ: Nếu client gửi lên URL proxy ngụy trang (/tiktok-sdk, /v2/media/...) thay vì link Cloudinary mới, giữ nguyên Cloudinary gốc
   const isProxyUrl = (url) =>
     typeof url === "string" &&
-    (url.includes("/media/") || url.includes("/tiktok-sdk") || url.includes("/fb-tr") || url.startsWith("/tracks/"));
+    (url.startsWith("/v2/media/") || url.includes("/tiktok-sdk/") || url.includes("/fb-tr/") || url.startsWith("/tracks/"));
 
   if (patch.audioUrl && isProxyUrl(patch.audioUrl)) {
     delete patch.audioUrl;
