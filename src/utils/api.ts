@@ -45,7 +45,10 @@ import { producer as mockProducer, tracks as mockTracks } from "../data/tracks";
 import { storeInfo as mockStoreInfo } from "../data/contact";
 import { bankAccount as mockBank } from "../data/payment";
 
-export const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || "http://localhost:5000").replace(/\/+$/, "");
+export const API_BASE_URL = String(
+  import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.PROD ? "https://nghao-music-backend.onrender.com" : "http://localhost:5000")
+).replace(/\/+$/, "");
 const USE_MOCK = false;
 
 const ADMIN_TOKEN_KEY = "nghao_admin_passkey_token";
