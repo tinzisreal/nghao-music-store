@@ -1373,6 +1373,17 @@ app.patch("/tracks/:id", requireAdmin, (req, res) => {
     patch.price = Math.max(0, Math.floor(Number(patch.price) || 0));
   }
 
+  // Bảo vệ: Nếu client gửi lên URL proxy ngụy trang (/v2/media/...) thay vì link Cloudinary mới, giữ nguyên Cloudinary gốc
+  if (patch.audioUrl && (patch.audioUrl.startsWith("/v2/media/") || patch.audioUrl.startsWith("/tracks/"))) {
+    delete patch.audioUrl;
+  }
+  if (patch.fullAudioUrl && (patch.fullAudioUrl.startsWith("/v2/media/") || patch.fullAudioUrl.startsWith("/tracks/"))) {
+    delete patch.fullAudioUrl;
+  }
+  if (patch.cover && (patch.cover.startsWith("/v2/media/") || patch.cover.startsWith("/tracks/"))) {
+    delete patch.cover;
+  }
+
   db.tracks[idx] = { ...db.tracks[idx], ...patch };
   writeDb(db);
 

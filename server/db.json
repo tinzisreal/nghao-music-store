@@ -293,9 +293,6 @@
     },
     {
       "id": "ord_1791869133348",
-      "trackId": "t1791863000230",
-      "amount": 500000,
-      "transferNote": "NGHAO MV68M810VMT",
       "bank": {
         "bankId": "MB",
         "bankName": "MBBank",
@@ -303,11 +300,14 @@
         "accountName": "NGUYEN DUC ANH HAO"
       },
       "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC9HE8PFRDG7/qr-image",
+      "amount": 500000,
       "payUrl": "https://pay.apipay.vn/APIPAYJSC9HE8PFRDG7",
-      "apipayPublicId": "APIPAYJSC9HE8PFRDG7",
-      "redirectSecret": "b83bde3b32ecd7987d8a5704e7d1c9f600ec7d01b417946701f4097987e7847d",
       "status": "pending_verification",
-      "createdAt": "2026-10-13T05:25:32.677Z"
+      "trackId": "t1791863000230",
+      "createdAt": "2026-10-13T05:25:32.677Z",
+      "transferNote": "NGHAO MV68M810VMT",
+      "apipayPublicId": "APIPAYJSC9HE8PFRDG7",
+      "redirectSecret": "b83bde3b32ecd7987d8a5704e7d1c9f600ec7d01b417946701f4097987e7847d"
     }
   ],
   "tracks": [
@@ -350,11 +350,11 @@
       "title": "Dù có cách xa ( Slot )",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "/v2/media/stream/t1791863592445",
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3",
       "duration": 131,
       "featured": true,
       "demoStart": 0,
-      "fullAudioUrl": "/v2/media/stream/t1791863592445"
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3"
     },
     {
       "id": "t1791863432050",
@@ -365,11 +365,11 @@
       "title": "Vết thương ( Slot )",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "/v2/media/stream/t1791863432050",
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3",
       "duration": 118,
       "featured": true,
       "demoStart": 0,
-      "fullAudioUrl": "/v2/media/stream/t1791863432050"
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3"
     },
     {
       "id": "t1791863000230",
@@ -380,11 +380,11 @@
       "title": "Và thế giới mất đi một người cô đơn ( SLOT)",
       "artist": "Nghao",
       "demoEnd": 90,
-      "audioUrl": "/v2/media/stream/t1791863000230",
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3",
       "duration": 108,
       "featured": true,
       "demoStart": 0,
-      "fullAudioUrl": "/v2/media/stream/t1791863000230"
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3"
     }
   ],
   "producer": {
