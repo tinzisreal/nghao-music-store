@@ -11,6 +11,15 @@
 body {
   background: #000;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Hide scrollbars on mobile horizontal pill lists */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 /* Liquid glass surfaces */
 .liquid-glass,

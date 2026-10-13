@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDownIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, PauseIcon, PlayIcon, SearchIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Track } from "../types/track";
 import { formatPrice, formatTime } from "../utils/format";
@@ -38,12 +38,12 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
 
   return (
     <section aria-labelledby="all-tracks-title">
-      <div className="mb-4 flex flex-col gap-3 px-1 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-baseline gap-3">
-          <h2 id="all-tracks-title" className="text-xl font-semibold text-white">
+      <div className="mb-3.5 flex flex-col gap-3 px-1 md:mb-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-baseline justify-between md:justify-start md:gap-3">
+          <h2 id="all-tracks-title" className="text-lg font-semibold text-white sm:text-xl">
             {t("allTracks")}
           </h2>
-          <span className="text-sm text-white/55">{t("songCount", { n: filtered.length })}</span>
+          <span className="text-xs text-white/55 sm:text-sm">{t("songCount", { n: filtered.length })}</span>
         </div>
         <label className="liquid-glass flex items-center gap-2 rounded-full px-4 py-2.5 md:w-72">
           <SearchIcon className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
@@ -57,7 +57,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
         </label>
       </div>
 
-      <div role="tablist" aria-label={t("filterGenre")} className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-1">
+      <div role="tablist" aria-label={t("filterGenre")} className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mb-5 md:mx-0 md:px-1">
         {genres.map((g) => {
           const active = g === genre;
           return (
@@ -67,9 +67,9 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
               role="tab"
               aria-selected={active}
               onClick={() => setGenre(g)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-4 py-1.5 text-sm transition-colors duration-150 ${
-              active ? "bg-white font-medium text-black" : "liquid-glass text-white/80 hover:text-white"}`
-              }>
+              className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs transition-colors duration-150 sm:px-4 sm:text-sm ${
+                active ? "bg-white font-semibold text-black" : "liquid-glass text-white/80 hover:text-white"
+              }`}>
               
               {g === ALL ? t("all") : g}
             </button>);
@@ -92,7 +92,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
           </button>
         </div> :
 
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
+      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-4 md:gap-4 lg:grid-cols-5 xl:grid-cols-6">
           {shown.map((track, i) => {
           const active = track.id === currentId;
           const playing = active && isPlaying;
@@ -103,7 +103,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
               initial={isNewBatch ? { opacity: 0, y: 8 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.22, delay: isNewBatch ? i % PAGE_SIZE * 0.03 : 0, ease: [0.23, 1, 0.32, 1] }}
-              className={`liquid-glass flex flex-col rounded-[24px] p-2.5 ${active ? "ring-1 ring-ember/70" : ""}`}>
+              className={`liquid-glass flex flex-col rounded-[20px] p-2 sm:rounded-[24px] sm:p-2.5 ${active ? "ring-1 ring-ember/70" : ""}`}>
               
                 <button
                 type="button"
@@ -111,15 +111,22 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                 aria-label={playing ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title })}
                 className="group block text-left">
                 
-                  <div className="relative aspect-square overflow-hidden rounded-[16px]">
+                  <div className="relative aspect-square overflow-hidden rounded-[14px] sm:rounded-[16px]">
                     <img src={track.cover} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]" />
-                    <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] text-white/90 backdrop-blur">
+                    <span className="absolute left-2 top-2 max-w-[70%] truncate rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur sm:text-[11px]">
                       {track.genre}
                     </span>
+                    <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white ring-1 ring-white/25 backdrop-blur-md transition-transform group-active:scale-90">
+                      {playing ? (
+                        <PauseIcon className="h-3.5 w-3.5 fill-ember text-ember" aria-hidden />
+                      ) : (
+                        <PlayIcon className="ml-0.5 h-3.5 w-3.5 fill-white text-white" aria-hidden />
+                      )}
+                    </span>
                   </div>
-                  <div className="px-1.5 pb-3 pt-3">
-                    <p className={`truncate font-medium ${active ? "text-ember" : "text-white"}`}>{track.title}</p>
-                    <p className="truncate text-sm text-white/55">
+                  <div className="px-1 pb-2.5 pt-2.5 sm:px-1.5 sm:pb-3 sm:pt-3">
+                    <p className={`truncate text-sm font-semibold sm:text-base sm:font-medium ${active ? "text-ember" : "text-white"}`}>{track.title}</p>
+                    <p className="truncate text-xs text-white/55 sm:text-sm">
                       {track.album} · {formatTime(track.duration)}
                     </p>
                   </div>
@@ -129,7 +136,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                 type="button"
                 onClick={() => onBuy(track)}
                 aria-label={t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-                className="mt-auto whitespace-nowrap rounded-full bg-white/10 px-3 py-2 text-sm font-medium text-white ring-1 ring-inset ring-white/20 transition-colors duration-150 hover:bg-white hover:text-black">
+                className="mt-auto whitespace-nowrap rounded-full bg-white/12 px-2.5 py-2 text-xs font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors duration-150 hover:bg-white hover:text-black active:scale-95 sm:px-3 sm:text-sm sm:font-medium">
                 
                   {t("buy")} · {formatPrice(track.price)}
                 </button>

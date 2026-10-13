@@ -18,45 +18,63 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
   const { t, pick } = useLanguage();
 
   return (
-    <section aria-labelledby="new-releases-title" className="liquid-glass-strong rounded-[32px] p-3 md:p-5">
-      <div className="flex items-baseline justify-between px-3 pb-3 pt-1">
-        <h2 id="new-releases-title" className="text-xl font-semibold text-white">
+    <section aria-labelledby="new-releases-title" className="liquid-glass-strong rounded-[26px] p-2.5 sm:rounded-[32px] sm:p-4 md:p-5">
+      <div className="flex items-baseline justify-between px-2.5 pb-2.5 pt-1 sm:px-3 sm:pb-3">
+        <h2 id="new-releases-title" className="text-lg font-semibold text-white sm:text-xl">
           {pick(title)}
         </h2>
-        <span className="text-sm text-white/50">{t("songCount", { n: tracks.length })}</span>
+        <span className="text-xs text-white/50 sm:text-sm">{t("songCount", { n: tracks.length })}</span>
       </div>
 
-      <ul className="flex flex-col">
+      <ul className="flex flex-col gap-1">
         {tracks.map((track, i) => {
           const active = track.id === currentId;
+          const playing = active && isPlaying;
           return (
             <li
               key={track.id}
-              className={`group grid grid-cols-[2rem_1fr_auto] items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors duration-150 md:grid-cols-[2rem_1fr_7rem_4rem_auto] md:gap-4 ${
-              active ? "bg-white/[0.12]" : "hover:bg-white/[0.06]"}`
-              }>
+              className={`group grid grid-cols-[1fr_auto] items-center gap-2.5 rounded-2xl px-2.5 py-2 transition-colors duration-150 sm:grid-cols-[2rem_1fr_auto] sm:gap-3 sm:px-3 sm:py-2.5 md:grid-cols-[2rem_1fr_7rem_4rem_auto] md:gap-4 ${
+                active ? "bg-white/[0.13] ring-1 ring-inset ring-white/15" : "hover:bg-white/[0.06]"
+              }`}>
               
               <button
                 type="button"
                 onClick={() => onPlay(track.id)}
-                aria-label={active && isPlaying ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title })}
-                className="flex h-8 w-8 items-center justify-center text-sm tabular-nums text-white/50">
+                aria-label={playing ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title })}
+                className="hidden h-8 w-8 items-center justify-center text-sm tabular-nums text-white/50 sm:flex">
                 
-                {active && isPlaying ?
-                <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden /> :
-
-                <>
-                    <span className={`group-hover:hidden ${active ? "text-ember" : ""}`}>{i + 1}</span>
+                {playing ? (
+                  <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
+                ) : (
+                  <>
+                    <span className={`group-hover:hidden ${active ? "text-ember font-semibold" : ""}`}>{i + 1}</span>
                     <PlayIcon className="hidden h-4 w-4 fill-white text-white group-hover:block" aria-hidden />
                   </>
-                }
+                )}
               </button>
 
-              <button type="button" tabIndex={-1} onClick={() => onPlay(track.id)} className="flex min-w-0 items-center gap-3 text-left">
-                <img src={track.cover} alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+              <button
+                type="button"
+                onClick={() => onPlay(track.id)}
+                className="flex min-w-0 items-center gap-3 text-left">
+                
+                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl sm:h-11 sm:w-11 sm:rounded-lg">
+                  <img src={track.cover} alt="" className="h-full w-full object-cover" />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/40 sm:hidden">
+                    {playing ? (
+                      <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
+                    ) : (
+                      <PlayIcon className="ml-0.5 h-4 w-4 fill-white text-white" aria-hidden />
+                    )}
+                  </span>
+                </div>
                 <div className="min-w-0">
-                  <p className={`truncate font-medium ${active ? "text-ember" : "text-white"}`}>{track.title}</p>
-                  <p className="truncate text-sm text-white/55">{track.album}</p>
+                  <p className={`truncate text-sm font-semibold sm:text-base sm:font-medium ${active ? "text-ember" : "text-white"}`}>
+                    {track.title}
+                  </p>
+                  <p className="truncate text-xs text-white/55 sm:text-sm">
+                    {track.album} <span className="md:hidden">· {formatTime(track.duration)}</span>
+                  </p>
                 </div>
               </button>
 
@@ -67,7 +85,7 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
                 type="button"
                 onClick={() => onBuy(track)}
                 aria-label={t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-                className="whitespace-nowrap rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-medium text-white ring-1 ring-inset ring-white/20 transition-colors duration-150 hover:bg-white hover:text-black">
+                className="whitespace-nowrap rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors duration-150 hover:bg-white hover:text-black active:scale-95 sm:px-3.5 sm:text-sm sm:font-medium">
                 
                 {formatPrice(track.price)}
               </button>

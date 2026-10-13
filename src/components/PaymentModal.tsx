@@ -19,23 +19,24 @@ export function PaymentModal({ track, onClose }: PaymentModalProps) {
     <AnimatePresence>
       {track &&
       <motion.div
-        className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-6"
+        className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2, ease: EASE }}>
         
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
+          <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} aria-hidden />
           <motion.div
           role="dialog"
           aria-modal="true"
           aria-labelledby="payment-title"
-          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          initial={{ opacity: 0, scale: 0.96, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          exit={{ opacity: 0, scale: 0.96, y: 20 }}
           transition={{ duration: 0.24, ease: EASE }}
-          className="liquid-glass-strong relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[32px] p-5 text-white md:p-7">
+          className="liquid-glass-strong relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-[30px] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 text-white sm:rounded-[32px] sm:p-6 md:p-7">
           
+            <div aria-hidden className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-white/20 sm:hidden" />
             <PaymentContent key={track.id} track={track} onClose={onClose} />
           </motion.div>
         </motion.div>
@@ -264,26 +265,26 @@ function PaymentContent({ track, onClose }: {track: Track;onClose: () => void;})
         }
 
           {order && (phase === "ready" || phase === "confirming") &&
-        <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-8">
+        <div className="mt-4 grid gap-4 sm:mt-6 sm:gap-6 md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] md:gap-8">
               <div className="flex flex-col items-center">
-                <div className="w-full max-w-[280px] rounded-3xl bg-white p-3">
+                <div className="w-full max-w-[200px] rounded-3xl bg-white p-2.5 sm:max-w-[270px] sm:p-3">
                   <img src={order.qrUrl} alt={t("qrAlt", { price: formatPrice(order.amount) })} className="aspect-square w-full object-contain" />
                 </div>
-                <p className="mt-3 text-center text-sm text-white/60">{t("scanQr")}</p>
+                <p className="mt-2.5 text-center text-xs text-white/60 sm:mt-3 sm:text-sm">{t("scanQr")}</p>
                 {order.payUrl && (
                   <a
                     href={order.payUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/20">
+                    className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium text-white/90 transition-colors hover:bg-white/20 sm:mt-3">
                     Mở trang thanh toán ApiPay ↗
                   </a>
                 )}
               </div>
 
               <div className="flex flex-col">
-                <p className="text-sm text-white/60">{t("amount")}</p>
-                <p className="text-3xl font-semibold tabular-nums text-ember">{formatPrice(order.amount)}</p>
+                <p className="text-xs text-white/60 sm:text-sm">{t("amount")}</p>
+                <p className="text-2xl font-semibold tabular-nums text-ember sm:text-3xl">{formatPrice(order.amount)}</p>
 
                 {order.status === "underpaid" && (order.shortfallAmount || 0) > 0 && (
                   <div className="mt-3 rounded-2xl border border-amber-400/40 bg-amber-400/15 p-3.5 text-xs leading-relaxed text-amber-200" role="alert">

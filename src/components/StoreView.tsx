@@ -40,17 +40,19 @@ export function StoreView({ data }: {data: StoreData;}) {
 
   return (
     <>
-      <main className="mx-auto max-w-[1440px] px-4 pb-36 pt-4 md:px-10 md:pt-6">
-        <header className="mb-6 flex items-center justify-between pr-24">
-          <a href="/" className="group inline-flex items-center gap-3.5 rounded-full bg-black/35 px-4 py-2 ring-1 ring-white/15 backdrop-blur-md transition-colors hover:bg-black/50">
+      <main className="mx-auto max-w-[1440px] px-3.5 pb-32 pt-3 sm:px-6 md:px-10 md:pb-36 md:pt-6">
+        <header className="mb-4 flex items-center justify-between pr-20 sm:mb-6 sm:pr-24">
+          <a href="/" className="group inline-flex items-center gap-2.5 rounded-full bg-black/40 px-3 py-1.5 ring-1 ring-white/15 backdrop-blur-md transition-colors hover:bg-black/55 sm:gap-3.5 sm:px-4 sm:py-2">
             <img
               src="/logo-mark-white.png"
               alt="NGHAO Music Producer Logo"
-              className="h-10 w-10 object-contain transition-transform duration-200 group-hover:scale-105"
+              className="h-8 w-8 object-contain transition-transform duration-200 group-hover:scale-105 sm:h-10 sm:w-10"
             />
             <div className="leading-tight">
-              <span className="block text-base font-bold tracking-[0.14em] text-white">NGHAO</span>
-              <span className="block text-[10px] font-semibold tracking-[0.2em] text-white/65">MUSIC PRODUCER</span>
+              <span className="block text-sm font-bold tracking-[0.14em] text-white sm:text-base">NGHAO</span>
+              <span className="block text-[9px] font-semibold tracking-[0.18em] text-white/65 sm:text-[10px] sm:tracking-[0.2em]">
+                MUSIC PRODUCER
+              </span>
             </div>
           </a>
         </header>
@@ -63,7 +65,7 @@ export function StoreView({ data }: {data: StoreData;}) {
           onPlay={() => player.playAt(indexOf(featured[flowIndex].id))} />
         
 
-        <div className="mt-14">
+        <div className="mt-8 sm:mt-12 md:mt-14">
           <CoverFlow
             tracks={featured}
             activeIndex={flowIndex}
@@ -74,7 +76,7 @@ export function StoreView({ data }: {data: StoreData;}) {
         </div>
 
         {newReleases.length > 0 &&
-        <div className="mt-14">
+        <div className="mt-8 sm:mt-12 md:mt-14">
             <NewReleases
             title={data.sections.newReleases.title}
             tracks={newReleases}
@@ -86,7 +88,7 @@ export function StoreView({ data }: {data: StoreData;}) {
           </div>
         }
 
-        <div className="mt-16">
+        <div className="mt-10 sm:mt-14 md:mt-16">
           <AllTracks
             tracks={tracks}
             currentId={player.current.id}
@@ -96,7 +98,7 @@ export function StoreView({ data }: {data: StoreData;}) {
           
         </div>
 
-        <div className="mt-20">
+        <div className="mt-12 sm:mt-16 md:mt-20">
           <ContactFooter name={producer.name} info={info} />
         </div>
       </main>

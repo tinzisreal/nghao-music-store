@@ -19,20 +19,46 @@ export function ProducerHero({ producer, socials, trackCount, albumCount, onPlay
   return (
     <section
       aria-labelledby="producer-name"
-      className="liquid-glass-strong grid items-center gap-6 rounded-[36px] p-3 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10 md:p-4 xl:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] xl:gap-14">
+      className="liquid-glass-strong grid items-center gap-4 overflow-hidden rounded-[28px] p-2.5 sm:rounded-[36px] sm:p-3.5 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10 md:p-4 xl:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] xl:gap-14">
       
-      <div className="aspect-[4/5] overflow-hidden rounded-[28px]">
-        <img src={photo} alt={t("portraitOf", { name })} className="h-full w-full object-cover object-[50%_65%]" />
+      <div className="relative aspect-[16/11] overflow-hidden rounded-[22px] sm:aspect-[16/10] sm:rounded-[28px] md:aspect-[4/5]">
+        <img src={photo} alt={t("portraitOf", { name })} className="h-full w-full object-cover object-[50%_58%] md:object-[50%_65%]" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent md:hidden"
+        />
+        <div className="absolute inset-x-4 bottom-3.5 flex items-end justify-between md:hidden">
+          <div>
+            <span className="inline-block rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium tracking-wide text-white/90 backdrop-blur-md">
+              {pick(producer.tagline)}
+            </span>
+            <h1 id="producer-name" className="mt-1 text-3xl font-bold tracking-tight text-white drop-shadow">
+              {name}
+            </h1>
+          </div>
+          <div className="flex gap-2">
+            <div className="rounded-2xl bg-black/55 px-3 py-1.5 text-center ring-1 ring-white/15 backdrop-blur-md">
+              <span className="block text-base font-bold tabular-nums text-white">{trackCount}</span>
+              <span className="block text-[10px] uppercase tracking-wider text-white/60">{t("tracks")}</span>
+            </div>
+            <div className="rounded-2xl bg-black/55 px-3 py-1.5 text-center ring-1 ring-white/15 backdrop-blur-md">
+              <span className="block text-base font-bold tabular-nums text-white">{albumCount}</span>
+              <span className="block text-[10px] uppercase tracking-wider text-white/60">{t("albums")}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="px-3 pb-4 md:px-0 md:pb-0 md:pr-8">
-        <p className="text-sm text-white/60">{pick(producer.tagline)}</p>
-        <h1 id="producer-name" className="mt-2 break-all text-4xl font-semibold tracking-tight text-white md:text-6xl xl:text-7xl">
+      <div className="px-2 pb-2 md:px-0 md:pb-0 md:pr-8">
+        <p className="hidden text-sm text-white/60 md:block">{pick(producer.tagline)}</p>
+        <p className="mt-2 hidden break-words text-4xl font-semibold tracking-tight text-white md:block md:text-6xl xl:text-7xl" aria-hidden>
           {name}
-        </h1>
-        <p className="mt-5 max-w-prose text-base leading-relaxed text-white/75">{pick(producer.bio)}</p>
+        </p>
+        <p className="text-sm leading-relaxed text-white/80 sm:text-base md:mt-5 md:max-w-prose md:text-white/75">
+          {pick(producer.bio)}
+        </p>
 
-        <dl className="mt-6 flex gap-8">
+        <dl className="mt-6 hidden gap-8 md:flex">
           <div>
             <dt className="text-sm text-white/55">{t("tracks")}</dt>
             <dd className="text-2xl font-semibold tabular-nums text-white">{trackCount}</dd>
@@ -43,11 +69,11 @@ export function ProducerHero({ producer, socials, trackCount, albumCount, onPlay
           </div>
         </dl>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 sm:justify-start md:mt-8">
           <button
             type="button"
             onClick={onPlay}
-            className="flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform duration-150 hover:scale-[1.02] active:scale-95">
+            className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-6 py-3 text-sm font-semibold text-black shadow-lg shadow-white/10 transition-transform duration-150 hover:scale-[1.02] active:scale-95 sm:flex-initial">
             
             <PlayIcon className="h-4 w-4 fill-black" aria-hidden />
             {t("listenNow")}
