@@ -354,9 +354,11 @@ function sanitizeTrackForPublic(track) {
     cover: track.cover
       ? `/v2/media/cover/${encodeURIComponent(track.id)}${coverVer ? `?v=${coverVer}` : ""}`
       : "",
-    audioUrl: (track.audioUrl || track.fullAudioUrl)
-      ? `/v2/media/stream/${encodeURIComponent(track.id)}${audioVer ? `?v=${audioVer}` : ""}`
-      : "",
+    audioUrl: track.isPreorder
+      ? ""
+      : (track.audioUrl || track.fullAudioUrl)
+        ? `/v2/media/stream/${encodeURIComponent(track.id)}${audioVer ? `?v=${audioVer}` : ""}`
+        : "",
     demoStart: 0,
     demoEnd: demoDuration
   };
@@ -477,7 +479,7 @@ app.get("/tracks/:id/demo-stream", async (req, res) => {
   if (!db) return res.status(500).end();
 
   const track = (db.tracks || []).find((t) => t.id === id);
-  if (!track) return res.status(404).end();
+  if (!track || track.isPreorder) return res.status(404).end();
 
   const rawAudio =
     track.audioUrl && track.audioUrl.startsWith("http")
@@ -502,6 +504,10 @@ app.get("/tracks/:id/free-download", async (req, res) => {
 
   const track = (db.tracks || []).find((t) => t.id === id);
   if (!track) return res.status(404).send("Không tìm thấy bài hát.");
+
+  if (track.isPreorder) {
+    return res.status(403).send("Bài hát này ở chế độ Pre-order. Vui lòng liên hệ Zalo 0333 025 864.");
+  }
 
   if (Number(track.price || 0) > 0) {
     return res.status(403).send("Bài hát này có phí. Vui lòng thanh toán để nhận file qua Gmail.");

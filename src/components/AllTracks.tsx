@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDownIcon, PauseIcon, PlayIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, PauseIcon, PlayIcon, SearchIcon, SparklesIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Track } from "../types/track";
 import { formatPrice, formatTime } from "../utils/format";
@@ -109,8 +109,8 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
               
                 <button
                 type="button"
-                onClick={() => onPlay(track.id)}
-                aria-label={playing ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title })}
+                onClick={() => track.isPreorder ? onBuy(track) : onPlay(track.id)}
+                aria-label={track.isPreorder ? `Pre-order ${track.title}` : (playing ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title }))}
                 className="group block text-left">
                 
                   <div className="relative aspect-square overflow-hidden rounded-[14px] sm:rounded-[16px]">
@@ -119,18 +119,25 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                     <span className="absolute left-2 top-2 max-w-[70%] truncate rounded-full progressive-glass-pill px-2.5 py-0.5 text-[10px] font-medium text-white/95 sm:text-[11px]">
                       {track.genre}
                     </span>
-                    <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full progressive-glass-pill text-white ring-1 ring-white/30 shadow-md transition-transform group-active:scale-90">
-                      {playing ? (
-                        <PauseIcon className="h-3.5 w-3.5 fill-ember text-ember" aria-hidden />
-                      ) : (
-                        <PlayIcon className="ml-0.5 h-3.5 w-3.5 fill-white text-white" aria-hidden />
-                      )}
-                    </span>
+                    {track.isPreorder ? (
+                      <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-amber-300 ring-1 ring-amber-400/40 backdrop-blur-md shadow-md sm:text-[11px]">
+                        <SparklesIcon className="h-3 w-3 fill-amber-300 text-amber-300" aria-hidden />
+                        <span>Pre-order</span>
+                      </span>
+                    ) : (
+                      <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full progressive-glass-pill text-white ring-1 ring-white/30 shadow-md transition-transform group-active:scale-90">
+                        {playing ? (
+                          <PauseIcon className="h-3.5 w-3.5 fill-ember text-ember" aria-hidden />
+                        ) : (
+                          <PlayIcon className="ml-0.5 h-3.5 w-3.5 fill-white text-white" aria-hidden />
+                        )}
+                      </span>
+                    )}
                   </div>
                   <div className="px-1 pb-2.5 pt-2.5 sm:px-1.5 sm:pb-3 sm:pt-3">
                     <p className={`truncate text-sm font-semibold sm:text-base sm:font-medium ${active ? "text-ember" : "text-white"}`}>{track.title}</p>
                     <p className="truncate text-xs text-white/55 sm:text-sm">
-                      {track.album} · {formatTime(track.duration)}
+                      {track.album} · {track.isPreorder ? (track.duration > 0 ? formatTime(track.duration) : "Pre-order") : formatTime(track.duration)}
                     </p>
                   </div>
                 </button>
@@ -138,10 +145,16 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                 <button
                 type="button"
                 onClick={() => onBuy(track)}
-                aria-label={t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-                className="mt-auto whitespace-nowrap rounded-full bg-white/12 px-2.5 py-2 text-xs font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors duration-150 hover:bg-white hover:text-black active:scale-95 sm:px-3 sm:text-sm sm:font-medium">
+                aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
+                className={`mt-auto whitespace-nowrap rounded-full px-2.5 py-2 text-xs font-semibold transition-all duration-150 active:scale-95 sm:px-3 sm:text-sm ${
+                  track.isPreorder
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-lg shadow-amber-500/20 hover:brightness-110"
+                    : "bg-white/12 text-white ring-1 ring-inset ring-white/20 hover:bg-white hover:text-black sm:font-medium"
+                }`}>
                 
-                  {t("buy")} · {formatPrice(track.price)}
+                  {track.isPreorder
+                    ? `Pre-order · ${formatPrice(track.price)}`
+                    : `${t("buy")} · ${formatPrice(track.price)}`}
                 </button>
               </motion.li>);
 

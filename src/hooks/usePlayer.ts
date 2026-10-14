@@ -6,7 +6,8 @@ import { Track } from "../types/track";
  * for iOS Safari, Android Chrome, and modern web browsers.
  */
 export function usePlayer(list: Track[]) {
-  const [index, setIndex] = useState(0);
+  const firstPlayableIndex = list.findIndex((t) => !t.isPreorder);
+  const [index, setIndex] = useState(firstPlayableIndex >= 0 ? firstPlayableIndex : 0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
@@ -177,8 +178,9 @@ export function usePlayer(list: Track[]) {
   const playAt = useCallback(
     (i: number) => {
       if (i < 0 || i >= list.length) return;
-      const audio = audioRef.current;
       const target = list[i];
+      if (target?.isPreorder) return;
+      const audio = audioRef.current;
 
       if (i === index) {
         if (isPlaying) {
@@ -259,18 +261,30 @@ export function usePlayer(list: Track[]) {
   }, []);
 
   const next = useCallback(() => {
-    const nextIdx = (index + 1) % count;
-    playAt(nextIdx);
-  }, [count, index, playAt]);
+    if (count <= 1) return;
+    let nextIdx = (index + 1) % count;
+    let attempts = 0;
+    while (list[nextIdx]?.isPreorder && attempts < count) {
+      nextIdx = (nextIdx + 1) % count;
+      attempts++;
+    }
+    if (attempts < count) playAt(nextIdx);
+  }, [count, index, list, playAt]);
 
   const prev = useCallback(() => {
     if (relativeProgress > 3) {
       seek(0);
       return;
     }
-    const prevIdx = (index - 1 + count) % count;
-    playAt(prevIdx);
-  }, [count, index, relativeProgress, playAt]);
+    if (count <= 1) return;
+    let prevIdx = (index - 1 + count) % count;
+    let attempts = 0;
+    while (list[prevIdx]?.isPreorder && attempts < count) {
+      prevIdx = (prevIdx - 1 + count) % count;
+      attempts++;
+    }
+    if (attempts < count) playAt(prevIdx);
+  }, [count, index, list, relativeProgress, playAt]);
 
   const seek = useCallback(
     (s: number) => {

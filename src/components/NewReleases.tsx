@@ -1,5 +1,5 @@
 import React from "react";
-import { PauseIcon, PlayIcon } from "lucide-react";
+import { PauseIcon, PlayIcon, SparklesIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Track } from "../types/track";
 import { LocalizedText } from "../types/store";
@@ -39,11 +39,13 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
               
               <button
                 type="button"
-                onClick={() => onPlay(track.id)}
-                aria-label={playing ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title })}
+                onClick={() => track.isPreorder ? onBuy(track) : onPlay(track.id)}
+                aria-label={track.isPreorder ? `Pre-order ${track.title}` : (playing ? t("pauseTitle", { title: track.title }) : t("playTitle", { title: track.title }))}
                 className="hidden h-8 w-8 items-center justify-center text-sm tabular-nums text-white/50 sm:flex">
                 
-                {playing ? (
+                {track.isPreorder ? (
+                  <SparklesIcon className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
+                ) : playing ? (
                   <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
                 ) : (
                   <>
@@ -55,13 +57,15 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
 
               <button
                 type="button"
-                onClick={() => onPlay(track.id)}
+                onClick={() => track.isPreorder ? onBuy(track) : onPlay(track.id)}
                 className="flex min-w-0 items-center gap-3 text-left">
                 
                 <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl sm:h-11 sm:w-11 sm:rounded-lg">
                   <img src={track.cover} alt="" className="h-full w-full object-cover" />
                   <span className="absolute inset-0 flex items-center justify-center bg-black/40 sm:hidden">
-                    {playing ? (
+                    {track.isPreorder ? (
+                      <SparklesIcon className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
+                    ) : playing ? (
                       <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
                     ) : (
                       <PlayIcon className="ml-0.5 h-4 w-4 fill-white text-white" aria-hidden />
@@ -73,21 +77,27 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
                     {track.title}
                   </p>
                   <p className="truncate text-xs text-white/55 sm:text-sm">
-                    {track.album} <span className="md:hidden">· {formatTime(track.duration)}</span>
+                    {track.album} <span className="md:hidden">· {track.isPreorder ? (track.duration > 0 ? formatTime(track.duration) : "Pre-order") : formatTime(track.duration)}</span>
                   </p>
                 </div>
               </button>
 
               <span className="hidden text-sm text-white/55 md:block">{track.genre}</span>
-              <span className="hidden text-right text-sm tabular-nums text-white/55 md:block">{formatTime(track.duration)}</span>
+              <span className="hidden text-right text-sm tabular-nums text-white/55 md:block">
+                {track.isPreorder ? (track.duration > 0 ? formatTime(track.duration) : "Pre-order") : formatTime(track.duration)}
+              </span>
 
               <button
                 type="button"
                 onClick={() => onBuy(track)}
-                aria-label={t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-                className="whitespace-nowrap rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-inset ring-white/20 transition-colors duration-150 hover:bg-white hover:text-black active:scale-95 sm:px-3.5 sm:text-sm sm:font-medium">
+                aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
+                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-95 sm:px-3.5 sm:text-sm ${
+                  track.isPreorder
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-md shadow-amber-500/20 hover:brightness-110"
+                    : "bg-white/12 text-white ring-1 ring-inset ring-white/20 hover:bg-white hover:text-black sm:font-medium"
+                }`}>
                 
-                {formatPrice(track.price)}
+                {track.isPreorder ? `Pre-order · ${formatPrice(track.price)}` : formatPrice(track.price)}
               </button>
             </li>);
 

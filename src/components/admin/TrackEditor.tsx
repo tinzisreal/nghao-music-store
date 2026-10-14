@@ -67,6 +67,7 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
   const [demoStart, setDemoStart] = useState<number>(track?.demoStart ?? 0);
   const [demoEnd, setDemoEnd] = useState<number>(track?.demoEnd ?? (track?.duration ?? 60));
   const [featured, setFeatured] = useState(!!track?.featured);
+  const [isPreorder, setIsPreorder] = useState(!!track?.isPreorder);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
 
@@ -82,14 +83,14 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
     e.preventDefault();
     const cleanPriceDigits = price.replace(/\D/g, "");
     const priceNum = cleanPriceDigits === "" ? NaN : Number(cleanPriceDigits);
-    const seconds = parseTime(duration);
+    const seconds = parseTime(duration) || (isPreorder ? 300 : 0);
     const next: Errors = {};
     if (!cover) next.cover = "Cần ảnh bìa.";
     if (!title.trim()) next.title = "Nhập tên bài.";
     // Album không bắt buộc, nếu trống sẽ hiển thị là Single / Bài lẻ
     if (!genre.trim()) next.genre = "Nhập thể loại.";
     if (Number.isNaN(priceNum) || priceNum < 0) next.price = "Nhập giá hợp lệ (nhập 0 nếu là bài Miễn phí).";
-    if (!seconds || seconds <= 0) next.duration = "Định dạng phút:giây, ví dụ 3:45.";
+    if (!isPreorder && (!seconds || seconds <= 0)) next.duration = "Định dạng phút:giây, ví dụ 3:45.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -101,17 +102,18 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
       await onSave(
         {
           cover: cover!,
-          audioUrl,
-          fullAudioUrl: fullAudioUrl || audioUrl,
-          demoStart,
-          demoEnd: demoEnd > demoStart ? demoEnd : seconds!,
+          audioUrl: isPreorder ? undefined : audioUrl,
+          fullAudioUrl: isPreorder ? undefined : (fullAudioUrl || audioUrl),
+          demoStart: isPreorder ? 0 : demoStart,
+          demoEnd: isPreorder ? (seconds || 300) : (demoEnd > demoStart ? demoEnd : seconds!),
           title: title.trim(),
           albumId: albumId || undefined,
           album: finalAlbumTitle,
           genre: genre.trim(),
           price: priceNum,
-          duration: seconds!,
-          featured
+          duration: seconds || 300,
+          featured,
+          isPreorder
         },
         track?.id
       );
@@ -143,40 +145,49 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
       <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
         <FileUpload kind="image" label="Ảnh bìa" value={cover} onChange={setCover} error={errors.cover} hint="Ảnh vuông, tối thiểu 800×800px." />
         
-        {/* Chỉ cần tải 1 file MP3 duy nhất */}
-        <div className="space-y-4 rounded-2xl bg-white/[0.02] p-4 ring-1 ring-inset ring-white/10">
-          <FileUpload
-            kind="audio"
-            label="File nhạc MP3 gốc (Dùng cho cả nghe Demo và Bàn giao khi mua)"
-            value={audioUrl}
-            onChange={(url) => {
-              setAudioUrl(url);
-              setFullAudioUrl(url);
-            }}
-            onAudioDuration={(s) => {
-              setDuration(formatTime(s));
-              setDemoStart(0);
-              setDemoEnd(s > 45 ? 45 : s); // Mặc định cắt thử 45s đầu hoặc hết bài
-            }}
-            hint="Chỉ cần tải 1 file MP3 gốc duy nhất. Khách nghe thử sẽ chỉ nghe được đoạn bạn chọn dưới đây." />
+        {/* Chỉ cần tải 1 file MP3 duy nhất (không bắt buộc nếu là Pre-order) */}
+        {!isPreorder ? (
+          <div className="space-y-4 rounded-2xl bg-white/[0.02] p-4 ring-1 ring-inset ring-white/10">
+            <FileUpload
+              kind="audio"
+              label="File nhạc MP3 gốc (Dùng cho cả nghe Demo và Bàn giao khi mua)"
+              value={audioUrl}
+              onChange={(url) => {
+                setAudioUrl(url);
+                setFullAudioUrl(url);
+              }}
+              onAudioDuration={(s) => {
+                setDuration(formatTime(s));
+                setDemoStart(0);
+                setDemoEnd(s > 45 ? 45 : s); // Mặc định cắt thử 45s đầu hoặc hết bài
+              }}
+              hint="Chỉ cần tải 1 file MP3 gốc duy nhất. Khách nghe thử sẽ chỉ nghe được đoạn bạn chọn dưới đây." />
 
-          {/* Bộ điều khiển & Nghe thử trực tiếp đoạn Demo */}
-          {audioUrl && (
-            <DemoPreviewPlayer
-              audioSrc={
-                (fullAudioUrl || audioUrl)?.startsWith("http")
-                  ? (fullAudioUrl || audioUrl)!
-                  : `${MEDIA_PROXY_BASE}${fullAudioUrl || audioUrl}`
-              }
-              demoStart={demoStart}
-              demoEnd={demoEnd}
-              durationSec={durationSec}
-              durationFormatted={duration || formatTime(durationSec)}
-              onSetDemoStart={setDemoStart}
-              onSetDemoEnd={setDemoEnd}
-            />
-          )}
-        </div>
+            {/* Bộ điều khiển & Nghe thử trực tiếp đoạn Demo */}
+            {audioUrl && (
+              <DemoPreviewPlayer
+                audioSrc={
+                  (fullAudioUrl || audioUrl)?.startsWith("http")
+                    ? (fullAudioUrl || audioUrl)!
+                    : `${MEDIA_PROXY_BASE}${fullAudioUrl || audioUrl}`
+                }
+                demoStart={demoStart}
+                demoEnd={demoEnd}
+                durationSec={durationSec}
+                durationFormatted={duration || formatTime(durationSec)}
+                onSetDemoStart={setDemoStart}
+                onSetDemoEnd={setDemoEnd}
+              />
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.05] p-4 text-xs leading-relaxed text-amber-200/90 ring-1 ring-amber-500/20">
+            <p className="font-semibold text-amber-300">⚡ Chế độ Pre-order đang được bật</p>
+            <p className="mt-1 text-white/70">
+              Bài hát này không cần tải file MP3. Cửa hàng sẽ không chạy nhạc và hiển thị nút Pre-order để khách liên hệ Zalo bàn bạc trực tiếp.
+            </p>
+          </div>
+        )}
 
         <Field label="Tên bài" htmlFor="f-title" error={errors.title}>
           <input id="f-title" value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="Midnight Ember" />
@@ -271,7 +282,7 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
 
         <fieldset>
           <legend className="mb-2 text-sm font-medium text-white/80">Hiển thị trên cửa hàng</legend>
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Toggle
               checked={featured}
               onChange={setFeatured}
@@ -282,7 +293,13 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
               `Đã đủ ${MAX_FEATURED} bài nổi bật. Tắt bớt ở danh sách bài hát để chọn bài này.` :
               `Xuất hiện trên băng chuyền đầu trang (tối đa ${MAX_FEATURED} bài)`
               } />
-            
+
+            <Toggle
+              checked={isPreorder}
+              onChange={setIsPreorder}
+              label="Chế độ Đặt trước (Pre-order)"
+              description="Bật chế độ này: Cửa hàng sẽ không chạy nhạc, nút hiển thị 'Pre-order · [giá]', khi khách bấm vào sẽ mở thông tin liên hệ Zalo 0333 025 864 để bàn bạc thay vì mua qua cổng thanh toán tự động."
+            />
           </div>
         </fieldset>
       </div>

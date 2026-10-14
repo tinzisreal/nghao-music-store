@@ -6,6 +6,7 @@ import { AllTracks } from "./AllTracks";
 import { ContactFooter } from "./ContactFooter";
 import { PlayerBar } from "./PlayerBar";
 import { PaymentModal } from "./PaymentModal";
+import { PreorderModal } from "./PreorderModal";
 import { usePlayer } from "../hooks/usePlayer";
 import { MAX_FEATURED } from "../data/sections";
 import { Track } from "../types/track";
@@ -15,8 +16,26 @@ export function StoreView({ data }: {data: StoreData;}) {
   const { producer, tracks, info } = data;
   const player = usePlayer(tracks);
   const [buying, setBuying] = useState<Track | null>(null);
+  const [preordering, setPreordering] = useState<Track | null>(null);
 
   const indexOf = (id: string) => tracks.findIndex((t) => t.id === id);
+
+  const handlePlay = (id: string) => {
+    const t = tracks.find((x) => x.id === id);
+    if (t?.isPreorder) {
+      setPreordering(t);
+      return;
+    }
+    player.playAt(indexOf(id));
+  };
+
+  const handleBuy = (track: Track) => {
+    if (track.isPreorder) {
+      setPreordering(track);
+      return;
+    }
+    setBuying(track);
+  };
   const newReleases = useMemo(
     () =>
     data.sections.newReleases.trackIds.
@@ -62,7 +81,7 @@ export function StoreView({ data }: {data: StoreData;}) {
           socials={info.socials}
           trackCount={tracks.length}
           albumCount={albumCount}
-          onPlay={() => player.playAt(indexOf(featured[flowIndex].id))} />
+          onPlay={() => featured[flowIndex] && handlePlay(featured[flowIndex].id)} />
         
 
         <div className="mt-8 sm:mt-12 md:mt-14">
@@ -71,7 +90,7 @@ export function StoreView({ data }: {data: StoreData;}) {
             activeIndex={flowIndex}
             isPlaying={player.isPlaying && flowIsCurrent}
             onSelect={setFlowIndex}
-            onPlay={(i) => player.playAt(indexOf(featured[i].id))} />
+            onPlay={(i) => featured[i] && handlePlay(featured[i].id)} />
           
         </div>
 
@@ -82,8 +101,8 @@ export function StoreView({ data }: {data: StoreData;}) {
             tracks={newReleases}
             currentId={player.current.id}
             isPlaying={player.isPlaying}
-            onPlay={(id) => player.playAt(indexOf(id))}
-            onBuy={setBuying} />
+            onPlay={handlePlay}
+            onBuy={handleBuy} />
           
           </div>
         }
@@ -93,8 +112,8 @@ export function StoreView({ data }: {data: StoreData;}) {
             tracks={tracks}
             currentId={player.current.id}
             isPlaying={player.isPlaying}
-            onPlay={(id) => player.playAt(indexOf(id))}
-            onBuy={setBuying} />
+            onPlay={handlePlay}
+            onBuy={handleBuy} />
           
         </div>
 
@@ -116,10 +135,11 @@ export function StoreView({ data }: {data: StoreData;}) {
         onSeek={player.seek}
         onVolumeChange={player.changeVolume}
         onToggleMute={player.toggleMute}
-        onBuy={() => setBuying(player.current)} />
+        onBuy={() => handleBuy(player.current)} />
       
 
       <PaymentModal track={buying} onClose={() => setBuying(null)} />
+      <PreorderModal track={preordering} onClose={() => setPreordering(null)} />
     </>);
 
 }

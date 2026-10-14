@@ -1,5 +1,5 @@
 import React from "react";
-import { FastForwardIcon, PauseIcon, PlayIcon, RewindIcon, ShoppingBagIcon } from "lucide-react";
+import { FastForwardIcon, PauseIcon, PlayIcon, RewindIcon, ShoppingBagIcon, SparklesIcon } from "lucide-react";
 import { VolumeControl } from "./VolumeControl";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Track } from "../types/track";
@@ -105,16 +105,29 @@ export function PlayerBar({
             <VolumeControl volume={volume} muted={muted} onVolumeChange={onVolumeChange} onToggleMute={onToggleMute} />
           </div>
 
-          {/* Buy button */}
+          {/* Buy or Pre-order button */}
           <button
             type="button"
             onClick={onBuy}
-            aria-label={t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white px-3.5 py-2 text-xs font-semibold text-black shadow-md transition-transform duration-150 hover:bg-white/90 active:scale-95 sm:order-4 sm:px-4 sm:py-2.5 sm:text-sm sm:font-medium">
+            aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold shadow-md transition-transform duration-150 active:scale-95 sm:order-4 sm:px-4 sm:py-2.5 sm:text-sm ${
+              track.isPreorder
+                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold hover:brightness-110"
+                : "bg-white text-black hover:bg-white/90 sm:font-medium"
+            }`}>
             
-            <ShoppingBagIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-            <span className="sm:hidden">{formatPrice(track.price)}</span>
-            <span className="hidden sm:inline">{t("buyPrice", { price: formatPrice(track.price) })}</span>
+            {track.isPreorder ? (
+              <>
+                <SparklesIcon className="h-3.5 w-3.5 fill-black sm:h-4 sm:w-4" aria-hidden />
+                <span>Pre-order · {formatPrice(track.price)}</span>
+              </>
+            ) : (
+              <>
+                <ShoppingBagIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+                <span className="sm:hidden">{formatPrice(track.price)}</span>
+                <span className="hidden sm:inline">{t("buyPrice", { price: formatPrice(track.price) })}</span>
+              </>
+            )}
           </button>
         </div>
 

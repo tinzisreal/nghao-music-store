@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeftIcon, ChevronRightIcon, PauseIcon, PlayIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, PauseIcon, PlayIcon, SparklesIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Track } from "../types/track";
 
@@ -87,13 +87,20 @@ export function CoverFlow({ tracks, activeIndex, isPlaying, onSelect, onPlay }: 
                   <img src={track.cover} alt="" className="h-full w-full object-cover" />
                   <div className="progressive-cover-fade" />
                   {isActive && (
-                    <span className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full progressive-glass-pill text-white ring-1 ring-white/30 shadow-lg">
-                      {isPlaying ? (
-                        <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
-                      ) : (
-                        <PlayIcon className="ml-0.5 h-4 w-4 fill-white text-white" aria-hidden />
-                      )}
-                    </span>
+                    track.isPreorder ? (
+                      <span className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-xs font-semibold text-amber-300 ring-1 ring-amber-400/40 backdrop-blur-md shadow-lg">
+                        <SparklesIcon className="h-3.5 w-3.5 fill-amber-300 text-amber-300" aria-hidden />
+                        <span>Pre-order</span>
+                      </span>
+                    ) : (
+                      <span className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full progressive-glass-pill text-white ring-1 ring-white/30 shadow-lg">
+                        {isPlaying ? (
+                          <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
+                        ) : (
+                          <PlayIcon className="ml-0.5 h-4 w-4 fill-white text-white" aria-hidden />
+                        )}
+                      </span>
+                    )
                   )}
                 </div>
                 <div className="px-1.5 pb-1 pt-2.5 text-center sm:px-2 sm:pb-1.5 sm:pt-3">

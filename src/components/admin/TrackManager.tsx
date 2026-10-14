@@ -192,14 +192,21 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
   const featuredCount = tracks.filter((t) => t.featured).length;
   const featuredFull = featuredCount >= MAX_FEATURED;
 
-  const toggleFlag = async (t: Track, key: "featured") => {
-    if (!t[key] && featuredFull) {
+  const toggleFlag = async (t: Track, key: "featured" | "isPreorder") => {
+    if (key === "featured" && !t[key] && featuredFull) {
       toast.error(`Chỉ được tối đa ${MAX_FEATURED} bài nổi bật. Tắt bớt một bài trước nhé.`);
       return;
     }
     setBusyId(t.id);
     try {
       await onPatch(t.id, { [key]: !t[key] });
+      if (key === "isPreorder") {
+        toast.success(
+          !t.isPreorder
+            ? `Đã bật Pre-order cho bài "${t.title}"`
+            : `Đã tắt Pre-order cho bài "${t.title}"`
+        );
+      }
     } catch (err) {
       toast.error(errorMessage(err, "Không cập nhật được."));
     } finally {
@@ -296,7 +303,7 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
       )}
 
       <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
-        <div className="hidden grid-cols-[6rem_3.5rem_minmax(0,1fr)_6.5rem_5.5rem_4rem_6.5rem_5.5rem] items-center gap-4 border-b border-white/10 px-4 py-3 text-xs text-white/45 lg:grid">
+        <div className="hidden grid-cols-[6rem_3.5rem_minmax(0,1fr)_6.5rem_5.5rem_4rem_10.5rem_5.5rem] items-center gap-4 border-b border-white/10 px-4 py-3 text-xs text-white/45 lg:grid">
           <span># Thứ tự</span>
           <span />
           <span>Bài hát</span>
@@ -329,7 +336,7 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
               return (
                 <li
                   key={t.id}
-                  className={`grid grid-cols-[auto_3.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 transition-opacity duration-150 lg:grid-cols-[6rem_3.5rem_minmax(0,1fr)_6.5rem_5.5rem_4rem_6.5rem_5.5rem] lg:gap-4 lg:px-4 ${
+                  className={`grid grid-cols-[auto_3.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 transition-opacity duration-150 lg:grid-cols-[6rem_3.5rem_minmax(0,1fr)_6.5rem_5.5rem_4rem_10.5rem_5.5rem] lg:gap-4 lg:px-4 ${
                     busy ? "opacity-60" : ""
                   }`}
                 >
@@ -392,7 +399,14 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{t.title}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate font-medium">{t.title}</p>
+                      {t.isPreorder && (
+                        <span className="shrink-0 rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 ring-1 ring-amber-500/30">
+                          Pre-order
+                        </span>
+                      )}
+                    </div>
                     <p className="truncate text-sm text-white/55">
                       {t.album}
                       <span className="lg:hidden">
@@ -400,7 +414,9 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
                         · {formatPrice(t.price)}
                       </span>
                     </p>
-                    {!t.audioUrl && !t.fullAudioUrl ? (
+                    {t.isPreorder ? (
+                      <p className="mt-0.5 text-xs text-amber-300/80">⚡ Chế độ Pre-order (Liên hệ Zalo, không chạy nhạc)</p>
+                    ) : !t.audioUrl && !t.fullAudioUrl ? (
                       <p className="mt-0.5 text-xs text-white/40">Chưa có file nhạc</p>
                     ) : (
                       <div className="mt-1 flex items-center gap-1.5">
@@ -420,9 +436,12 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
                   <span className="hidden truncate text-sm text-white/70 lg:block">{t.genre}</span>
                   <span className="hidden text-right text-sm tabular-nums text-white/70 lg:block">{formatPrice(t.price)}</span>
                   <span className="hidden text-right text-sm tabular-nums text-white/70 lg:block">{formatTime(t.duration)}</span>
-                  <div className="col-span-2 col-start-3 row-start-2 flex gap-1.5 lg:col-span-1 lg:col-start-auto lg:row-start-auto">
+                  <div className="col-span-2 col-start-3 row-start-2 flex flex-wrap gap-1.5 lg:col-span-1 lg:col-start-auto lg:row-start-auto">
                     <FlagChip active={!!t.featured} disabled={busy} onClick={() => toggleFlag(t, "featured")}>
                       Nổi bật
+                    </FlagChip>
+                    <FlagChip active={!!t.isPreorder} disabled={busy} onClick={() => toggleFlag(t, "isPreorder")}>
+                      Pre-order
                     </FlagChip>
                   </div>
                   <div className="flex justify-end gap-1">
