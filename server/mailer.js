@@ -17,7 +17,7 @@ export function verifyOrderDownloadToken(orderId, token, secret) {
 }
 
 export function buildSignedDownloadUrl(orderId, secret) {
-  const baseUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.duckdns.org").replace(/\/+$/, "");
+  const baseUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "");
   const token = buildOrderDownloadToken(orderId, secret);
   return `${baseUrl}/api-proxy/orders/${encodeURIComponent(orderId)}/download?token=${token}`;
 }

@@ -40,7 +40,7 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
   const customerPhone = order.phone || "";
   const transferNote = order.transferNote || "N/A";
   const transId = transaction?.transactionId || order.reconciledVia || "N/A";
-  const siteUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.duckdns.org").replace(/\/+$/, "");
+  const siteUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "");
   const adminUrl = `${siteUrl}/admin`;
 
   const hasEmail = Boolean(customerEmail && customerEmail.includes("@"));
@@ -185,7 +185,7 @@ export async function sendTelegramOrderAlert({ order, track, transaction = null,
   inlineKeyboard.push([
     {
       text: "📊 Quản trị đơn hàng",
-      url: `${(process.env.PUBLIC_SITE_URL || "https://nghaoproducer.duckdns.org").replace(/\/+$/, "")}/admin`
+      url: `${(process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "")}/admin`
     }
   ]);
 

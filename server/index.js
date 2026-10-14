@@ -137,7 +137,8 @@ app.use((req, res, next) => {
     const hasAdminToken = (req.headers["authorization"] || "").startsWith("Bearer ");
     if (isDirectInternal && !hasClientCodec && !hasAdminToken && !pathname.includes("/download")) {
       if (isBrowserNav) {
-        return res.redirect(302, "https://nghaoproducer.duckdns.org/");
+        const dest = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "") + "/";
+        return res.redirect(302, dest);
       }
       return res.status(404).json({ error: "Not found" });
     }
