@@ -74,6 +74,8 @@ function loadPayPalScript(clientId: string, currency = "USD"): Promise<void> {
   });
 }
 
+let cachedPayPalConfig: PayPalConfig | null = null;
+
 export function PayPalCardCheckout({
   track,
   email,
@@ -84,19 +86,65 @@ export function PayPalCardCheckout({
   onError
 }: PayPalCardCheckoutProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [loadingConfig, setLoadingConfig] = useState(true);
-  const [config, setConfig] = useState<PayPalConfig | null>(null);
-  const [sdkReady, setSdkReady] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(!cachedPayPalConfig);
+  const [config, setConfig] = useState<PayPalConfig | null>(cachedPayPalConfig);
+  const [sdkReady, setSdkReady] = useState(Boolean(typeof window !== "undefined" && window.paypal));
   const [processing, setProcessing] = useState(false);
   const [localError, setLocalError] = useState("");
   const activeOrderRef = useRef<string | null>(null);
+  const renderedTrackIdRef = useRef<string | null>(null);
 
   const priceVnd = Math.max(0, Math.floor(Number(track.price) || 0));
   const priceUsd = vndToUsdEstimate(priceVnd);
 
-  // 1. Lấy thông tin cấu hình PayPal từ server
+  const emailRef = useRef(email);
+  emailRef.current = email;
+
+  const phoneRef = useRef(phone);
+  phoneRef.current = phone;
+
+  const trackRef = useRef(track);
+  trackRef.current = track;
+
+  const priceVndRef = useRef(priceVnd);
+  priceVndRef.current = priceVnd;
+
+  const priceUsdRef = useRef(priceUsd);
+  priceUsdRef.current = priceUsd;
+
+  const onSuccessRef = useRef(onSuccess);
+  onSuccessRef.current = onSuccess;
+
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+
+  // 1. Lấy thông tin cấu hình PayPal từ server (chỉ chạy 1 lần khi mount)
   useEffect(() => {
     let mounted = true;
+
+    const setupConfig = (cfg: PayPalConfig) => {
+      setConfig(cfg);
+      if (cfg.configured && cfg.clientId) {
+        loadPayPalScript(cfg.clientId, cfg.currency || "USD")
+          .then(() => {
+            if (mounted) setSdkReady(true);
+          })
+          .catch((err) => {
+            if (mounted) {
+              const msg = errorMessage(err, "Không thể tải cổng thanh toán PayPal.");
+              setLocalError(msg);
+              onErrorRef.current?.(msg);
+            }
+          });
+      }
+    };
+
+    if (cachedPayPalConfig) {
+      setupConfig(cachedPayPalConfig);
+      setLoadingConfig(false);
+      return;
+    }
+
     setLoadingConfig(true);
     setLocalError("");
 
@@ -104,20 +152,8 @@ export function PayPalCardCheckout({
       .getPayPalConfig()
       .then((cfg) => {
         if (!mounted) return;
-        setConfig(cfg);
-        if (cfg.configured && cfg.clientId) {
-          loadPayPalScript(cfg.clientId, cfg.currency || "USD")
-            .then(() => {
-              if (mounted) setSdkReady(true);
-            })
-            .catch((err) => {
-              if (mounted) {
-                const msg = errorMessage(err, "Không thể tải cổng thanh toán PayPal.");
-                setLocalError(msg);
-                onError(msg);
-              }
-            });
-        }
+        cachedPayPalConfig = cfg;
+        setupConfig(cfg);
       })
       .catch((err) => {
         if (mounted) {
@@ -132,13 +168,19 @@ export function PayPalCardCheckout({
     return () => {
       mounted = false;
     };
-  }, [onError]);
+  }, []);
 
-  // 2. Render nút PayPal & Visa/Mastercard buttons
+  // 2. Render nút PayPal & Visa/Mastercard buttons (chỉ chạy khi SDK ready hoặc đổi track)
   useEffect(() => {
     if (!sdkReady || !window.paypal || !containerRef.current) return;
 
+    // Không render lại nếu đã render cho đúng bài nhạc này rồi (tránh giật lag/flicker)
+    if (renderedTrackIdRef.current === track.id && containerRef.current.children.length > 0) {
+      return;
+    }
+
     containerRef.current.innerHTML = "";
+    renderedTrackIdRef.current = track.id;
 
     try {
       const buttons = window.paypal.Buttons({
@@ -151,13 +193,13 @@ export function PayPalCardCheckout({
         },
         createOrder: async () => {
           setLocalError("");
-          const cleanEmail = email.trim();
+          const cleanEmail = emailRef.current.trim();
           if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
             const errText = "Vui lòng nhập đúng địa chỉ Gmail của bạn trước khi bấm thanh toán để nhận file MP3 Full.";
             setLocalError(errText);
             throw new Error(errText);
           }
-          const cleanPhone = phone.trim();
+          const cleanPhone = phoneRef.current.trim();
           if (!cleanPhone || cleanPhone.replace(/[^0-9]/g, "").length < 9) {
             const errText = "Vui lòng nhập đúng số điện thoại (hoặc Zalo) để Nghao Producer liên hệ hỗ trợ bạn.";
             setLocalError(errText);
@@ -166,7 +208,7 @@ export function PayPalCardCheckout({
 
           setProcessing(true);
           try {
-            const res = await api.createPayPalOrder(track.id, cleanEmail, cleanPhone);
+            const res = await api.createPayPalOrder(trackRef.current.id, cleanEmail, cleanPhone);
             activeOrderRef.current = res.orderId;
             return res.paypalOrderId;
           } catch (err) {
@@ -181,8 +223,8 @@ export function PayPalCardCheckout({
           setLocalError("");
           try {
             const currentOrderId = activeOrderRef.current || "";
-            const cleanEmail = email.trim();
-            const cleanPhone = phone.trim();
+            const cleanEmail = emailRef.current.trim();
+            const cleanPhone = phoneRef.current.trim();
             const captureRes = await api.capturePayPalOrder(
               currentOrderId,
               data.orderID,
@@ -190,20 +232,20 @@ export function PayPalCardCheckout({
               cleanPhone
             );
 
-            onSuccess({
+            onSuccessRef.current?.({
               id: captureRes.orderId || currentOrderId,
               status: "paid",
               email: captureRes.email || cleanEmail,
               phone: captureRes.phone || cleanPhone,
-              paidAmount: priceVnd,
-              amountUsd: captureRes.amountUsd || priceUsd,
+              paidAmount: priceVndRef.current,
+              amountUsd: captureRes.amountUsd || priceUsdRef.current,
               paymentMethod: "paypal_card",
               transferNote: `NGHAO VISA ${currentOrderId.slice(-6).toUpperCase()}`
             });
           } catch (err) {
             const msg = errorMessage(err, "Xác nhận giao dịch thẻ thất bại. Vui lòng liên hệ hỗ trợ.");
             setLocalError(msg);
-            onError(msg);
+            onErrorRef.current?.(msg);
           } finally {
             setProcessing(false);
           }
@@ -223,7 +265,8 @@ export function PayPalCardCheckout({
     } catch (err) {
       console.error("PayPal render error:", err);
     }
-  }, [sdkReady, email, phone, track.id, priceVnd, priceUsd, onSuccess, onError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sdkReady, track.id]);
 
   if (loadingConfig) {
     return (
@@ -298,7 +341,7 @@ export function PayPalCardCheckout({
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}
             placeholder="nhapgmailcuaban@gmail.com"
-            className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+            className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
           />
           <span className="mt-1 block text-[11px] text-white/50">
             Sau khi quẹt thẻ thành công, Nghao Producer sẽ gửi trực tiếp bản MP3 Full vào Gmail này của bạn.
@@ -318,7 +361,7 @@ export function PayPalCardCheckout({
             value={phone}
             onChange={(e) => onPhoneChange(e.target.value)}
             placeholder="0333 025 864"
-            className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+            className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
           />
           <span className="mt-1 block text-[11px] text-white/50">
             Để Nghao Producer liên hệ hỗ trợ hoặc gửi file qua Zalo nếu cần thiết.

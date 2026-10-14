@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircleIcon,
@@ -75,6 +75,21 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState("");
 
+  const emailRef = useRef(email);
+  emailRef.current = email;
+
+  const phoneRef = useRef(phone);
+  phoneRef.current = phone;
+
+  const handlePayPalSuccess = useCallback((paidData: Partial<Order>) => {
+    setOrder((prev) => ({ ...(prev || {}), ...paidData } as Order));
+    setPhase("done");
+  }, []);
+
+  const handlePayPalError = useCallback((err: string) => {
+    setError(err);
+  }, []);
+
   // Đối với các bài nhạc Miễn phí (price <= 0), tự động tải file MP3 Full ngay khi mở
   useEffect(() => {
     if (!isFreeTrack) return;
@@ -119,15 +134,16 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   // Tự động kiểm tra trạng thái đơn hàng từ webhook ApiPay (transaction.in) mỗi 3 giây
   useEffect(() => {
     if (isFreeTrack || !order || phase !== "ready") return;
+    const currentOrderId = order.id;
     const timer = window.setInterval(() => {
       api
-        .getOrder(order.id)
+        .getOrder(currentOrderId)
         .then((updated) => {
           if (updated.status === "paid") {
             setOrder(updated);
             setPhase("done");
-            const cleanMail = email.trim();
-            const cleanPhone = phone.trim();
+            const cleanMail = emailRef.current.trim();
+            const cleanPhone = phoneRef.current.trim();
             if (cleanMail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanMail)) {
               api
                 .confirmOrder(updated.id, cleanMail, cleanPhone)
@@ -160,7 +176,8 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
     }, 3000);
 
     return () => window.clearInterval(timer);
-  }, [isFreeTrack, order, phase, email, phone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFreeTrack, order?.id, phase]);
 
   const confirm = () => {
     if (!order) return;
@@ -391,7 +408,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="nhapgmailcuaban@gmail.com"
-                  className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                  className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
                 />
               </div>
 
@@ -402,7 +419,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="0333 025 864"
-                  className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                  className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
                 />
               </div>
 
@@ -521,11 +538,8 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                 onEmailChange={setEmail}
                 phone={phone}
                 onPhoneChange={setPhone}
-                onSuccess={(paidData) => {
-                  setOrder((prev) => ({ ...(prev || {}), ...paidData } as Order));
-                  setPhase("done");
-                }}
-                onError={(err) => setError(err)}
+                onSuccess={handlePayPalSuccess}
+                onError={handlePayPalError}
               />
             </div>
           ) : (
@@ -629,7 +643,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="nhapgmailcuaban@gmail.com"
-                        className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                        className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
                       />
                       <span className="mt-1 block text-[11px] text-white/50">
                         Sau khi chuyển khoản thành công, Nghao Producer sẽ gửi bản MP3 Full vào Gmail này của bạn.
@@ -649,7 +663,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="0333 025 864"
-                        className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+                        className="mt-1.5 w-full rounded-2xl bg-black/35 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
                       />
                       <span className="mt-1 block text-[11px] text-white/50">
                         Để Nghao Producer liên hệ hỗ trợ hoặc gửi file qua Zalo nếu cần thiết.
