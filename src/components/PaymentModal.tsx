@@ -38,7 +38,7 @@ export function PaymentModal({ track, onClose }: PaymentModalProps) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: EASE }}>
-          <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" onClick={onClose} aria-hidden />
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-md" onClick={onClose} aria-hidden />
           <motion.div
             role="dialog"
             aria-modal="true"
@@ -47,7 +47,7 @@ export function PaymentModal({ track, onClose }: PaymentModalProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 20 }}
             transition={{ duration: 0.24, ease: EASE }}
-            className="liquid-glass-strong relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-[30px] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 text-white sm:rounded-[32px] sm:p-6 md:p-7">
+            className="progressive-card-glass relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-[30px] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 text-white shadow-2xl sm:rounded-[32px] sm:p-6 md:p-7">
             <div aria-hidden className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-white/20 sm:hidden" />
             <PaymentContent key={track.id} track={track} onClose={onClose} />
           </motion.div>

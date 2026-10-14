@@ -45,7 +45,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
           </h2>
           <span className="text-xs text-white/55 sm:text-sm">{t("songCount", { n: filtered.length })}</span>
         </div>
-        <label className="liquid-glass flex items-center gap-2 rounded-full px-4 py-2.5 md:w-72">
+        <label className="progressive-glass-pill flex items-center gap-2 rounded-full px-4 py-2.5 md:w-72">
           <SearchIcon className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
           <span className="sr-only">{t("searchTracks")}</span>
           <input
@@ -57,7 +57,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
         </label>
       </div>
 
-      <div role="tablist" aria-label={t("filterGenre")} className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mb-5 md:mx-0 md:px-1">
+      <div role="tablist" aria-label={t("filterGenre")} className="no-scrollbar progressive-fade-edges -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mb-5 md:mx-0 md:px-1">
         {genres.map((g) => {
           const active = g === genre;
           return (
@@ -67,8 +67,8 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
               role="tab"
               aria-selected={active}
               onClick={() => setGenre(g)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs transition-colors duration-150 sm:px-4 sm:text-sm ${
-                active ? "bg-white font-semibold text-black" : "liquid-glass text-white/80 hover:text-white"
+              className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs transition-all duration-150 sm:px-4 sm:text-sm ${
+                active ? "bg-white font-semibold text-black shadow-lg shadow-white/20" : "progressive-glass-pill text-white/80 hover:text-white"
               }`}>
               
               {g === ALL ? t("all") : g}
@@ -103,7 +103,9 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
               initial={isNewBatch ? { opacity: 0, y: 8 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.22, delay: isNewBatch ? i % PAGE_SIZE * 0.03 : 0, ease: [0.23, 1, 0.32, 1] }}
-              className={`liquid-glass flex flex-col rounded-[20px] p-2 sm:rounded-[24px] sm:p-2.5 ${active ? "ring-1 ring-ember/70" : ""}`}>
+              className={`progressive-card-glass flex flex-col rounded-[20px] p-2 sm:rounded-[24px] sm:p-2.5 transition-all duration-200 hover:-translate-y-1 hover:border-white/30 ${
+                active ? "ring-1 ring-ember/80 shadow-lg shadow-ember/20" : ""
+              }`}>
               
                 <button
                 type="button"
@@ -113,10 +115,11 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                 
                   <div className="relative aspect-square overflow-hidden rounded-[14px] sm:rounded-[16px]">
                     <img src={track.cover} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]" />
-                    <span className="absolute left-2 top-2 max-w-[70%] truncate rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur sm:text-[11px]">
+                    <div className="progressive-cover-fade" />
+                    <span className="absolute left-2 top-2 max-w-[70%] truncate rounded-full progressive-glass-pill px-2.5 py-0.5 text-[10px] font-medium text-white/95 sm:text-[11px]">
                       {track.genre}
                     </span>
-                    <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/65 text-white ring-1 ring-white/25 backdrop-blur-md transition-transform group-active:scale-90">
+                    <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full progressive-glass-pill text-white ring-1 ring-white/30 shadow-md transition-transform group-active:scale-90">
                       {playing ? (
                         <PauseIcon className="h-3.5 w-3.5 fill-ember text-ember" aria-hidden />
                       ) : (

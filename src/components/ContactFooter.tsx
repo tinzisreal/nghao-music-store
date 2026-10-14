@@ -14,7 +14,7 @@ export function ContactFooter({ name, info }: ContactFooterProps) {
   const { contact, socials } = info;
 
   return (
-    <footer aria-labelledby="contact-title" className="liquid-glass-strong rounded-[32px] p-6 md:p-10">
+    <footer aria-labelledby="contact-title" className="progressive-card-glass rounded-[32px] p-6 md:p-10">
       <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-4">
           <img

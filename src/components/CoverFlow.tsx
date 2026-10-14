@@ -79,14 +79,15 @@ export function CoverFlow({ tracks, activeIndex, isPlaying, onSelect, onPlay }: 
                 }}
                 className={`block w-full rounded-[24px] p-2 text-left transition-all duration-200 active:scale-[0.98] sm:rounded-[28px] sm:p-2.5 ${
                   isActive
-                    ? "liquid-glass-strong ring-1 ring-white/30 shadow-2xl"
+                    ? "progressive-card-glass ring-1 ring-white/35 shadow-2xl scale-[1.02]"
                     : "liquid-glass hover:bg-neutral-900/80"
                 }`}>
                 
                 <div className="relative aspect-square overflow-hidden rounded-[18px] sm:rounded-[20px]">
                   <img src={track.cover} alt="" className="h-full w-full object-cover" />
+                  <div className="progressive-cover-fade" />
                   {isActive && (
-                    <span className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-black/65 text-white ring-1 ring-white/25 backdrop-blur-md">
+                    <span className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full progressive-glass-pill text-white ring-1 ring-white/30 shadow-lg">
                       {isPlaying ? (
                         <PauseIcon className="h-4 w-4 fill-ember text-ember" aria-hidden />
                       ) : (
@@ -113,7 +114,7 @@ export function CoverFlow({ tracks, activeIndex, isPlaying, onSelect, onPlay }: 
             type="button"
             aria-label={t("prevTrack")}
             onClick={() => onSelect((activeIndex - 1 + n) % n)}
-            className="liquid-glass flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform duration-150 active:scale-95 sm:h-10 sm:w-10">
+            className="progressive-glass-pill flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform duration-150 active:scale-95 sm:h-10 sm:w-10">
             
             <ChevronLeftIcon className="h-5 w-5" aria-hidden />
           </button>
@@ -121,7 +122,7 @@ export function CoverFlow({ tracks, activeIndex, isPlaying, onSelect, onPlay }: 
             type="button"
             aria-label={t("nextTrack")}
             onClick={() => onSelect((activeIndex + 1) % n)}
-            className="liquid-glass flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform duration-150 active:scale-95 sm:h-10 sm:w-10">
+            className="progressive-glass-pill flex h-9 w-9 items-center justify-center rounded-full text-white transition-transform duration-150 active:scale-95 sm:h-10 sm:w-10">
             
             <ChevronRightIcon className="h-5 w-5" aria-hidden />
           </button>

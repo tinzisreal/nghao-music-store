@@ -18,7 +18,7 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
   const { t, pick } = useLanguage();
 
   return (
-    <section aria-labelledby="new-releases-title" className="liquid-glass-strong rounded-[26px] p-2.5 sm:rounded-[32px] sm:p-4 md:p-5">
+    <section aria-labelledby="new-releases-title" className="progressive-card-glass rounded-[26px] p-2.5 sm:rounded-[32px] sm:p-4 md:p-5">
       <div className="flex items-baseline justify-between px-2.5 pb-2.5 pt-1 sm:px-3 sm:pb-3">
         <h2 id="new-releases-title" className="text-lg font-semibold text-white sm:text-xl">
           {pick(title)}

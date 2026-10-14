@@ -19,31 +19,31 @@ export function ProducerHero({ producer, socials, trackCount, albumCount, onPlay
   return (
     <section
       aria-labelledby="producer-name"
-      className="liquid-glass-strong grid items-center gap-4 overflow-hidden rounded-[28px] p-2.5 sm:rounded-[36px] sm:p-3.5 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10 md:p-4 xl:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] xl:gap-14">
+      className="progressive-card-glass grid items-center gap-4 overflow-hidden rounded-[28px] p-2.5 sm:rounded-[36px] sm:p-3.5 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-10 md:p-4 xl:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] xl:gap-14">
       
       <div className="relative aspect-[16/11] overflow-hidden rounded-[22px] sm:aspect-[16/10] sm:rounded-[28px] md:aspect-[4/5]">
         <img src={photo} alt={t("portraitOf", { name })} className="h-full w-full object-cover object-[50%_58%] md:object-[50%_65%]" />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent md:hidden"
+          className="progressive-hero-fade md:hidden"
         />
         <div className="absolute inset-x-4 bottom-3.5 flex items-end justify-between md:hidden">
           <div>
-            <span className="inline-block rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-medium tracking-wide text-white/90 backdrop-blur-md">
+            <span className="inline-block rounded-full progressive-glass-pill px-3 py-1 text-[11px] font-medium tracking-wide text-white/95">
               {pick(producer.tagline)}
             </span>
-            <h1 id="producer-name" className="mt-1 text-3xl font-bold tracking-tight text-white drop-shadow">
+            <h1 id="producer-name" className="mt-1.5 text-3xl font-bold tracking-tight text-white drop-shadow">
               {name}
             </h1>
           </div>
           <div className="flex gap-2">
-            <div className="rounded-2xl bg-black/55 px-3 py-1.5 text-center ring-1 ring-white/15 backdrop-blur-md">
+            <div className="progressive-glass-pill rounded-2xl px-3 py-1.5 text-center">
               <span className="block text-base font-bold tabular-nums text-white">{trackCount}</span>
-              <span className="block text-[10px] uppercase tracking-wider text-white/60">{t("tracks")}</span>
+              <span className="block text-[10px] uppercase tracking-wider text-white/70">{t("tracks")}</span>
             </div>
-            <div className="rounded-2xl bg-black/55 px-3 py-1.5 text-center ring-1 ring-white/15 backdrop-blur-md">
+            <div className="progressive-glass-pill rounded-2xl px-3 py-1.5 text-center">
               <span className="block text-base font-bold tabular-nums text-white">{albumCount}</span>
-              <span className="block text-[10px] uppercase tracking-wider text-white/60">{t("albums")}</span>
+              <span className="block text-[10px] uppercase tracking-wider text-white/70">{t("albums")}</span>
             </div>
           </div>
         </div>

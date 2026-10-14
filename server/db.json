@@ -30,17 +30,7 @@
       }
     ]
   },
-  "albums": [
-    {
-      "id": "alb_1791883971390",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791883961/music_store/images/ej59fs6k2i7ozklzilg5.jpg",
-      "title": "SLOT",
-      "artist": "Nghao",
-      "createdAt": "2026-10-13T09:32:51.390Z",
-      "description": "",
-      "releaseYear": 2026
-    }
-  ],
+  "albums": [],
   "orders": [
     {
       "id": "ord_1791771639112",
@@ -372,6 +362,258 @@
       "transferNote": "NGHAO MV6EDTWF9HG",
       "apipayPublicId": "APIPAYJSCVZ7Z68F4UZ",
       "redirectSecret": "f5f5e9219fac1c50a34972b87bf9cd606b17ea227f6e6fc01a4b9f8b8fc75046"
+    },
+    {
+      "id": "ord_1791889782174",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCM9TSG2BV1X/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCM9TSG2BV1X",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-13T11:09:42.370Z",
+      "transferNote": "NGHAO MV6KWSRIQOX",
+      "apipayPublicId": "APIPAYJSCM9TSG2BV1X",
+      "redirectSecret": "42321b17f46c2e51c90c71720acd0e5c40a9b31cbb1d3b52b80dd56d9afcb339"
+    },
+    {
+      "id": "ord_1791889791302",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC50KKVHWFE5/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC50KKVHWFE5",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "createdAt": "2026-10-13T11:09:51.390Z",
+      "transferNote": "NGHAO MV6KWZT2WIR",
+      "apipayPublicId": "APIPAYJSC50KKVHWFE5",
+      "redirectSecret": "97529f351958891c0a07a1fa8ca17ec6d38ccc9be4ab4109cbe4e2d84d71b46c"
+    },
+    {
+      "id": "ord_1791892102860",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCF73WEPJGHD/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCF73WEPJGHD",
+      "status": "pending_verification",
+      "trackId": "t1791863000230",
+      "createdAt": "2026-10-13T11:48:23.066Z",
+      "transferNote": "NGHAO MV6MAJF0KRG",
+      "apipayPublicId": "APIPAYJSCF73WEPJGHD",
+      "redirectSecret": "bb13a8275a63fc5a92485d3c6e340445fd38b1fae7cda9c057c590d6a61e07d7"
+    },
+    {
+      "id": "ord_1791893292895",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCE6P2UXTCYC/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCE6P2UXTCYC",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "createdAt": "2026-10-13T12:08:13.747Z",
+      "transferNote": "NGHAO MV6N01NJDTD",
+      "apipayPublicId": "APIPAYJSCE6P2UXTCYC",
+      "redirectSecret": "e810467659379601f0d06bf9583c8aa991dd6d9ecd21ad1d4b16844d5c2f1569"
+    },
+    {
+      "id": "ord_1791905351461",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCSU9ZTUN70F/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCSU9ZTUN70F",
+      "status": "pending_verification",
+      "trackId": "t1791863432050",
+      "createdAt": "2026-10-13T15:29:11.819Z",
+      "transferNote": "NGHAO MV6U6I3PIBP",
+      "apipayPublicId": "APIPAYJSCSU9ZTUN70F",
+      "redirectSecret": "53d901708e69a614b37ddda0e1702147a75b1aafcc1355eaf1fb70387a92756d"
+    },
+    {
+      "id": "ord_1791906928203",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCSU35AVBR71/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCSU35AVBR71",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-13T15:55:28.396Z",
+      "transferNote": "NGHAO MV6V4AQ3YBW",
+      "apipayPublicId": "APIPAYJSCSU35AVBR71",
+      "redirectSecret": "241a23f754269704f66b9067ea65d9a8f8ed838649008cdca8deb66316b2d4f0"
+    },
+    {
+      "id": "ord_1791906970140",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCYUHHJFENNC/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCYUHHJFENNC",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-13T15:56:10.277Z",
+      "transferNote": "NGHAO MV6V5730TGK",
+      "apipayPublicId": "APIPAYJSCYUHHJFENNC",
+      "redirectSecret": "b420d963e4cdb0059cc556efb927f73e7f4257f3ff364af0f997cb80ae7d932f"
+    },
+    {
+      "id": "ord_1791907088802",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCY3P1LD6G2H/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCY3P1LD6G2H",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-13T15:58:08.917Z",
+      "transferNote": "NGHAO MV6V7QN6X4Y",
+      "apipayPublicId": "APIPAYJSCY3P1LD6G2H",
+      "redirectSecret": "2b97f97e5aafa3a87dc6b82d9fd02f2eae28ac2543eb8b3c67ca85ffb5f95770"
+    },
+    {
+      "id": "ord_1791907285503",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCY9DXEYMD8R/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCY9DXEYMD8R",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-13T16:01:25.709Z",
+      "transferNote": "NGHAO MV6VBYF3288",
+      "apipayPublicId": "APIPAYJSCY9DXEYMD8R",
+      "redirectSecret": "beaf11d3c5468ec0c72e31cb0cf4601235b68a21d1a155f217a34ec46725a9a5"
+    },
+    {
+      "id": "ord_1791928528612",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCM1CREZSZH0/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCM1CREZSZH0",
+      "status": "pending_verification",
+      "trackId": "t1791863592445",
+      "createdAt": "2026-10-13T21:55:28.821Z",
+      "transferNote": "NGHAO MV77Z9PGYIZ",
+      "apipayPublicId": "APIPAYJSCM1CREZSZH0",
+      "redirectSecret": "12597035f4cab3ac19fd2a7fc23938523265cee204f66d90ef68e2d56d7ee5ed"
+    },
+    {
+      "id": "ord_1791937046608",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCQ2Y5GBKYH4/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCQ2Y5GBKYH4",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "createdAt": "2026-10-14T00:17:26.783Z",
+      "transferNote": "NGHAO MV7D1U8GFS1",
+      "apipayPublicId": "APIPAYJSCQ2Y5GBKYH4",
+      "redirectSecret": "4c5a5495e724e73c2818f1c1deb3e8eb039aa2d959e36f94a59688e2c99b6006"
+    },
+    {
+      "id": "ord_1791937160096",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCWEAJBDAR65/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCWEAJBDAR65",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "createdAt": "2026-10-14T00:19:20.164Z",
+      "transferNote": "NGHAO MV7D49SWPAN",
+      "apipayPublicId": "APIPAYJSCWEAJBDAR65",
+      "redirectSecret": "f3fb4f2f04788c23880a3583ef95ac0020ba6f9521db6ba251a3cf689ed60549"
+    },
+    {
+      "id": "ord_1791937173161",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCHGM86QK9PA/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCHGM86QK9PA",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-14T00:19:33.249Z",
+      "transferNote": "NGHAO MV7D4JVTGT5",
+      "apipayPublicId": "APIPAYJSCHGM86QK9PA",
+      "redirectSecret": "41c37bc94f87ce7e6457041b0f5e0221a173a9bf25c5475b1bb22afa88a1104a"
+    },
+    {
+      "id": "ord_1791941639350",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCRT43G2VGHF/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCRT43G2VGHF",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-14T01:33:59.508Z",
+      "transferNote": "NGHAO MV7FSA0MN04",
+      "apipayPublicId": "APIPAYJSCRT43G2VGHF",
+      "redirectSecret": "de22b0d3a4a4556278e4a51d5fd1909d5ad090740e420547021fb9921ba778cf"
     }
   ],
   "tracks": [
@@ -381,14 +623,134 @@
       "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791883740/music_store/images/lc744c5ovfykcpd6miou.jpg",
       "genre": "House",
       "price": 600000,
-      "title": "Không thể quên - Vstra [remix by. Nghao & Knam]",
+      "title": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)",
       "artist": "Nghao",
       "demoEnd": 210,
       "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791883812/music_store/audios/tadccxfr0tqdet2bhxdj.mp3",
-      "duration": 382,
+      "duration": 300,
       "featured": true,
       "demoStart": 120,
       "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791883812/music_store/audios/tadccxfr0tqdet2bhxdj.mp3"
+    },
+    {
+      "id": "t1791880340329",
+      "album": "Nghao Collection",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791879917/music_store/images/n3vxqw9xvqbzdvuh0gdt.jpg",
+      "genre": "House",
+      "price": 500000,
+      "title": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)",
+      "artist": "Nghao",
+      "demoEnd": 145,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791880175/music_store/audios/kzdaylmig76degxvsxwe.mp3",
+      "duration": 257,
+      "featured": true,
+      "demoStart": 55,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791880175/music_store/audios/kzdaylmig76degxvsxwe.mp3"
+    },
+    {
+      "id": "t1791863000230",
+      "album": "Nghao Collection",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875428/music_store/images/uwgqvfagnocqmmwnbdfg.jpg",
+      "genre": "House",
+      "price": 500000,
+      "title": "Và thế giới mất đi một người cô đơn - Marzus ( Slot)",
+      "artist": "Nghao",
+      "demoEnd": 90,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3",
+      "duration": 108,
+      "featured": true,
+      "demoStart": 0,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3"
+    },
+    {
+      "id": "t1791863432050",
+      "album": "Nghao & River",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875419/music_store/images/cjyibpysm14fakftpffs.jpg",
+      "genre": "House",
+      "price": 500000,
+      "title": "Vết thương - Fishy ( Slot )",
+      "artist": "Nghao",
+      "demoEnd": 90,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3",
+      "duration": 118,
+      "featured": true,
+      "demoStart": 0,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3"
+    },
+    {
+      "id": "t1791863592445",
+      "album": "Nghao & River",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875409/music_store/images/bvvzgvmznqkmmbsd6ugw.jpg",
+      "genre": "House",
+      "price": 500000,
+      "title": "Dù có cách xa ( Slot )",
+      "artist": "Nghao",
+      "demoEnd": 90,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3",
+      "duration": 300,
+      "featured": true,
+      "demoStart": 0,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3"
+    },
+    {
+      "id": "t1791908040220",
+      "album": "Nghao & Phung Bao",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791907665/music_store/images/b1gwcq7y8yyuhatg8cnv.png",
+      "genre": "House",
+      "price": 200000,
+      "title": "Toidaidot - Greyd",
+      "artist": "Nghao",
+      "demoEnd": 130,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791907645/music_store/audios/qiaprxzucikd58lxrjq6.mp3",
+      "duration": 276,
+      "featured": false,
+      "demoStart": 40,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791907645/music_store/audios/qiaprxzucikd58lxrjq6.mp3"
+    },
+    {
+      "id": "t1791877930070",
+      "album": "Nghao & River",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791877731/music_store/images/zk6ujyefl4fdaf7p9jyi.png",
+      "genre": "House",
+      "price": 200000,
+      "title": "Từng là của nhau - Bảo Anh",
+      "artist": "Nghao",
+      "demoEnd": 158,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791877368/music_store/audios/rbrphpm9qqckodfqo6lm.wav",
+      "duration": 262,
+      "featured": false,
+      "demoStart": 50,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791877368/music_store/audios/rbrphpm9qqckodfqo6lm.wav"
+    },
+    {
+      "id": "t1791879579077",
+      "album": "Nghao & River",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791878158/music_store/images/xxaz09bach9izw7lio96.png",
+      "genre": "House",
+      "price": 200000,
+      "title": "Bật nhạc lên - HIEUTHUHAI",
+      "artist": "Nghao",
+      "demoEnd": 168,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791878217/music_store/audios/uzrmjgwqxpw9ypsvdhpe.wav",
+      "duration": 290,
+      "featured": false,
+      "demoStart": 28,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791878217/music_store/audios/uzrmjgwqxpw9ypsvdhpe.wav"
+    },
+    {
+      "id": "t1791865022686",
+      "album": "Nghao & River",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791909315/music_store/images/bdxcxn5sw1yr5vzairol.png",
+      "genre": "House",
+      "price": 200000,
+      "title": "Baby - MCK, Marzus",
+      "artist": "Nghao",
+      "demoEnd": 120,
+      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791864854/music_store/audios/vzrhnnwdg2ypfel1syx0.wav",
+      "duration": 154,
+      "featured": false,
+      "demoStart": 30,
+      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791864854/music_store/audios/vzrhnnwdg2ypfel1syx0.wav"
     },
     {
       "id": "t1791882490980",
@@ -441,7 +803,7 @@
       "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791880871/music_store/images/n7modsroqjkvbdbc08gp.png",
       "genre": "House",
       "price": 0,
-      "title": "CLME - Hoàng tôn [remix by. Nghao & Phùng Báo)",
+      "title": "CLME - Hoàng Tôn",
       "artist": "Nghao",
       "demoEnd": 150,
       "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881080/music_store/audios/hewbnahvxhgwtblgyyzb.wav",
@@ -449,51 +811,6 @@
       "featured": false,
       "demoStart": 60,
       "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791881080/music_store/audios/hewbnahvxhgwtblgyyzb.wav"
-    },
-    {
-      "id": "t1791880340329",
-      "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791879917/music_store/images/n3vxqw9xvqbzdvuh0gdt.jpg",
-      "genre": "House",
-      "price": 500000,
-      "title": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)",
-      "artist": "Nghao",
-      "demoEnd": 145,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791880175/music_store/audios/kzdaylmig76degxvsxwe.mp3",
-      "duration": 257,
-      "featured": true,
-      "demoStart": 55,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791880175/music_store/audios/kzdaylmig76degxvsxwe.mp3"
-    },
-    {
-      "id": "t1791879579077",
-      "album": "Nghao & River",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791878158/music_store/images/xxaz09bach9izw7lio96.png",
-      "genre": "House",
-      "price": 200000,
-      "title": "Bật nhạc lên",
-      "artist": "Nghao",
-      "demoEnd": 168,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791878217/music_store/audios/uzrmjgwqxpw9ypsvdhpe.wav",
-      "duration": 290,
-      "featured": false,
-      "demoStart": 28,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791878217/music_store/audios/uzrmjgwqxpw9ypsvdhpe.wav"
-    },
-    {
-      "id": "t1791877930070",
-      "album": "Nghao & River",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791877731/music_store/images/zk6ujyefl4fdaf7p9jyi.png",
-      "genre": "House",
-      "price": 200000,
-      "title": "Từng là của nhau",
-      "artist": "Nghao",
-      "demoEnd": 158,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791877368/music_store/audios/rbrphpm9qqckodfqo6lm.wav",
-      "duration": 262,
-      "featured": false,
-      "demoStart": 50,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791877368/music_store/audios/rbrphpm9qqckodfqo6lm.wav"
     },
     {
       "id": "t1791874838261",
@@ -516,7 +833,7 @@
       "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791876973/music_store/images/zxybkbydmbdmeutegvqc.png",
       "genre": "House",
       "price": 0,
-      "title": "Ai ngoài anh - Vstra [remix by. nghao]",
+      "title": "Ai ngoài anh - Vstra",
       "artist": "Nghao",
       "demoEnd": 178,
       "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791866933/music_store/audios/xelhxhks0hd5lcybb2ka.mp3",
@@ -524,66 +841,6 @@
       "featured": false,
       "demoStart": 122,
       "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791866933/music_store/audios/xelhxhks0hd5lcybb2ka.mp3"
-    },
-    {
-      "id": "t1791865022686",
-      "album": "Nghao & River",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791865016/music_store/images/hc9a6rx4yp5jj0nmyfta.png",
-      "genre": "House",
-      "price": 200000,
-      "title": "Baby - MCK, Marzus [remix by. Nghao & RiverDlove]",
-      "artist": "Nghao",
-      "demoEnd": 120,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791864854/music_store/audios/vzrhnnwdg2ypfel1syx0.wav",
-      "duration": 154,
-      "featured": false,
-      "demoStart": 30,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791864854/music_store/audios/vzrhnnwdg2ypfel1syx0.wav"
-    },
-    {
-      "id": "t1791863592445",
-      "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875409/music_store/images/bvvzgvmznqkmmbsd6ugw.jpg",
-      "genre": "House",
-      "price": 500000,
-      "title": "Dù có cách xa ( Slot )",
-      "artist": "Nghao",
-      "demoEnd": 90,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3",
-      "duration": 300,
-      "featured": true,
-      "demoStart": 0,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863514/music_store/audios/jpazywawupvwbl32lugc.mp3"
-    },
-    {
-      "id": "t1791863432050",
-      "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875419/music_store/images/cjyibpysm14fakftpffs.jpg",
-      "genre": "House",
-      "price": 500000,
-      "title": "Vết thương ( Slot )",
-      "artist": "Nghao",
-      "demoEnd": 90,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3",
-      "duration": 118,
-      "featured": true,
-      "demoStart": 0,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791863086/music_store/audios/z6hhoywlvp4ub3nqicmg.mp3"
-    },
-    {
-      "id": "t1791863000230",
-      "album": "Nghao Collection",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791875428/music_store/images/uwgqvfagnocqmmwnbdfg.jpg",
-      "genre": "House",
-      "price": 500000,
-      "title": "Và thế giới mất đi một người cô đơn ( SLOT)",
-      "artist": "Nghao",
-      "demoEnd": 90,
-      "audioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3",
-      "duration": 108,
-      "featured": true,
-      "demoStart": 0,
-      "fullAudioUrl": "https://res.cloudinary.com/oksfct7l/video/upload/v1791862809/music_store/audios/kxx3tehxffcg7cg25ic6.mp3"
     }
   ],
   "producer": {
@@ -607,8 +864,8 @@
       "trackIds": [
         "t1791883926651",
         "t1791880340329",
-        "t1791863432050",
         "t1791863000230",
+        "t1791863432050",
         "t1791863592445"
       ]
     }

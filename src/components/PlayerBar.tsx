@@ -44,7 +44,7 @@ export function PlayerBar({
       <div
         role="region"
         aria-label={t("player")}
-        className="liquid-glass-strong mx-auto max-w-6xl overflow-hidden rounded-[24px] p-2 sm:rounded-full sm:p-2 md:px-4">
+        className="progressive-card-glass mx-auto max-w-6xl overflow-hidden rounded-[24px] p-2 shadow-2xl ring-1 ring-white/25 sm:rounded-full sm:p-2.5 md:px-5">
         
         <div className="flex items-center gap-2 md:gap-4">
           {/* Mobile: Cover + Track Info on the left (like Apple Music / Spotify iOS) */}
