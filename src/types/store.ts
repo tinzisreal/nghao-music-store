@@ -189,3 +189,69 @@ export interface AdminAuthStatus {
   totpConfigured: boolean;
   totpSetup: TotpSetupInfo | null;
 }
+
+export interface DailyStatEntry {
+  date: string;
+  views: number;
+  uniques: number;
+  plays: number;
+  downloads: number;
+}
+
+export interface TopTrackByPlay {
+  id: string;
+  title: string;
+  artist: string;
+  cover: string;
+  playCount: number;
+  percentage: number;
+}
+
+export interface TopTrackByDownload {
+  id: string;
+  title: string;
+  artist: string;
+  cover: string;
+  downloadCount: number;
+}
+
+export interface RecentDownloadEntry {
+  id: string;
+  trackId: string;
+  trackTitle: string;
+  downloadedAt: string;
+  ip: string;
+  device: string;
+  browser: string;
+}
+
+export interface RecentPlayEntry {
+  id: string;
+  trackId: string;
+  trackTitle: string;
+  playedAt: string;
+  device: string;
+}
+
+export interface DeviceStats {
+  mobile: number;
+  desktop: number;
+  tablet: number;
+}
+
+export interface AnalyticsData {
+  totalViews: number;
+  todayViews: number;
+  totalUniqueVisitors: number;
+  todayUniqueVisitors: number;
+  totalPlays: number;
+  todayPlays: number;
+  totalDownloads: number;
+  todayDownloads: number;
+  dailyTrend: DailyStatEntry[];
+  topTracksByPlay: TopTrackByPlay[];
+  topTracksByDownload: TopTrackByDownload[];
+  recentDownloads: RecentDownloadEntry[];
+  recentPlays: RecentPlayEntry[];
+  devices: DeviceStats;
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Track } from "../types/track";
+import { api } from "../utils/api";
 
 /**
  * Mobile-friendly audio player hook with direct user-gesture unlocking
@@ -21,6 +22,7 @@ export function usePlayer(list: Track[]) {
   isPlayingRef.current = isPlaying;
   const listRef = useRef(list);
   listRef.current = list;
+  const lastTrackedPlayIdRef = useRef<{ id: string; time: number } | null>(null);
 
   const current = list[Math.min(index, Math.max(0, list.length - 1))];
   const audioUrl = current?.audioUrl;
@@ -135,6 +137,21 @@ export function usePlayer(list: Track[]) {
       audioRef.current.volume = muted ? 0 : volume / 100;
     }
   }, [volume, muted]);
+
+  // Ghi nhận lượt nghe bài hát vào Analytics (debounce 15 giây)
+  useEffect(() => {
+    if (!isPlaying || !current?.id || current.isPreorder) return;
+    const now = Date.now();
+    const last = lastTrackedPlayIdRef.current;
+    if (!last || last.id !== current.id || now - last.time > 15000) {
+      lastTrackedPlayIdRef.current = { id: current.id, time: now };
+      api.trackEvent({
+        type: "play",
+        trackId: current.id,
+        trackTitle: current.title
+      });
+    }
+  }, [isPlaying, current?.id, current?.title, current?.isPreorder]);
 
   // Đồng bộ src khi thay đổi track được chọn
   useEffect(() => {

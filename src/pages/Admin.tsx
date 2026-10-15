@@ -18,12 +18,13 @@ import { ProducerForm } from "../components/admin/ProducerForm";
 import { NewReleasesManager } from "../components/admin/NewReleasesManager";
 import { ContactForm } from "../components/admin/ContactForm";
 import { ReconciliationManager } from "../components/admin/ReconciliationManager";
+import { AnalyticsManager } from "../components/admin/AnalyticsManager";
 import { AdminLogin } from "../components/admin/AdminLogin";
 import { useAdminStore } from "../hooks/useAdminStore";
 import { TotpSetupInfo } from "../types/store";
 import { api, clearAdminToken, errorMessage, setAdminToken } from "../utils/api";
 
-type Tab = "tracks" | "albums" | "reconciliation" | "newReleases" | "producer" | "contact";
+type Tab = "analytics" | "tracks" | "albums" | "reconciliation" | "newReleases" | "producer" | "contact";
 
 export function Admin() {
   const [authChecking, setAuthChecking] = useState(true);
@@ -108,6 +109,7 @@ function AdminDashboard({
   const { state } = admin;
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
+    { id: "analytics", label: "Thống kê" },
     { id: "tracks", label: "Bài hát", count: state.status === "ready" ? state.data.tracks.length : undefined },
     { id: "albums", label: "Album", count: state.status === "ready" ? state.data.albums?.length || 0 : undefined },
     { id: "reconciliation", label: "Đối soát giao dịch" },
@@ -119,6 +121,7 @@ function AdminDashboard({
     { id: "producer", label: "Producer" },
     { id: "contact", label: "Liên hệ" }
   ];
+
 
   const handleCopySecret = async () => {
     if (!totpSetup?.secret) return;
@@ -229,6 +232,7 @@ function AdminDashboard({
 
         {state.status === "ready" && (
           <>
+            {tab === "analytics" && <AnalyticsManager />}
             {tab === "tracks" && (
               <TrackManager
                 tracks={state.data.tracks}

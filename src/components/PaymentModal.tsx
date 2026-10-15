@@ -93,6 +93,11 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   // Đối với các bài nhạc Miễn phí (price <= 0), tự động tải file MP3 Full ngay khi mở
   useEffect(() => {
     if (!isFreeTrack) return;
+    api.trackEvent({
+      type: "download",
+      trackId: track.id,
+      trackTitle: track.title
+    });
     const timer = window.setTimeout(() => {
       const link = document.createElement("a");
       link.href = freeDownloadUrl;
@@ -102,7 +107,8 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
       document.body.removeChild(link);
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [isFreeTrack, freeDownloadUrl, track.title]);
+  }, [isFreeTrack, freeDownloadUrl, track.id, track.title]);
+
 
   const createOrder = useCallback(() => {
     if (isFreeTrack) return;

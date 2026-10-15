@@ -172,6 +172,7 @@ app.use((req, res, next) => {
   else if (pathname === "/v2/events/paypal/config") req.url = `/paypal/config${qs}`;
   else if (pathname === "/v2/events/paypal/create-order") req.url = `/paypal/create-order${qs}`;
   else if (pathname === "/v2/events/paypal/capture-order") req.url = `/paypal/capture-order${qs}`;
+  else if (pathname === "/v2/events/analytics") req.url = `/analytics/event${qs}`;
   else if (pathname.startsWith("/v2/events/status/")) {
     const id = pathname.slice("/v2/events/status/".length);
     req.url = `/orders/${id}${qs}`;
@@ -321,6 +322,166 @@ function writeDb(data) {
   }
   return true;
 }
+
+/* ──────── Analytics & Visitor Tracking Helpers ──────── */
+
+function parseUserAgent(ua = "") {
+  let device = "Desktop";
+  if (/iPad|Tablet/i.test(ua)) {
+    device = "Tablet";
+  } else if (/Mobile|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+    device = "Mobile";
+  }
+
+  let browser = "Khác";
+  if (/Zalo/i.test(ua)) browser = "Zalo App";
+  else if (/FBAN|FBAV/i.test(ua)) browser = "Facebook App";
+  else if (/Edg/i.test(ua)) browser = "Edge";
+  else if (/Chrome/i.test(ua)) browser = "Chrome";
+  else if (/Safari/i.test(ua)) browser = "Safari";
+  else if (/Firefox/i.test(ua)) browser = "Firefox";
+
+  return { device, browser };
+}
+
+function anonymizeIp(ip = "") {
+  if (!ip || typeof ip !== "string") return "Ẩn danh";
+  const clean = ip.replace(/^.*:/, "").trim();
+  const parts = clean.split(".");
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.${parts[2]}.***`;
+  }
+  return clean.slice(0, 8) + "***";
+}
+
+function getClientIp(req) {
+  return String(
+    req.headers["x-forwarded-for"] ||
+    req.socket?.remoteAddress ||
+    req.ip ||
+    "unknown"
+  ).split(",")[0].trim();
+}
+
+function getAnalyticsStore(db) {
+  if (!db.analytics || typeof db.analytics !== "object") {
+    db.analytics = {
+      totalViews: 0,
+      totalPlays: 0,
+      totalDownloads: 0,
+      totalUniqueVisitors: 0,
+      uniqueIps: {},
+      daily: {},
+      trackPlays: {},
+      trackDownloads: {},
+      recentDownloads: [],
+      recentPlays: [],
+      devices: { mobile: 0, desktop: 0, tablet: 0 }
+    };
+  }
+  const a = db.analytics;
+  if (!a.uniqueIps) a.uniqueIps = {};
+  if (!a.daily) a.daily = {};
+  if (!a.trackPlays) a.trackPlays = {};
+  if (!a.trackDownloads) a.trackDownloads = {};
+  if (!Array.isArray(a.recentDownloads)) a.recentDownloads = [];
+  if (!Array.isArray(a.recentPlays)) a.recentPlays = [];
+  if (!a.devices) a.devices = { mobile: 0, desktop: 0, tablet: 0 };
+  return a;
+}
+
+function recordAnalyticsEvent({ type, trackId, trackTitle, req }) {
+  try {
+    const db = readDb();
+    if (!db) return;
+
+    const store = getAnalyticsStore(db);
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const rawIp = getClientIp(req);
+    const ipHash = crypto.createHash("sha256").update(rawIp + "nghao_salt").digest("hex").slice(0, 16);
+    const ua = req.headers["user-agent"] || "";
+    const { device, browser } = parseUserAgent(ua);
+
+    if (!store.daily[dateStr]) {
+      store.daily[dateStr] = { views: 0, uniques: 0, plays: 0, downloads: 0 };
+    }
+    const dayStats = store.daily[dateStr];
+
+    if (type === "pageview") {
+      store.totalViews = (store.totalViews || 0) + 1;
+      dayStats.views = (dayStats.views || 0) + 1;
+
+      // Device stats
+      if (device === "Mobile") store.devices.mobile = (store.devices.mobile || 0) + 1;
+      else if (device === "Tablet") store.devices.tablet = (store.devices.tablet || 0) + 1;
+      else store.devices.desktop = (store.devices.desktop || 0) + 1;
+
+      // Check unique visitor for today
+      const lastVisitDate = store.uniqueIps[ipHash];
+      if (lastVisitDate !== dateStr) {
+        store.uniqueIps[ipHash] = dateStr;
+        store.totalUniqueVisitors = (store.totalUniqueVisitors || 0) + 1;
+        dayStats.uniques = (dayStats.uniques || 0) + 1;
+      }
+    } else if (type === "play") {
+      store.totalPlays = (store.totalPlays || 0) + 1;
+      dayStats.plays = (dayStats.plays || 0) + 1;
+
+      if (trackId) {
+        store.trackPlays[trackId] = (store.trackPlays[trackId] || 0) + 1;
+        const matchedTrack = (db.tracks || []).find((t) => t.id === trackId);
+        const title = trackTitle || matchedTrack?.title || "Không rõ";
+
+        store.recentPlays.unshift({
+          id: `pl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          trackId,
+          trackTitle: title,
+          playedAt: now.toISOString(),
+          device
+        });
+        if (store.recentPlays.length > 100) {
+          store.recentPlays = store.recentPlays.slice(0, 100);
+        }
+      }
+    } else if (type === "download") {
+      store.totalDownloads = (store.totalDownloads || 0) + 1;
+      dayStats.downloads = (dayStats.downloads || 0) + 1;
+
+      if (trackId) {
+        store.trackDownloads[trackId] = (store.trackDownloads[trackId] || 0) + 1;
+        const matchedTrack = (db.tracks || []).find((t) => t.id === trackId);
+        const title = trackTitle || matchedTrack?.title || "Không rõ";
+
+        store.recentDownloads.unshift({
+          id: `dl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          trackId,
+          trackTitle: title,
+          downloadedAt: now.toISOString(),
+          ip: anonymizeIp(rawIp),
+          device,
+          browser
+        });
+        if (store.recentDownloads.length > 200) {
+          store.recentDownloads = store.recentDownloads.slice(0, 200);
+        }
+      }
+    }
+
+    // Prune uniqueIps if table gets too big (> 2500 keys)
+    const ipKeys = Object.keys(store.uniqueIps);
+    if (ipKeys.length > 2500) {
+      for (let i = 0; i < 500; i++) {
+        delete store.uniqueIps[ipKeys[i]];
+      }
+    }
+
+    writeDb(db);
+  } catch (err) {
+    console.error("Analytics record error:", err.message);
+  }
+}
+
 
 async function triggerEmailIfPaid(order, db, { force = false } = {}) {
   // Chế độ gửi email thủ công theo yêu cầu: Khách để lại Gmail, Nghao Producer tự mở Gmail gửi file thủ công từ trang Admin
@@ -523,6 +684,14 @@ app.get("/tracks/:id/demo-stream", async (req, res) => {
 
   if (!rawAudio || !rawAudio.startsWith("http")) return res.status(404).end();
 
+  // Ghi nhận lượt nghe vào Analytics
+  recordAnalyticsEvent({
+    type: "play",
+    trackId: track.id,
+    trackTitle: track.title,
+    req
+  });
+
   const targetUrl = buildCloudinaryDemoUrl(rawAudio, track.demoStart, track.demoEnd);
 
   res.setHeader("Cache-Control", "public, max-age=86400");
@@ -550,6 +719,14 @@ app.get("/tracks/:id/free-download", async (req, res) => {
   if (!fullUrl) {
     return res.status(404).send("Chưa có file âm thanh cho bài hát này.");
   }
+
+  // Ghi nhận lượt tải nhạc miễn phí vào Analytics
+  recordAnalyticsEvent({
+    type: "download",
+    trackId: track.id,
+    trackTitle: track.title,
+    req
+  });
 
   try {
     const upstream = await fetch(fullUrl);
@@ -1465,6 +1642,93 @@ app.post("/admin/reconciliation/sync", requireAdmin, async (req, res) => {
 
   const data = await buildReconciliationResponse(db, true);
   res.json(data);
+});
+
+// POST /analytics/event — Nhận sự kiện pageview / play / download từ client
+app.post("/analytics/event", (req, res) => {
+  const { type, trackId, trackTitle } = req.body || {};
+  if (type === "pageview" || type === "play" || type === "download") {
+    recordAnalyticsEvent({ type, trackId, trackTitle, req });
+  }
+  res.json({ ok: true });
+});
+
+// GET /admin/analytics — Lấy số liệu thống kê truy cập, lượt nghe, lượt tải nhạc free
+app.get("/admin/analytics", requireAdmin, (req, res) => {
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const store = getAnalyticsStore(db);
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const todayStats = store.daily[todayStr] || { views: 0, uniques: 0, plays: 0, downloads: 0 };
+  const tracks = db.tracks || [];
+
+  // Top tracks by play
+  const topTracksByPlay = Object.entries(store.trackPlays || {})
+    .map(([id, count]) => {
+      const track = tracks.find((t) => t.id === id);
+      return {
+        id,
+        title: track?.title || "Bài hát đã xoá",
+        artist: track?.artist || "Nghao",
+        cover: track?.cover || "",
+        playCount: count
+      };
+    })
+    .sort((a, b) => b.playCount - a.playCount);
+
+  const totalPlays = store.totalPlays || 0;
+  const topTracksWithPercentage = topTracksByPlay.map((t) => ({
+    ...t,
+    percentage: totalPlays > 0 ? Math.round((t.playCount / totalPlays) * 100) : 0
+  }));
+
+  // Top tracks by free download
+  const topTracksByDownload = Object.entries(store.trackDownloads || {})
+    .map(([id, count]) => {
+      const track = tracks.find((t) => t.id === id);
+      return {
+        id,
+        title: track?.title || "Bài hát đã xoá",
+        artist: track?.artist || "Nghao",
+        cover: track?.cover || "",
+        downloadCount: count
+      };
+    })
+    .sort((a, b) => b.downloadCount - a.downloadCount);
+
+  // Daily stats for past 14 days
+  const dailyTrend = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const dStr = d.toISOString().slice(0, 10);
+    const stat = store.daily[dStr] || { views: 0, uniques: 0, plays: 0, downloads: 0 };
+    dailyTrend.push({
+      date: dStr,
+      views: stat.views || 0,
+      uniques: stat.uniques || 0,
+      plays: stat.plays || 0,
+      downloads: stat.downloads || 0
+    });
+  }
+
+  res.json({
+    totalViews: store.totalViews || 0,
+    todayViews: todayStats.views || 0,
+    totalUniqueVisitors: store.totalUniqueVisitors || 0,
+    todayUniqueVisitors: todayStats.uniques || 0,
+    totalPlays: store.totalPlays || 0,
+    todayPlays: todayStats.plays || 0,
+    totalDownloads: store.totalDownloads || 0,
+    todayDownloads: todayStats.downloads || 0,
+    topTracksByPlay: topTracksWithPercentage,
+    topTracksByDownload,
+    dailyTrend,
+    recentDownloads: store.recentDownloads || [],
+    recentPlays: store.recentPlays || [],
+    devices: store.devices || { mobile: 0, desktop: 0, tablet: 0 }
+  });
 });
 
 // PATCH /admin/orders/:id/status — Duyệt thủ công hoặc đặt lại trạng thái đơn hàng

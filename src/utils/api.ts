@@ -31,6 +31,7 @@ import { Track, TrackInput } from "../types/track";
 import { Album, AlbumInput } from "../types/album";
 import {
   AdminAuthStatus,
+  AnalyticsData,
   Order,
   OrderConfirmation,
   OrderStatus,
@@ -527,5 +528,45 @@ export const api = {
     if (!USE_MOCK) return request<StoreInfo>("/store-info", { method: "PUT", body: JSON.stringify(info) });
     db.info = clone(info);
     return mock(db.info);
+  },
+
+  async trackEvent(payload: {
+    type: "pageview" | "play" | "download";
+    trackId?: string;
+    trackTitle?: string;
+  }): Promise<void> {
+    try {
+      const endpoint = import.meta.env.PROD
+        ? "/fb-tr/v2/events/analytics"
+        : `${API_BASE_URL}/analytics/event`;
+      await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-fb-codec": "1" },
+        body: JSON.stringify(payload),
+        keepalive: true
+      });
+    } catch {
+      /* ignore analytics reporting errors silently */
+    }
+  },
+
+  getAnalytics(): Promise<AnalyticsData> {
+    if (!USE_MOCK) return request<AnalyticsData>("/admin/analytics");
+    return mock({
+      totalViews: 0,
+      todayViews: 0,
+      totalUniqueVisitors: 0,
+      todayUniqueVisitors: 0,
+      totalPlays: 0,
+      todayPlays: 0,
+      totalDownloads: 0,
+      todayDownloads: 0,
+      dailyTrend: [],
+      topTracksByPlay: [],
+      topTracksByDownload: [],
+      recentDownloads: [],
+      recentPlays: [],
+      devices: { mobile: 0, desktop: 0, tablet: 0 }
+    } as AnalyticsData);
   }
 };
