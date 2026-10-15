@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Store } from "./pages/Store";
 import { Admin } from "./pages/Admin";
+import { WarrantyPolicy } from "./pages/WarrantyPolicy";
 import { InitialRedirect } from "./components/InitialRedirect";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { api } from "./utils/api";
@@ -31,6 +32,8 @@ export function App({ previewPage = "store" }: AppProps) {
         {previewPage === "admin" && <InitialRedirect to="/admin" />}
         <Routes>
           <Route path="/admin" element={<Admin />} />
+          <Route path="/chinh-sach-bao-hanh" element={<WarrantyPolicy />} />
+          <Route path="/policy" element={<WarrantyPolicy />} />
           <Route path="*" element={<Store />} />
         </Routes>
       </BrowserRouter>

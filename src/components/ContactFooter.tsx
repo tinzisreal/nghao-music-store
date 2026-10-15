@@ -1,5 +1,6 @@
 import React from "react";
-import { MailIcon, PhoneIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { MailIcon, PhoneIcon, ShieldCheckIcon } from "lucide-react";
 import { SocialIcon } from "./SocialIcon";
 import { useLanguage } from "../contexts/LanguageContext";
 import { StoreInfo } from "../types/store";
@@ -50,28 +51,36 @@ export function ContactFooter({ name, info }: ContactFooterProps) {
         </ul>
 
         <ul className="flex flex-wrap gap-2" aria-label={t("socials")}>
-          {socials.map((s) =>
-          <li key={s.kind}>
+          {socials.map((s) => (
+            <li key={s.kind}>
               <a
-              href={s.href}
-              target="_blank"
-              rel="noreferrer"
-              className="liquid-glass flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-white hover:text-black">
-              
+                href={s.href}
+                target="_blank"
+                rel="noreferrer"
+                className="liquid-glass flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white transition-colors duration-150 hover:bg-white hover:text-black">
                 <SocialIcon kind={s.kind} />
                 {s.label}
               </a>
             </li>
-          )}
+          ))}
         </ul>
       </div>
 
-      <div className="mt-8 flex flex-col gap-2 border-t border-white/10 pt-6 text-sm text-white/45 sm:flex-row sm:justify-between">
+      <div className="mt-8 flex flex-col gap-3 border-t border-white/10 pt-6 text-sm text-white/50 sm:flex-row sm:items-center sm:justify-between">
         <span>
           © {new Date().getFullYear()} {name}. {t("rights")}
         </span>
-        <span>{t("license")}</span>
+        <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm">
+          <Link
+            to="/chinh-sach-bao-hanh"
+            className="inline-flex items-center gap-1.5 text-ember hover:underline font-medium transition-colors">
+            <ShieldCheckIcon className="h-4 w-4" />
+            <span>Quyền sử dụng & Chính sách bảo hành nhạc SLOT</span>
+          </Link>
+          <span className="hidden sm:inline text-white/30">·</span>
+          <span>{t("license")}</span>
+        </div>
       </div>
-    </footer>);
-
+    </footer>
+  );
 }

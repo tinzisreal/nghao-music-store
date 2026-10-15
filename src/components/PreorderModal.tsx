@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckIcon, CopyIcon, MessageCircleIcon, PhoneIcon, SparklesIcon, XIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, MessageCircleIcon, PhoneIcon, ShieldCheckIcon, SparklesIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Track } from "../types/track";
 import { formatPrice } from "../utils/format";
@@ -154,7 +154,19 @@ export function PreorderModal({ track, onClose }: PreorderModalProps) {
               </div>
             </div>
 
-            <div className="mt-5 text-center">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-center text-[11px] text-white/50">
+              <ShieldCheckIcon className="h-3.5 w-3.5 text-ember" />
+              <span>Xem thêm:</span>
+              <a
+                href="/chinh-sach-bao-hanh"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-ember hover:underline">
+                Quyền sử dụng & Chính sách bảo hành nhạc SLOT
+              </a>
+            </div>
+
+            <div className="mt-4 text-center">
               <button
                 type="button"
                 onClick={onClose}
@@ -163,6 +175,7 @@ export function PreorderModal({ track, onClose }: PreorderModalProps) {
                 Đóng lại
               </button>
             </div>
+
           </motion.div>
         </motion.div>
       )}

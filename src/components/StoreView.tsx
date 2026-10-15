@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ShieldCheckIcon } from "lucide-react";
 import { ProducerHero } from "./ProducerHero";
 import { CoverFlow } from "./CoverFlow";
 import { NewReleases } from "./NewReleases";
@@ -60,7 +62,7 @@ export function StoreView({ data }: {data: StoreData;}) {
   return (
     <>
       <main className="mx-auto max-w-[1440px] px-3.5 pb-32 pt-3 sm:px-6 md:px-10 md:pb-36 md:pt-6">
-        <header className="mb-4 flex items-center justify-between pr-20 sm:mb-6 sm:pr-24">
+        <header className="mb-4 flex flex-wrap items-center justify-between gap-3 pr-20 sm:mb-6 sm:pr-24">
           <a href="/" className="group inline-flex items-center gap-2.5 rounded-full bg-black/40 px-3 py-1.5 ring-1 ring-white/15 backdrop-blur-md transition-colors hover:bg-black/55 sm:gap-3.5 sm:px-4 sm:py-2">
             <img
               src="/logo-mark-white.png"
@@ -74,6 +76,13 @@ export function StoreView({ data }: {data: StoreData;}) {
               </span>
             </div>
           </a>
+
+          <Link
+            to="/chinh-sach-bao-hanh"
+            className="liquid-glass flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium text-white transition-colors duration-150 hover:bg-white hover:text-black sm:px-4 sm:py-2 sm:text-sm">
+            <ShieldCheckIcon className="h-4 w-4 text-ember group-hover:text-black transition-colors" />
+            <span>Chính sách bảo hành nhạc SLOT</span>
+          </Link>
         </header>
 
         <ProducerHero

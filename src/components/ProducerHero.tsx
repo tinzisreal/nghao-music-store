@@ -1,5 +1,6 @@
 import React from "react";
-import { PlayIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { PlayIcon, ShieldCheckIcon } from "lucide-react";
 import { SocialIcon } from "./SocialIcon";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Producer, Social } from "../types/store";
@@ -74,10 +75,17 @@ export function ProducerHero({ producer, socials, trackCount, albumCount, onPlay
             type="button"
             onClick={onPlay}
             className="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-6 py-3 text-sm font-semibold text-black shadow-lg shadow-white/10 transition-transform duration-150 hover:scale-[1.02] active:scale-95 sm:flex-initial">
-            
             <PlayIcon className="h-4 w-4 fill-black" aria-hidden />
             {t("listenNow")}
           </button>
+
+          <Link
+            to="/chinh-sach-bao-hanh"
+            className="liquid-glass flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold text-white transition-colors duration-150 hover:bg-white hover:text-black">
+            <ShieldCheckIcon className="h-4 w-4 text-ember group-hover:text-black transition-colors" />
+            <span>Bảo hành nhạc SLOT</span>
+          </Link>
+
           <ul className="flex items-center gap-2" aria-label={t("socials")}>
             {socials.map((s) =>
             <li key={s.kind}>

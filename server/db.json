@@ -1030,6 +1030,24 @@
       "transferNote": "NGHAO MV8DYZ4KRH5",
       "apipayPublicId": "APIPAYJSCMMXHQXE4WQ",
       "redirectSecret": "c6c96e6e03c0013ef276425106f9a19a864c42914977604500fb4822828979ec"
+    },
+    {
+      "id": "ord_1792032770389",
+      "trackId": "t1791964364619",
+      "amount": 500000,
+      "transferNote": "NGHAO MV8Y1J6DGU1",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCAAUKXVUBNV/qr-image",
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCAAUKXVUBNV",
+      "apipayPublicId": "APIPAYJSCAAUKXVUBNV",
+      "redirectSecret": "0cb6a88310f1f443eaacb95292629f35938fc056271566bb840fe30177516436",
+      "status": "pending_verification",
+      "createdAt": "2026-10-15T02:52:50.559Z"
     }
   ],
   "tracks": [
@@ -1344,6 +1362,75 @@
         "t1791863592445"
       ]
     }
+  },
+  "analytics": {
+    "daily": {
+      "2026-10-15": {
+        "plays": 5,
+        "views": 27,
+        "uniques": 3,
+        "downloads": 0
+      }
+    },
+    "devices": {
+      "mobile": 2,
+      "tablet": 0,
+      "desktop": 25
+    },
+    "uniqueIps": {
+      "39ffdd3a527fec96": "2026-10-15",
+      "58411ea9914a48e2": "2026-10-15",
+      "d6fd5374217ab4eb": "2026-10-15"
+    },
+    "totalPlays": 5,
+    "totalViews": 27,
+    "trackPlays": {
+      "t1791880340329": 1,
+      "t1791964364619": 1,
+      "t1791863592445": 1,
+      "t1791883926651": 2
+    },
+    "recentPlays": [
+      {
+        "id": "pl_1792034617324_cpvx",
+        "trackId": "t1791883926651",
+        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)",
+        "playedAt": "2026-10-15T03:23:37.324Z",
+        "device": "Desktop"
+      },
+      {
+        "id": "pl_1792034602032_ckhx",
+        "trackId": "t1791883926651",
+        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)",
+        "playedAt": "2026-10-15T03:23:22.031Z",
+        "device": "Desktop"
+      },
+      {
+        "id": "pl_1792034601524_qjls",
+        "trackId": "t1791863592445",
+        "trackTitle": "Dù có cách xa ( Slot )",
+        "playedAt": "2026-10-15T03:23:21.524Z",
+        "device": "Desktop"
+      },
+      {
+        "id": "pl_1792032725062_q4w0",
+        "trackId": "t1791964364619",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)",
+        "playedAt": "2026-10-15T02:52:05.062Z",
+        "device": "Desktop"
+      },
+      {
+        "id": "pl_1792031031930_fwdi",
+        "device": "Desktop",
+        "trackId": "t1791880340329",
+        "playedAt": "2026-10-15T02:23:51.929Z",
+        "trackTitle": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)"
+      }
+    ],
+    "totalDownloads": 0,
+    "trackDownloads": {},
+    "recentDownloads": [],
+    "totalUniqueVisitors": 3
   },
   "bankAccount": {
     "bankId": "MB",
