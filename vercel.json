@@ -15,19 +15,36 @@
   "rewrites": [
     {
       "source": "/fb-tr/:path*",
-      "destination": "https://nghao-music-backend.onrender.com/:path*"
+      "destination": "/api?_p=/:path*"
     },
     {
       "source": "/tiktok-sdk/:path*",
-      "destination": "https://nghao-music-backend.onrender.com/:path*"
+      "destination": "/api?_p=/:path*"
     },
     {
       "source": "/api-proxy/:path*",
-      "destination": "https://nghao-music-backend.onrender.com/:path*"
+      "destination": "/api?_p=/:path*"
+    },
+    {
+      "source": "/api/apipay/webhook",
+      "destination": "/api?_p=/api/apipay/webhook"
+    },
+    {
+      "source": "/api/apipay/redirect-verify",
+      "destination": "/api?_p=/api/apipay/redirect-verify"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api?_p=/:path*"
     },
     {
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  }
 }

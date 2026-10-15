@@ -704,22 +704,348 @@
       "transferNote": "NGHAO MV7UQ5YIKGR",
       "apipayPublicId": "APIPAYJSC0Z7CHS69D0",
       "redirectSecret": "61007189ba62d94e0d3b5517a05701ec1494a56299b2e9cf717b9a590931f58a"
+    },
+    {
+      "id": "ord_1791968398174",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCQFUEBTDEQX/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCQFUEBTDEQX",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "createdAt": "2026-10-14T08:59:58.287Z",
+      "transferNote": "NGHAO MV7VPT9A8VN",
+      "apipayPublicId": "APIPAYJSCQFUEBTDEQX",
+      "redirectSecret": "683c838b5c2a2c1c66bf93e70641d20649fe8d672163ecb6a383002f1865e6a0"
+    },
+    {
+      "id": "ord_1791969380647",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCGCCAWYXCT6/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCGCCAWYXCT6",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "createdAt": "2026-10-14T09:16:21.136Z",
+      "transferNote": "NGHAO MV7WAVC7703",
+      "apipayPublicId": "APIPAYJSCGCCAWYXCT6",
+      "redirectSecret": "a41607e631d9f3e24288b2dee06558e74b481d2f7107cc2378b2d42fd9833c4e"
+    },
+    {
+      "id": "ord_1791976170329",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "email": "trongkhanh5678@gmail.com",
+      "phone": "0792993333",
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC6BJAKZ6U8N/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC6BJAKZ6U8N",
+      "status": "pending_verification",
+      "trackId": "t1791964364619",
+      "createdAt": "2026-10-14T11:09:30.468Z",
+      "transferNote": "NGHAO MV80CEAH9IA",
+      "apipayPublicId": "APIPAYJSC6BJAKZ6U8N",
+      "redirectSecret": "50928c7c9d2161509da5b266fe3b56afac4949280a18d74aa7962cded21cc2a1"
+    },
+    {
+      "id": "ord_1791976324032",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC2D8EZ9F3XS/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC2D8EZ9F3XS",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-14T11:12:04.410Z",
+      "transferNote": "NGHAO MV80FOW0LBW",
+      "apipayPublicId": "APIPAYJSC2D8EZ9F3XS",
+      "redirectSecret": "825e97acf951e949fb922074d4eb3f431ee6b4b015abd0a1af4c54cec567d9f7"
+    },
+    {
+      "id": "ord_1791977373031",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCX26ZZJ8XQZ/qr-image",
+      "amount": 200000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCX26ZZJ8XQZ",
+      "status": "pending_verification",
+      "trackId": "t1791879579077",
+      "createdAt": "2026-10-14T11:29:33.185Z",
+      "transferNote": "NGHAO MV8126AV5GA",
+      "apipayPublicId": "APIPAYJSCX26ZZJ8XQZ",
+      "redirectSecret": "f2980272235311f8848365862fefa2d6f98e3365a62fe3e9b0c58b5bbfec6711"
+    },
+    {
+      "id": "ord_1791981030200",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCNVJQPC1VZ3/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCNVJQPC1VZ3",
+      "status": "pending_verification",
+      "trackId": "t1791863000230",
+      "createdAt": "2026-10-14T12:30:30.779Z",
+      "transferNote": "NGHAO MV838K6WRAD",
+      "apipayPublicId": "APIPAYJSCNVJQPC1VZ3",
+      "redirectSecret": "49ed36f961661a7fdd15a3fe25de03969127e68d7306621f028a8fd137c696a7"
+    },
+    {
+      "id": "ord_1791982409314",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCES18Z98W5D/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCES18Z98W5D",
+      "status": "pending_verification",
+      "trackId": "t1791863592445",
+      "createdAt": "2026-10-14T12:53:29.940Z",
+      "transferNote": "NGHAO MV8424BMO8F",
+      "apipayPublicId": "APIPAYJSCES18Z98W5D",
+      "redirectSecret": "31b5d16ca3b785d0d7f746eb9b7e495b98371d3117b54272a28a3b794bab6abd"
+    },
+    {
+      "id": "ord_1791982680990",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC4N80X1BY76/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC4N80X1BY76",
+      "status": "pending_verification",
+      "trackId": "t1791863432050",
+      "createdAt": "2026-10-14T12:58:01.193Z",
+      "transferNote": "NGHAO MV847XY6EUN",
+      "apipayPublicId": "APIPAYJSC4N80X1BY76",
+      "redirectSecret": "8c4f6898a22eea972c419b78299fc376eb11319800d7f3a1e048376df56bdd93"
+    },
+    {
+      "id": "ord_1791988193700",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCL5VHKN20R0/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCL5VHKN20R0",
+      "status": "pending_verification",
+      "trackId": "t1791964364619",
+      "createdAt": "2026-10-14T14:29:53.860Z",
+      "transferNote": "NGHAO MV87I3L0IA2",
+      "apipayPublicId": "APIPAYJSCL5VHKN20R0",
+      "redirectSecret": "c148f347285c56311a3a72da70137c0d3d99c49d64331e08c2a5a6e8619cc1ae"
+    },
+    {
+      "id": "ord_1791988388348",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCML752NRTL4/qr-image",
+      "amount": 600000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCML752NRTL4",
+      "status": "pending_verification",
+      "trackId": "t1791883926651",
+      "createdAt": "2026-10-14T14:33:08.473Z",
+      "transferNote": "NGHAO MV87M9RWV72",
+      "apipayPublicId": "APIPAYJSCML752NRTL4",
+      "redirectSecret": "2a7e30285d415d6f15d631742abcf3e55337f9c75d88892cc699e58ff3ce9bfe"
+    },
+    {
+      "id": "ord_1791988786724",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCT5PE51PVL7/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCT5PE51PVL7",
+      "status": "pending_verification",
+      "trackId": "t1791863592445",
+      "createdAt": "2026-10-14T14:39:47.256Z",
+      "transferNote": "NGHAO MV87UT5WC2N",
+      "apipayPublicId": "APIPAYJSCT5PE51PVL7",
+      "redirectSecret": "2749d3556304ce5b0b3f0bfefd91abed5ced589e7b4058bc41e48783f198df7a"
+    },
+    {
+      "id": "ord_1791988833750",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCENY5YJ2KWP/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCENY5YJ2KWP",
+      "status": "pending_verification",
+      "trackId": "t1791863432050",
+      "createdAt": "2026-10-14T14:40:35.538Z",
+      "transferNote": "NGHAO MV87VTG6CEP",
+      "apipayPublicId": "APIPAYJSCENY5YJ2KWP",
+      "redirectSecret": "93b04e51e991b6faecec0142b098c0fd5a6316f25d45dd7d604404086cfdcaed"
+    },
+    {
+      "id": "ord_1791989732630",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC1V5ZJ4LVTA/qr-image",
+      "amount": 200000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC1V5ZJ4LVTA",
+      "status": "pending_verification",
+      "trackId": "t1791908040220",
+      "createdAt": "2026-10-14T14:55:33.043Z",
+      "transferNote": "NGHAO MV88F3126KF",
+      "apipayPublicId": "APIPAYJSC1V5ZJ4LVTA",
+      "redirectSecret": "c91210f988b5bfbf9165fa900748c0a94da05450ba46c20b8577d1cf7e5a4bbd"
+    },
+    {
+      "id": "ord_1791989802134",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCRGKE53DKJ2/qr-image",
+      "amount": 200000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCRGKE53DKJ2",
+      "status": "pending_verification",
+      "trackId": "t1791877930070",
+      "createdAt": "2026-10-14T14:56:42.263Z",
+      "transferNote": "NGHAO MV88GKNQP9H",
+      "apipayPublicId": "APIPAYJSCRGKE53DKJ2",
+      "redirectSecret": "8001316889161ce3538394b572ffefe717cc81ce7c94d86256653cb6b3baa2e6"
+    },
+    {
+      "id": "ord_1791992445742",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCY1UVM3M93K/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCY1UVM3M93K",
+      "status": "pending_verification",
+      "trackId": "t1791863592445",
+      "createdAt": "2026-10-14T15:40:45.858Z",
+      "transferNote": "NGHAO MV8A18HA1VY",
+      "apipayPublicId": "APIPAYJSCY1UVM3M93K",
+      "redirectSecret": "3afdf689a9f8d2aecb81fc448dad04fa1d70b7e01bb01798850eb84c115c31e8"
+    },
+    {
+      "id": "ord_1791993588561",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC54WD9S6NS8/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC54WD9S6NS8",
+      "status": "pending_verification",
+      "trackId": "t1791863432050",
+      "createdAt": "2026-10-14T15:59:49.050Z",
+      "transferNote": "NGHAO MV8APQA9N58",
+      "apipayPublicId": "APIPAYJSC54WD9S6NS8",
+      "redirectSecret": "bf5580308d2bc326c3fad1d2865ce528896701221acca69a5b95ce9b9c0e3e08"
+    },
+    {
+      "id": "ord_1791995532775",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC4WSX5K51EE/qr-image",
+      "amount": 800000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC4WSX5K51EE",
+      "status": "pending_verification",
+      "trackId": "t1791948378483",
+      "createdAt": "2026-10-14T16:32:12.883Z",
+      "transferNote": "NGHAO MV8BVEG7918",
+      "apipayPublicId": "APIPAYJSC4WSX5K51EE",
+      "redirectSecret": "d3dbc14b62af9bfd2a62516dd432a5303f179bec01cf4145cf23208bf4f4ff30"
+    },
+    {
+      "id": "ord_1791999058772",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCMMXHQXE4WQ/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCMMXHQXE4WQ",
+      "status": "pending_verification",
+      "trackId": "t1791964364619",
+      "createdAt": "2026-10-14T17:30:58.890Z",
+      "transferNote": "NGHAO MV8DYZ4KRH5",
+      "apipayPublicId": "APIPAYJSCMMXHQXE4WQ",
+      "redirectSecret": "c6c96e6e03c0013ef276425106f9a19a864c42914977604500fb4822828979ec"
     }
   ],
   "tracks": [
     {
-      "id": "t1791966687237",
-      "album": "Đặt nhạc theo yêu cầu",
-      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791966555/music_store/images/v4enb1zidm7eh02pichm.jpg",
-      "genre": "House",
+      "id": "t1791968271030",
+      "album": "Single",
+      "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791968384/music_store/images/dqwip0xzbmlyndxkrloi.jpg",
+      "genre": "PRE-ORDER",
       "price": 2000000,
       "title": "PRE-ORDER (HD)",
       "artist": "Nghao",
-      "demoEnd": 60,
+      "demoEnd": 300,
       "duration": 300,
       "featured": false,
-      "isPreorder": true,
-      "demoStart": 0
+      "demoStart": 0,
+      "isPreorder": true
     },
     {
       "id": "t1791964364619",

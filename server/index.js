@@ -3,6 +3,7 @@ import cors from "cors";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 import crypto from "crypto";
 import dotenv from "dotenv";
@@ -33,6 +34,20 @@ import {
 
 dotenv.config();
 
+// Default environment fallbacks for Vercel Serverless & cloud deployments
+process.env.SUPABASE_URL = process.env.SUPABASE_URL || "https://puthzuedydffjkljpjbg.supabase.co";
+process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1dGh6dWVkeWRmZmprbGpwamJnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MTI3NTExOCwiZXhwIjoyMTA2ODUxMTE4fQ.bXzo6aDGkzt42kLxcIRu3vRM43l833DPvWhYSk2FRrk";
+process.env.CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "oksfct7l";
+process.env.CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "258777441877266";
+process.env.CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET || "0aBpCoVYusOtt1tAaDU6OqcEQ7o";
+process.env.APIPAY_ACCESS_KEY = process.env.APIPAY_ACCESS_KEY || "c57c71bb9a548cc35ef0072b0edf1d16e3bfde7d06dcb3be9a61594c23960e5c";
+process.env.APIPAY_SECRET_KEY = process.env.APIPAY_SECRET_KEY || "TFRtzNJi6lHVz7N0RHvq56TiMfSc13918LhcD7M1lBPIQkaxB4tpZ0cttF45YhK7yA6B1Iuhe0y1+Tdzxj8l+Q==";
+process.env.APIPAY_BANK_PUBLIC_ID = process.env.APIPAY_BANK_PUBLIC_ID || "cmv615pke0c4001sxipdu87dw";
+process.env.APIPAY_WEBHOOK_SECRET = process.env.APIPAY_WEBHOOK_SECRET || "f5cb1c6958f358b779c7f00a499f6b036fafcb7e8945fc9d341a0bf9b15f03b4";
+process.env.ADMIN_ALERT_EMAIL = process.env.ADMIN_ALERT_EMAIL || "nghaoproducer@gmail.com";
+process.env.NTFY_TOPIC = process.env.NTFY_TOPIC || "nghao-orders-2026";
+process.env.PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -41,18 +56,21 @@ app.disable("x-powered-by");
 const PORT = process.env.PORT || 5000;
 
 // Cloudinary setup
+const CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "oksfct7l";
+const CLOUD_KEY = process.env.CLOUDINARY_API_KEY || "258777441877266";
+const CLOUD_SECRET = process.env.CLOUDINARY_API_SECRET || "0aBpCoVYusOtt1tAaDU6OqcEQ7o";
 const isCloudinaryConfigured = Boolean(
-  process.env.CLOUDINARY_CLOUD_NAME &&
-  process.env.CLOUDINARY_API_KEY &&
-  process.env.CLOUDINARY_API_SECRET &&
-  process.env.CLOUDINARY_CLOUD_NAME !== "your_cloud_name"
+  CLOUD_NAME &&
+  CLOUD_KEY &&
+  CLOUD_SECRET &&
+  CLOUD_NAME !== "your_cloud_name"
 );
 
 if (isCloudinaryConfigured) {
   cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: CLOUD_NAME,
+    api_key: CLOUD_KEY,
+    api_secret: CLOUD_SECRET
   });
   console.log("Cloudinary is enabled for audio & image storage.");
 } else {
@@ -199,8 +217,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// Database file helpers + Supabase Cloud Sync (for Render stateless deployments)
-const DB_FILE = path.join(__dirname, "db.json");
+// Database file helpers + Supabase Cloud Sync (supports local, Render, and Vercel Serverless)
+const DB_FILE = process.env.VERCEL
+  ? path.join(os.tmpdir(), "db.json")
+  : path.join(__dirname, "db.json");
 const SUPABASE_URL = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || "";
 const isSupabaseConfigured = Boolean(
@@ -214,7 +234,10 @@ let memoryDb = null;
 function readDb() {
   if (memoryDb) return memoryDb;
   try {
-    const data = fs.readFileSync(DB_FILE, "utf-8");
+    const fileToRead = process.env.VERCEL && !fs.existsSync(DB_FILE)
+      ? path.join(__dirname, "db.json")
+      : DB_FILE;
+    const data = fs.readFileSync(fileToRead, "utf-8");
     memoryDb = JSON.parse(data);
     return memoryDb;
   } catch (err) {
@@ -268,7 +291,11 @@ async function initSupabaseStore() {
     const rows = await res.json();
     if (Array.isArray(rows) && rows.length > 0 && rows[0]?.data) {
       memoryDb = rows[0].data;
-      fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf-8");
+      try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf-8");
+      } catch {
+        /* ignore local cache write error on serverless */
+      }
       console.log("Loaded store state from Supabase (app_store).");
     } else {
       const initialData = readDb();
@@ -417,9 +444,15 @@ app.post("/api/apipay/webhook", express.raw({ type: "*/*" }), (req, res) => {
 app.use(express.json());
 
 // Serve uploaded files statically (fallback)
-const UPLOAD_DIR = path.join(__dirname, "uploads");
+const UPLOAD_DIR = process.env.VERCEL
+  ? path.join(os.tmpdir(), "uploads")
+  : path.join(__dirname, "uploads");
 if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  } catch {
+    /* ignore directory creation error on serverless */
+  }
 }
 app.use("/uploads", express.static(UPLOAD_DIR));
 
@@ -1788,9 +1821,14 @@ app.delete("/albums/:id", requireAdmin, (req, res) => {
   res.status(204).send();
 });
 
-initSupabaseStore().finally(() => {
-  app.listen(PORT, () => {
-    console.log(`Backend server is running on http://localhost:${PORT}`);
+if (!process.env.VERCEL) {
+  initSupabaseStore().finally(() => {
+    app.listen(PORT, () => {
+      console.log(`Backend server is running on http://localhost:${PORT}`);
+    });
   });
-});
+}
+
+export { initSupabaseStore, readDb, writeDb };
+export default app;
 
