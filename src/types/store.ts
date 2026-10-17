@@ -70,9 +70,19 @@ export interface PaymentHistoryEntry {
   transactionDate: string;
 }
 
+export interface OrderItem {
+  trackId: string;
+  title: string;
+  price: number;
+  cover?: string;
+  downloadUrl?: string;
+}
+
 export interface Order {
   id: string;
   trackId: string;
+  trackIds?: string[];
+  items?: OrderItem[];
   amount: number;
   transferNote: string;
   qrUrl?: string;

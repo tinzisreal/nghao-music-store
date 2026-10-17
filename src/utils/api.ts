@@ -261,13 +261,23 @@ export const api = {
     return `${MEDIA_PROXY_BASE}/v2/media/asset/${encodeURIComponent(trackId)}`;
   },
 
-  async createOrder(trackId: string, redirectUrl?: string, email?: string, phone?: string): Promise<Order> {
+  async createOrder(trackIdOrIds: string | string[], redirectUrl?: string, email?: string, phone?: string): Promise<Order> {
+    const isArray = Array.isArray(trackIdOrIds);
+    const trackIds = isArray ? trackIdOrIds : [trackIdOrIds];
+    const trackId = trackIds[0] || "";
+
     if (!USE_MOCK) {
       const ord = await request<Order>(
         "/v2/events/initiate",
         {
           method: "POST",
-          body: JSON.stringify({ trackId, redirectUrl, email, phone })
+          body: JSON.stringify({
+            trackId,
+            trackIds,
+            redirectUrl,
+            email,
+            phone
+          })
         },
         MEDIA_PROXY_BASE
       );
@@ -279,6 +289,7 @@ export const api = {
     return mock({
       id: `ord_${Date.now()}`,
       trackId,
+      trackIds,
       amount: track.price,
       transferNote,
       bank: mockBank,
