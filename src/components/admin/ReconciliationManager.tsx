@@ -22,14 +22,14 @@ import { Order, ReconciliationData } from "../../types/store";
 import { api, errorMessage } from "../../utils/api";
 import { formatPrice } from "../../utils/format";
 
-type FilterStatus = "all" | "paid" | "underpaid" | "overpaid" | "pending_verification";
+type FilterStatus = "has_payment" | "exact" | "paid" | "underpaid" | "overpaid" | "pending_verification";
 
 export function ReconciliationManager() {
   const [data, setData] = useState<ReconciliationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("has_payment");
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [testingNotification, setTestingNotification] = useState(false);
@@ -169,14 +169,34 @@ export function ReconciliationManager() {
 
   const stats = useMemo(() => {
     const orders = data?.orders || [];
+    const hasPaymentOrders = orders.filter(
+      (o) =>
+        o.status === "paid" ||
+        o.status === "underpaid" ||
+        (o.paidAmount || 0) > 0 ||
+        (o.overpaidAmount || 0) > 0 ||
+        o.paymentResolution === "overpaid"
+    );
     const paidOrders = orders.filter((o) => o.status === "paid");
+    const exactOrders = orders.filter(
+      (o) => o.status === "paid" && (o.paymentResolution === "exact" || !((o.overpaidAmount || 0) > 0))
+    );
     const underpaidOrders = orders.filter((o) => o.status === "underpaid");
-    const overpaidOrders = orders.filter((o) => (o.overpaidAmount || 0) > 0 || o.paymentResolution === "overpaid");
-    const pendingOrders = orders.filter((o) => !o.status || o.status === "pending_verification");
-    const totalRevenue = orders.reduce((sum, o) => sum + Number(o.paidAmount || (o.status === "paid" ? o.amount : 0) || 0), 0);
+    const overpaidOrders = orders.filter(
+      (o) => (o.overpaidAmount || 0) > 0 || o.paymentResolution === "overpaid"
+    );
+    const pendingOrders = orders.filter(
+      (o) => (!o.status || o.status === "pending_verification") && !(o.paidAmount > 0)
+    );
+    const totalRevenue = orders.reduce(
+      (sum, o) => sum + Number(o.paidAmount || (o.status === "paid" ? o.amount : 0) || 0),
+      0
+    );
     return {
       totalOrders: orders.length,
+      hasPaymentCount: hasPaymentOrders.length,
       paidCount: paidOrders.length,
+      exactCount: exactOrders.length,
       underpaidCount: underpaidOrders.length,
       overpaidCount: overpaidOrders.length,
       pendingCount: pendingOrders.length,
@@ -189,10 +209,18 @@ export function ReconciliationManager() {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
       const currentStatus = o.status || "pending_verification";
-      if (filterStatus === "paid" && currentStatus !== "paid") return false;
-      if (filterStatus === "underpaid" && currentStatus !== "underpaid") return false;
-      if (filterStatus === "overpaid" && !((o.overpaidAmount || 0) > 0 || o.paymentResolution === "overpaid")) return false;
-      if (filterStatus === "pending_verification" && currentStatus !== "pending_verification") return false;
+      const isOverpaid = (o.overpaidAmount || 0) > 0 || o.paymentResolution === "overpaid";
+      const isUnderpaid = currentStatus === "underpaid";
+      const isPaid = currentStatus === "paid";
+      const hasPayment = isPaid || isUnderpaid || (o.paidAmount || 0) > 0 || isOverpaid;
+
+      if (filterStatus === "has_payment" && !hasPayment) return false;
+      if (filterStatus === "exact" && (!isPaid || isOverpaid)) return false;
+      if (filterStatus === "paid" && !isPaid) return false;
+      if (filterStatus === "underpaid" && !isUnderpaid) return false;
+      if (filterStatus === "overpaid" && !isOverpaid) return false;
+      if (filterStatus === "pending_verification" && (currentStatus !== "pending_verification" || hasPayment)) return false;
+
       if (!q) return true;
       return (
         (o.transferNote || "").toLowerCase().includes(q) ||
@@ -283,16 +311,16 @@ export function ReconciliationManager() {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-white/50">Đủ / Thiếu / Chờ</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-white/50">Đã thanh toán (Đủ / Thiếu / Thừa)</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-white">
-            <span className="text-emerald-400" title="Đã thanh toán">{stats.paidCount}</span>
-            <span className="mx-1.5 text-white/30">/</span>
-            <span className="text-orange-400" title="Chuyển thiếu">{stats.underpaidCount}</span>
-            <span className="mx-1.5 text-white/30">/</span>
-            <span className="text-amber-300" title="Chờ chuyển khoản">{stats.pendingCount}</span>
+            <span className="text-emerald-400" title="Đã thanh toán đủ">{stats.exactCount} đủ</span>
+            <span className="mx-1 text-white/30">·</span>
+            <span className="text-orange-400" title="Chuyển thiếu">{stats.underpaidCount} thiếu</span>
+            <span className="mx-1 text-white/30">·</span>
+            <span className="text-cyan-400" title="Chuyển thừa">{stats.overpaidCount} thừa</span>
           </p>
           <p className="mt-1 text-xs text-white/45">
-            Tổng {stats.totalOrders} đơn ({stats.overpaidCount} đơn chuyển thừa)
+            Tổng {stats.hasPaymentCount} đơn có giao dịch ({stats.pendingCount} đơn chờ)
           </p>
         </div>
 
@@ -424,19 +452,21 @@ export function ReconciliationManager() {
         <div className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-white/[0.04] p-1 ring-1 ring-inset ring-white/10">
           {(
             [
-              { id: "all", label: `Tất cả (${stats.totalOrders})` },
-              { id: "paid", label: `Đã TT (${stats.paidCount})` },
+              { id: "has_payment", label: `Đã thanh toán (Đủ / Thiếu / Thừa) (${stats.hasPaymentCount})` },
+              { id: "exact", label: `Đủ tiền (${stats.exactCount})` },
               { id: "underpaid", label: `Chuyển thiếu (${stats.underpaidCount})` },
               { id: "overpaid", label: `Chuyển thừa (${stats.overpaidCount})` },
-              { id: "pending_verification", label: `Chờ TT (${stats.pendingCount})` }
+              { id: "pending_verification", label: `Đơn chưa CK (${stats.pendingCount})` }
             ] as const
           ).map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setFilterStatus(item.id)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-colors ${
-                filterStatus === item.id ? "bg-white text-black" : "text-white/65 hover:text-white"
+              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+                filterStatus === item.id
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "text-white/65 hover:text-white hover:bg-white/[0.04]"
               }`}>
               {item.label}
             </button>
@@ -446,8 +476,15 @@ export function ReconciliationManager() {
 
       {/* Bảng 1: Danh sách Đơn hàng & Đối soát */}
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
-        <div className="border-b border-white/10 px-5 py-4">
+        <div className="border-b border-white/10 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h3 className="text-base font-semibold">1. Danh sách Đơn hàng & Trạng thái Đối soát ({filteredOrders.length})</h3>
+          <span className="text-xs text-white/50">
+            {filterStatus === "has_payment" && "Toàn bộ đơn đã có giao dịch tiền (Đủ / Thiếu / Thừa)"}
+            {filterStatus === "exact" && "Chỉ hiển thị đơn chuyển đủ tiền"}
+            {filterStatus === "underpaid" && "Chỉ hiển thị đơn chuyển thiếu cần bù"}
+            {filterStatus === "overpaid" && "Chỉ hiển thị đơn chuyển thừa"}
+            {filterStatus === "pending_verification" && "Danh sách đơn khách tạo nhưng chưa chuyển khoản"}
+          </span>
         </div>
 
         {filteredOrders.length === 0 ? (
