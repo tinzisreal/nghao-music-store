@@ -78,7 +78,145 @@ if (isCloudinaryConfigured) {
   console.log("Cloudinary not configured yet, using local storage fallback (/uploads).");
 }
 
-app.use(cors());
+/* ──────── 1. HTTP Server Hardening & Security Headers ──────── */
+app.use((req, res, next) => {
+  // Ngăn chặn MIME-type sniffing
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  // Chống tấn công Clickjacking bằng iframe
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  // Bật bộ lọc XSS trên trình duyệt
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  // Kiểm soát Referrer Policy để không lộ URL nội bộ
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Giới hạn quyền truy cập phần cứng nhạy cảm
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(self)");
+  // Bật HSTS trên kết nối HTTPS
+  if (req.secure || req.headers["x-forwarded-proto"] === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+  next();
+});
+
+/* ──────── 2. CORS & CSRF Protection ──────── */
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/,
+  /^https:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/,
+  /^https:\/\/([a-zA-Z0-9-]+\.)*nghaoproducer\.shop$/,
+  /^https:\/\/nghaoproducer\.shop$/
+];
+
+function isOriginAllowed(origin) {
+  if (!origin) return true; // Cho phép server-to-server, curl, webhook
+  const siteUrl = process.env.PUBLIC_SITE_URL ? process.env.PUBLIC_SITE_URL.replace(/\/+$/, "") : "";
+  if (siteUrl && origin === siteUrl) return true;
+  return ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+}
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-fb-codec", "ApiPay-Signature"]
+  })
+);
+
+/* ──────── 3. Chống Prototype Pollution ──────── */
+function sanitizeObject(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject);
+  }
+  const clean = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
+    }
+    clean[key] = sanitizeObject(val);
+  }
+  return clean;
+}
+
+/* ──────── 4. Rate Limiter (Bộ đếm giới hạn tần suất yêu cầu) ──────── */
+function createRateLimiter({ windowMs, max, message }) {
+  const store = new Map();
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of store.entries()) {
+      if (now - record.resetAt > windowMs) {
+        store.delete(key);
+      }
+    }
+  }, 10 * 60 * 1000).unref();
+
+  return (req, res, next) => {
+    const ip = getClientIp(req);
+    const now = Date.now();
+    let record = store.get(ip);
+
+    if (!record || now > record.resetAt) {
+      record = { count: 1, resetAt: now + windowMs };
+      store.set(ip, record);
+      return next();
+    }
+
+    record.count++;
+    if (record.count > max) {
+      const retryAfterSec = Math.ceil((record.resetAt - now) / 1000);
+      res.setHeader("Retry-After", String(retryAfterSec));
+      return res.status(429).json({
+        message: message || "Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.",
+        retryAfter: retryAfterSec
+      });
+    }
+
+    next();
+  };
+}
+
+const orderRateLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 15,
+  message: "Bạn đã tạo đơn quá nhanh. Vui lòng đợi 5 phút trước khi tạo đơn tiếp theo."
+});
+
+const subscribeRateLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000,
+  max: 10,
+  message: "Bạn đã gửi quá nhiều yêu cầu đăng ký. Vui lòng thử lại sau."
+});
+
+const analyticsRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 80,
+  message: "Quá tải sự kiện analytics."
+});
+
+const downloadRateLimiter = createRateLimiter({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  message: "Bạn đã tải file quá nhiều lần. Vui lòng đợi 10 phút."
+});
+
+let globalLoginAttempts = [];
+function globalLoginLimiter(req, res, next) {
+  const now = Date.now();
+  globalLoginAttempts = globalLoginAttempts.filter((t) => now - t < 60 * 1000);
+  if (globalLoginAttempts.length >= 30) {
+    return res.status(429).json({
+      message: "Hệ thống đang ghi nhận quá nhiều lượt thử đăng nhập. Vui lòng đợi 1 phút."
+    });
+  }
+  globalLoginAttempts.push(now);
+  next();
+}
 
 // Secret salt dùng để xáo trộn (XOR) nhị phân giả lập gói tin telemetry Facebook/TikTok
 const TELEMETRY_SALT = "nghao_fb_telemetry_2024_secure_salt_k9x";
@@ -664,7 +802,13 @@ app.post(["/api/apipay/webhook", "/api/webhook", "/apipay/webhook"], express.raw
   return res.status(result.statusCode).json(result.body);
 });
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === "object") {
+    req.body = sanitizeObject(req.body);
+  }
+  next();
+});
 
 // Serve uploaded files statically (fallback)
 const UPLOAD_DIR = process.env.VERCEL
@@ -679,21 +823,61 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 app.use("/uploads", express.static(UPLOAD_DIR));
 
-// Configure multer storage
+// Configure multer storage with cryptographic randomness
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, UPLOAD_DIR);
   },
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, uniqueName);
+    const ext = path.extname(file.originalname).toLowerCase();
+    const randomHex = crypto.randomBytes(16).toString("hex");
+    cb(null, `${Date.now()}-${randomHex}${ext}`);
   }
 });
 
+const ALLOWED_MIME_TYPES = new Set([
+  // Audio
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/wave",
+  "audio/flac",
+  "audio/x-flac",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/aac",
+  // Images
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif"
+]);
+
+const ALLOWED_EXTENSIONS = new Set([
+  ".mp3", ".wav", ".flac", ".m4a", ".aac",
+  ".jpg", ".jpeg", ".png", ".webp", ".avif"
+]);
+
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+  limits: { fileSize: 60 * 1024 * 1024 }, // 60MB max
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return cb(
+        new Error(
+          "Phần mở rộng file không được phép. Chỉ chấp nhận mp3, wav, flac, m4a, aac, jpg, png, webp."
+        )
+      );
+    }
+    if (mime && !ALLOWED_MIME_TYPES.has(mime) && mime !== "application/octet-stream") {
+      return cb(new Error("Định dạng MIME không được hỗ trợ: " + mime));
+    }
+    cb(null, true);
+  }
 });
 
 /* ──────── Public Endpoints ──────── */
@@ -818,18 +1002,23 @@ app.get("/tracks/:id/free-download", async (req, res) => {
 });
 
 // POST /subscribe — Đăng ký nhận thông báo bài nhạc mới (kèm tải nhạc free)
-app.post("/subscribe", (req, res) => {
+app.post("/subscribe", subscribeRateLimiter, (req, res) => {
   const { email, phone, source = "free_download", trackId, trackTitle, subscribeNewsletter = true } = req.body || {};
-  if (!email) {
+  if (!email || typeof email !== "string") {
     return res.status(400).json({ message: "Vui lòng nhập địa chỉ Gmail hợp lệ." });
   }
-  const cleanEmail = String(email).trim().toLowerCase();
+  const cleanEmail = String(email).trim().toLowerCase().slice(0, 100);
   if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
     return res.status(400).json({ message: "Địa chỉ Gmail không đúng định dạng." });
   }
   if (source === "free_download" && !subscribeNewsletter) {
     return res.status(400).json({ message: "Vui lòng tích nhận thông báo bài mới để tải nhạc miễn phí." });
   }
+
+  const cleanPhone = phone ? String(phone).replace(/[^\d+]/g, "").slice(0, 20) : undefined;
+  const cleanSource = String(source || "free_download").slice(0, 50);
+  const cleanTrackId = trackId ? String(trackId).slice(0, 50) : undefined;
+  const cleanTrackTitle = trackTitle ? String(trackTitle).slice(0, 150) : undefined;
 
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -838,21 +1027,21 @@ app.post("/subscribe", (req, res) => {
   if (subscribeNewsletter) {
     sub = saveSubscriber(db, {
       email: cleanEmail,
-      phone,
-      source,
-      trackId,
-      trackTitle,
+      phone: cleanPhone,
+      source: cleanSource,
+      trackId: cleanTrackId,
+      trackTitle: cleanTrackTitle,
       active: true
     });
     writeDb(db);
   }
 
   // Nếu tải nhạc free, ghi nhận thêm analytics download
-  if (source === "free_download" && trackId) {
+  if (source === "free_download" && cleanTrackId) {
     recordAnalyticsEvent({
       type: "download",
-      trackId,
-      trackTitle: trackTitle || "Free Track",
+      trackId: cleanTrackId,
+      trackTitle: cleanTrackTitle || "Free Track",
       req
     });
   }
@@ -1000,10 +1189,14 @@ app.get("/sections", (req, res) => {
 });
 
 // POST /orders — Tạo yêu cầu thanh toán qua ApiPay
-app.post("/orders", async (req, res) => {
+app.post("/orders", orderRateLimiter, async (req, res) => {
   const { trackId, redirectUrl, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  if (!trackId || typeof trackId !== "string") {
+    return res.status(400).json({ message: "Thiếu mã bài hát (trackId)." });
+  }
 
   const track = db.tracks.find((t) => t.id === trackId);
   if (!track) return res.status(404).json({ message: "Không tìm thấy bài hát." });
@@ -1013,6 +1206,21 @@ app.post("/orders", async (req, res) => {
     return res.status(400).json({
       message: "Bài hát này được phát hành Miễn phí. Bạn có thể tải file MP3 Full trực tiếp mà không cần thanh toán."
     });
+  }
+
+  // Chống tấn công Open Redirect
+  let safeRedirectUrl = undefined;
+  if (redirectUrl && typeof redirectUrl === "string") {
+    const cleanRedir = redirectUrl.trim();
+    if (
+      cleanRedir.startsWith("/") ||
+      cleanRedir.startsWith("https://nghaoproducer.shop") ||
+      cleanRedir.startsWith("https://www.nghaoproducer.shop") ||
+      cleanRedir.startsWith("http://localhost:") ||
+      cleanRedir.startsWith("http://127.0.0.1:")
+    ) {
+      safeRedirectUrl = cleanRedir;
+    }
   }
 
   const defaultBank = db.bankAccount || {
@@ -1041,7 +1249,7 @@ app.post("/orders", async (req, res) => {
         amount: String(trackPrice),
         content: transferNote,
         title: `Thanh toan bai hat ${track.title}`.slice(0, 100),
-        redirectUrl
+        redirectUrl: safeRedirectUrl
       });
     } catch (err) {
       const status = err instanceof ApiPayError ? err.statusCode : 502;
@@ -1059,8 +1267,21 @@ app.post("/orders", async (req, res) => {
       }
     : defaultBank;
 
-  const cleanEmail = email ? String(email).trim() : undefined;
-  const cleanPhone = phone ? String(phone).trim() : undefined;
+  let cleanEmail = undefined;
+  if (email && typeof email === "string") {
+    const trimmed = email.trim().slice(0, 100);
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      cleanEmail = trimmed.toLowerCase();
+    }
+  }
+
+  let cleanPhone = undefined;
+  if (phone && (typeof phone === "string" || typeof phone === "number")) {
+    const digits = String(phone).replace(/[^\d+]/g, "").slice(0, 20);
+    if (digits.length >= 8) {
+      cleanPhone = digits;
+    }
+  }
 
   const order = {
     id: orderId,
@@ -1283,7 +1504,7 @@ app.post("/paypal/capture-order", async (req, res) => {
 });
 
 // GET /orders/:id/download?token=... — Link tải MP3 Full bảo mật (chỉ gửi qua Gmail cho đơn đã thanh toán)
-app.get("/orders/:id/download", async (req, res) => {
+app.get("/orders/:id/download", downloadRateLimiter, async (req, res) => {
   const { id } = req.params;
   const { token } = req.query;
   const db = readDb();
@@ -1613,6 +1834,11 @@ function verifyAdminToken(token, db) {
 }
 
 function requireAdmin(req, res, next) {
+  const origin = req.headers.origin;
+  if (origin && !isOriginAllowed(origin)) {
+    return res.status(403).json({ message: "Yêu cầu bị từ chối do nguồn gốc không hợp lệ (CORS/CSRF)." });
+  }
+
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   const db = readDb();
@@ -1647,11 +1873,19 @@ app.get("/admin/auth/status", (req, res) => {
 
 const loginAttempts = new Map();
 
+// Dọn dẹp bộ nhớ đăng nhập định kỳ chống memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rec] of loginAttempts.entries()) {
+    if (now - rec.firstAt > 10 * 60 * 1000) {
+      loginAttempts.delete(ip);
+    }
+  }
+}, 10 * 60 * 1000).unref();
+
 // POST /admin/auth/login — Đăng nhập bằng mã 6 số Google Authenticator (TOTP)
-app.post("/admin/auth/login", (req, res) => {
-  const clientIp = String(req.headers["x-forwarded-for"] || req.ip || "unknown")
-    .split(",")[0]
-    .trim();
+app.post("/admin/auth/login", globalLoginLimiter, (req, res) => {
+  const clientIp = getClientIp(req);
   const now = Date.now();
   const attemptRecord = loginAttempts.get(clientIp);
   if (attemptRecord && attemptRecord.count >= 5 && now - attemptRecord.firstAt < 5 * 60 * 1000) {
@@ -1662,6 +1896,12 @@ app.post("/admin/auth/login", (req, res) => {
 
   const { otp, passkey } = req.body || {};
   const code = String(otp || passkey || "").replace(/\s+/g, "");
+  if (!/^\d{6}$/.test(code)) {
+    return res.status(400).json({
+      message: "Mã Google Authenticator phải là chuỗi 6 chữ số."
+    });
+  }
+
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1804,10 +2044,12 @@ app.post("/admin/reconciliation/sync", requireAdmin, async (req, res) => {
 });
 
 // POST /analytics/event — Nhận sự kiện pageview / play / download từ client
-app.post("/analytics/event", (req, res) => {
+app.post("/analytics/event", analyticsRateLimiter, (req, res) => {
   const { type, trackId, trackTitle } = req.body || {};
   if (type === "pageview" || type === "play" || type === "download") {
-    recordAnalyticsEvent({ type, trackId, trackTitle, req });
+    const cleanTrackId = trackId ? String(trackId).slice(0, 50) : undefined;
+    const cleanTrackTitle = trackTitle ? String(trackTitle).slice(0, 150) : undefined;
+    recordAnalyticsEvent({ type, trackId: cleanTrackId, trackTitle: cleanTrackTitle, req });
   }
   res.json({ ok: true });
 });
@@ -2095,13 +2337,22 @@ app.delete("/admin/orders/:id", requireAdmin, (req, res) => {
   res.status(204).send();
 });
 
-/* ──────── Admin Endpoints ──────── */
-
 // POST /uploads
-app.post("/uploads", requireAdmin, upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: "Không có file nào được tải lên." });
-  }
+app.post(
+  "/uploads",
+  requireAdmin,
+  (req, res, next) => {
+    upload.single("file")(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ message: err.message || "Lỗi tải file lên." });
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: "Không có file nào được tải lên." });
+    }
 
   const kind = req.body.kind || "auto"; // "image" | "audio"
 
@@ -2338,7 +2589,8 @@ app.delete("/albums/:id", requireAdmin, (req, res) => {
   res.status(204).send();
 });
 
-if (!process.env.VERCEL) {
+const isMainEntry = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (!process.env.VERCEL && isMainEntry) {
   initSupabaseStore().finally(() => {
     app.listen(PORT, () => {
       console.log(`Backend server is running on http://localhost:${PORT}`);

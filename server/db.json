@@ -33,29 +33,32 @@
   "albums": [],
   "orders": [
     {
-      "id": "ord_1792222415000",
-      "trackId": "t1791968271030",
-      "trackTitle": "PRE-ORDER (HD)",
+      "id": "ord_1792222323061",
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCY1K8QYUDY9/qr-image",
       "amount": 200000,
-      "paidAmount": 200000,
+      "paidAt": "2026-10-17T07:32:03.061Z",
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCY1K8QYUDY9",
       "status": "paid",
+      "trackId": "t1791908040220",
+      "createdAt": "2026-10-17T07:32:03.061Z",
+      "paidAmount": 200000,
+      "trackTitle": "Toidaidot - Greyd",
       "transferNote": "NGHAO MVC2WAF4IDX",
-      "reconciledVia": "apipay_sync",
-      "createdAt": "2026-10-17T07:33:35.000Z",
+      "reconciledVia": "apipay_payment_request",
+      "referenceCode": "APIPAYJSCY1K8QYUDY9",
+      "transactionId": "pr_APIPAYJSCY1K8QYUDY9",
+      "apipayPublicId": "APIPAYJSCY1K8QYUDY9",
+      "overpaidAmount": 0,
       "paymentHistory": [
         {
-          "transactionId": "cmvc2ya8205pv01loxhlrp50j",
-          "referenceCode": "FT26290658910703",
           "amount": 200000,
-          "transactionDate": "2026-10-17T07:33:35.000Z"
+          "referenceCode": "APIPAYJSCY1K8QYUDY9",
+          "transactionId": "pr_APIPAYJSCY1K8QYUDY9",
+          "transactionDate": "2026-10-17T07:32:03.061Z"
         }
       ],
-      "transactionId": "cmvc2ya8205pv01loxhlrp50j",
-      "referenceCode": "FT26290658910703",
-      "paymentResolution": "exact",
       "shortfallAmount": 0,
-      "overpaidAmount": 0,
-      "paidAt": "2026-10-17T07:33:35.000Z"
+      "paymentResolution": "exact"
     },
     {
       "id": "ord_1791771639112",
@@ -1440,15 +1443,15 @@
       },
       "2026-10-17": {
         "plays": 61,
-        "views": 33,
-        "uniques": 26,
-        "downloads": 3
+        "views": 36,
+        "uniques": 28,
+        "downloads": 5
       }
     },
     "devices": {
-      "mobile": 42,
+      "mobile": 44,
       "tablet": 0,
-      "desktop": 57
+      "desktop": 58
     },
     "uniqueIps": {
       "05e93a9a6da633a0": "2026-10-17",
@@ -1485,6 +1488,7 @@
       "8d185964d1f13bc0": "2026-10-17",
       "952b828e7f8b648d": "2026-10-17",
       "963ab35bd8be55a6": "2026-10-15",
+      "9a17921611a8a007": "2026-10-17",
       "9c066de14a0036bd": "2026-10-17",
       "9d7e0060bd5f1b47": "2026-10-17",
       "a31767b82f7fa13b": "2026-10-15",
@@ -1498,6 +1502,7 @@
       "ca693efd080c4901": "2026-10-16",
       "d031632600c7175e": "2026-10-17",
       "d068d0d10c09b359": "2026-10-17",
+      "d454472c91961c9b": "2026-10-17",
       "d6fd5374217ab4eb": "2026-10-15",
       "d8562d99abba726d": "2026-10-16",
       "ded1d84ea2f00123": "2026-10-15",
@@ -1509,7 +1514,7 @@
       "ff7d63138da0db9f": "2026-10-17"
     },
     "totalPlays": 165,
-    "totalViews": 99,
+    "totalViews": 102,
     "trackPlays": {
       "t1791863000230": 13,
       "t1791863432050": 4,
@@ -2232,16 +2237,35 @@
         "trackTitle": "Baby - MCK, Marzus"
       }
     ],
-    "totalDownloads": 18,
+    "totalDownloads": 20,
     "trackDownloads": {
       "t1791867400589": 2,
       "t1791874838261": 3,
+      "t1791881192161": 2,
       "t1791881576650": 3,
       "t1791881994825": 3,
       "t1791882490980": 2,
       "t1791948682068": 5
     },
     "recentDownloads": [
+      {
+        "id": "dl_1792243234018_qrk7",
+        "ip": "14.162.225.***",
+        "device": "Mobile",
+        "browser": "Facebook App",
+        "trackId": "t1791881192161",
+        "trackTitle": "CLME - Hoàng Tôn",
+        "downloadedAt": "2026-10-17T13:20:34.018Z"
+      },
+      {
+        "id": "dl_1792243231855_zxk2",
+        "ip": "14.162.225.***",
+        "device": "Mobile",
+        "browser": "Facebook App",
+        "trackId": "t1791881192161",
+        "trackTitle": "CLME - Hoàng Tôn",
+        "downloadedAt": "2026-10-17T13:20:31.854Z"
+      },
       {
         "id": "dl_1792224387370_087y",
         "ip": "183.80.122.***",
@@ -2405,7 +2429,7 @@
         "downloadedAt": "2026-10-15T15:18:20.724Z"
       }
     ],
-    "totalUniqueVisitors": 60
+    "totalUniqueVisitors": 62
   },
   "bankAccount": {
     "bankId": "MB",
@@ -2432,7 +2456,7 @@
       "amount": "200000",
       "content": "QAMTAP6196  PAY36090 1  NGHAO MVC2WAF4IDX",
       "gateway": "MB",
-      "orderId": "ord_1792222415000",
+      "orderId": "ord_1792222323061",
       "processedAt": "2026-10-17T12:15:21.848Z",
       "referenceCode": "FT26290658910703",
       "transactionId": "cmvc2ya8205pv01loxhlrp50j",
