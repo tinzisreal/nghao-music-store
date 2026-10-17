@@ -23,26 +23,27 @@ export function CartDrawer({ onCheckout }: CartDrawerProps) {
     <AnimatePresence>
       {isCartOpen && (
         <div className="fixed inset-0 z-[80] overflow-hidden">
-          {/* Backdrop mờ che toàn bộ màn hình - kính mờ nhẹ, không làm đen kịt website */}
+          {/* Backdrop mờ che toàn bộ màn hình - kính mờ nhẹ */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={closeCart}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
           />
 
-          {/* Drawer trượt từ bên phải - chuẩn progressive-card-glass đồng bộ với toàn shop */}
+          {/* Drawer trượt từ bên phải - cố định tuyệt đối bên phải toàn màn hình */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="progressive-card-glass absolute inset-y-0 right-0 flex w-full max-w-md flex-col !rounded-none sm:!rounded-l-[28px] !border-y-0 !border-r-0 border-l border-white/20 shadow-2xl text-white"
+            style={{ position: "fixed", top: 0, bottom: 0, right: 0, height: "100%" }}
+            className="progressive-card-glass z-[85] flex w-full max-w-md flex-col !rounded-none sm:!rounded-l-[28px] !border-y-0 !border-r-0 border-l border-white/20 shadow-2xl text-white"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.02] px-6 py-4">
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.02] px-6 py-4">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/15">
                   <ShoppingBagIcon className="h-5 w-5" />
@@ -133,7 +134,7 @@ export function CartDrawer({ onCheckout }: CartDrawerProps) {
 
             {/* Footer - Kính mờ đồng bộ không còn nền đen kịt */}
             {items.length > 0 && (
-              <div className="border-t border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
+              <div className="shrink-0 border-t border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
                 <div className="mb-4 space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-white/60">
                     <span>Số lượng</span>
