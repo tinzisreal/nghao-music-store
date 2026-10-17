@@ -496,6 +496,8 @@ function anonymizeIp(ip = "") {
 
 function getClientIp(req) {
   return String(
+    req.headers["cf-connecting-ip"] ||
+    req.headers["x-real-ip"] ||
     req.headers["x-forwarded-for"] ||
     req.socket?.remoteAddress ||
     req.ip ||
