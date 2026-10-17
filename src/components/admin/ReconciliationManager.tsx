@@ -340,6 +340,46 @@ export function ReconciliationManager() {
         </div>
       </div>
 
+      {/* Hộp hướng dẫn cấu hình Webhook ApiPay khi đổi Domain */}
+      <div className="rounded-3xl border border-amber-500/30 bg-amber-950/20 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400" />
+              <h3 className="font-semibold text-white">Cấu hình Webhook ApiPay (Cần cập nhật khi đổi Domain)</h3>
+            </div>
+            <p className="text-xs leading-relaxed text-white/70">
+              Để app ntfy tự động reo chuông ngay khi khách quét mã chuyển khoản thành công, bạn cần cài đặt URL Webhook này trong{" "}
+              <a href="https://app.apipay.vn" target="_blank" rel="noreferrer" className="text-amber-300 underline font-semibold">Dashboard ApiPay (app.apipay.vn)</a> &gt; Cấu hình Webhook:
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="rounded bg-black/50 px-2 py-1 font-mono text-xs text-amber-200">
+                https://nghaoproducer.shop/api/apipay/webhook
+              </code>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleCopy("https://nghaoproducer.shop/api/apipay/webhook")}
+              className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5 text-xs font-medium text-amber-200 transition hover:bg-amber-500/20">
+              {copiedText === "https://nghaoproducer.shop/api/apipay/webhook" ? <CheckIcon className="h-3.5 w-3.5 text-emerald-400" /> : <CopyIcon className="h-3.5 w-3.5" />}
+              <span>{copiedText === "https://nghaoproducer.shop/api/apipay/webhook" ? "Đã chép URL" : "Chép Webhook URL"}</span>
+            </button>
+
+            <a
+              href="https://app.apipay.vn"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-white/10">
+              <ExternalLinkIcon className="h-3.5 w-3.5" />
+              <span>Vào ApiPay Dashboard</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
       {/* Hộp hướng dẫn cơ chế rà soát Nội dung chuyển khoản */}
       <div className="rounded-3xl border border-ember/30 bg-ember/[0.07] p-5">
         <div className="flex items-start gap-3">

@@ -29,7 +29,7 @@ export function buildCustomerComposeMailUrl({ customerEmail, trackTitle, transfe
  * Hoạt động ngay tức thì, không cần tài khoản hay API key!
  */
 export async function sendNtfyOrderAlert({ order, track, transaction = null, fetchImpl = globalThis.fetch }) {
-  const topic = (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim();
+  const topic = (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).replace(/^["']|["']$/g, "").trim();
   if (!topic) {
     return { sent: false, reason: "ntfy_not_configured" };
   }
@@ -108,8 +108,9 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      console.error("[ntfy] Publish error:", res.status);
-      return { sent: false, reason: `http_${res.status}` };
+      const errBody = await res.text().catch(() => "");
+      console.error("[ntfy] Publish error:", res.status, errBody);
+      return { sent: false, reason: `http_${res.status}_${errBody.slice(0, 100)}` };
     }
 
     console.log(`[ntfy] Alert published successfully to topic "${topic}" for order ${order.id}`);

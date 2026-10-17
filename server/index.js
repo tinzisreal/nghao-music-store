@@ -599,14 +599,39 @@ app.get("/health", (req, res) => {
   });
 });
 
+// GET /api/apipay/webhook — Endpoint kiểm tra kết nối từ cổng thanh toán hoặc trình duyệt
+app.get(["/api/apipay/webhook", "/api/webhook", "/apipay/webhook"], (req, res) => {
+  res.json({
+    status: "ok",
+    message: "ApiPay Webhook Endpoint is ready to receive POST events.",
+    endpoint: `${(process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "")}/api/apipay/webhook`,
+    ntfyTopic: (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim()
+  });
+});
+
 // POST /api/apipay/webhook — Phải giữ nguyên raw body trước khi qua express.json()
-app.post("/api/apipay/webhook", express.raw({ type: "*/*" }), (req, res) => {
-  const signature = req.headers["apipay-signature"];
-  const rawBody = Buffer.isBuffer(req.body)
-    ? req.body
-    : typeof req.body === "string"
-      ? Buffer.from(req.body, "utf8")
-      : Buffer.from("");
+app.post(["/api/apipay/webhook", "/api/webhook", "/apipay/webhook"], express.raw({ type: "*/*" }), async (req, res) => {
+  const signature =
+    req.headers["apipay-signature"] ||
+    req.headers["x-apipay-signature"] ||
+    req.headers["x-signature"];
+
+  let rawBody = req.body;
+  if (!Buffer.isBuffer(rawBody)) {
+    if (typeof rawBody === "string") {
+      rawBody = Buffer.from(rawBody, "utf8");
+    } else if (rawBody && typeof rawBody === "object") {
+      try {
+        rawBody = Buffer.from(JSON.stringify(rawBody), "utf8");
+      } catch {
+        rawBody = Buffer.from("");
+      }
+    } else {
+      rawBody = Buffer.from("");
+    }
+  }
+
+  console.log(`[ApiPay Webhook] Received event (sig: ${signature ? "yes" : "no"}, size: ${rawBody.length} bytes)`);
 
   const result = handleApiPayWebhook({
     rawBody,
@@ -621,15 +646,18 @@ app.post("/api/apipay/webhook", express.raw({ type: "*/*" }), (req, res) => {
     const matchedOrder = (db?.orders || []).find((o) => o.id === result.body.orderId);
     if (matchedOrder) {
       const track = (db?.tracks || []).find((t) => t.id === matchedOrder.trackId);
-      notifyAdminNewPaidOrder({
-        order: matchedOrder,
-        track,
-        transaction: result.body.transaction,
-        writeDb,
-        db
-      }).catch((err) => {
+      try {
+        console.log(`[ApiPay Webhook] Bắn chuông ntfy & thông báo cho đơn ${matchedOrder.id}...`);
+        await notifyAdminNewPaidOrder({
+          order: matchedOrder,
+          track,
+          transaction: result.body.transaction,
+          writeDb,
+          db
+        });
+      } catch (err) {
         console.error("Webhook notify admin error:", err.message);
-      });
+      }
     }
   }
 
@@ -1221,19 +1249,21 @@ app.post("/paypal/capture-order", async (req, res) => {
     const track = (db.tracks || []).find((t) => t.id === order.trackId);
 
     // Báo chuông ntfy điện thoại, Telegram và Gmail cho Nghao Producer ngay tức thì!
-    notifyAdminNewPaidOrder({
-      order,
-      track,
-      transaction: {
-        transactionId: captureResult.captureId,
-        amount: order.amount,
-        content: `Thẻ Visa/Mastercard: $${captureResult.paidAmountUsd} USD (${order.transferNote})`
-      },
-      writeDb,
-      db
-    }).catch((err) => {
+    try {
+      await notifyAdminNewPaidOrder({
+        order,
+        track,
+        transaction: {
+          transactionId: captureResult.captureId,
+          amount: order.amount,
+          content: `Thẻ Visa/Mastercard: $${captureResult.paidAmountUsd} USD (${order.transferNote})`
+        },
+        writeDb,
+        db
+      });
+    } catch (err) {
       console.error("PayPal notify admin error:", err.message);
-    });
+    }
 
     return res.json({
       success: true,
@@ -1369,10 +1399,18 @@ app.post("/orders/:id/confirm", async (req, res) => {
   let emailSent = Boolean(order.emailSentAt);
   let emailDeliveryReason = undefined;
 
-  if (isPaid && order.email) {
-    const mailResult = await triggerEmailIfPaid(order, db);
-    emailSent = Boolean(mailResult.sent || order.emailSentAt);
-    emailDeliveryReason = mailResult.reason;
+  if (isPaid) {
+    const track = (db.tracks || []).find((t) => t.id === order.trackId);
+    try {
+      await notifyAdminNewPaidOrder({ order, track, writeDb, db });
+    } catch (err) {
+      console.error("Confirm notify admin error:", err.message);
+    }
+    if (order.email) {
+      const mailResult = await triggerEmailIfPaid(order, db);
+      emailSent = Boolean(mailResult.sent || order.emailSentAt);
+      emailDeliveryReason = mailResult.reason;
+    }
   }
 
   let message = "Hệ thống đã ghi nhận Gmail và Số điện thoại của bạn. Nghao Producer sẽ gửi trực tiếp bản MP3 Full qua Gmail cho bạn sau khi xác nhận thanh toán!";
@@ -1694,9 +1732,13 @@ async function buildReconciliationResponse(db, syncWithApiPay = true) {
       if (newlyMatchedCount > 0) {
         writeDb(db);
         for (const ord of db.orders || []) {
-          if (ord.status === "paid" && (!ord.telegramNotifiedAt || !ord.adminEmailNotifiedAt)) {
+          if (ord.status === "paid" && (!ord.ntfyNotifiedAt || !ord.telegramNotifiedAt || !ord.adminEmailNotifiedAt)) {
             const track = (db.tracks || []).find((t) => t.id === ord.trackId);
-            notifyAdminNewPaidOrder({ order: ord, track, writeDb, db }).catch(() => {});
+            try {
+              await notifyAdminNewPaidOrder({ order: ord, track, writeDb, db });
+            } catch (err) {
+              console.error("Sync notify admin error:", err.message);
+            }
           }
         }
       }
@@ -1961,7 +2003,11 @@ app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
 
   if (status === "paid") {
     const track = (db.tracks || []).find((t) => t.id === order.trackId);
-    notifyAdminNewPaidOrder({ order, track, writeDb, db }).catch(() => {});
+    try {
+      await notifyAdminNewPaidOrder({ order, track, writeDb, db });
+    } catch (err) {
+      console.error("Manual status notify admin error:", err.message);
+    }
   }
 
   res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
