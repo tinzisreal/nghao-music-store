@@ -4,11 +4,13 @@ import { StoreStatus } from "../components/StoreStatus";
 import { LanguageSwitch } from "../components/LanguageSwitch";
 import { CartButton } from "../components/CartButton";
 import { useStoreData } from "../hooks/useStoreData";
+import { useCart } from "../contexts/CartContext";
 
 const BG_IMAGE = "/bg-custom.png?v=2";
 
 export function Store() {
   const { state, retry } = useStoreData();
+  const { isCartOpen } = useCart();
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#0c1824] font-sans text-white">
@@ -17,12 +19,16 @@ export function Store() {
         <div className="absolute inset-0 bg-black/15" />
       </div>
 
-      <div className="fixed right-4 top-4 z-40 flex items-center gap-2.5 md:right-8">
+      <div
+        className={`fixed right-4 top-4 z-40 flex items-center gap-2.5 md:right-8 transition-opacity duration-200 ${
+          isCartOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+        }`}
+      >
         <CartButton />
         <LanguageSwitch className="relative !top-0 !right-0" />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative">
         {state.status === "loading" && <StoreStatus kind="loading" />}
         {state.status === "error" && <StoreStatus kind="error" message={state.error} onRetry={retry} />}
         {state.status === "ready" && (
