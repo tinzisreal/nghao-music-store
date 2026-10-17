@@ -23,28 +23,28 @@ export function CartDrawer({ onCheckout }: CartDrawerProps) {
     <AnimatePresence>
       {isCartOpen && (
         <div className="fixed inset-0 z-[80] overflow-hidden">
-          {/* Backdrop mờ che toàn bộ màn hình */}
+          {/* Backdrop mờ che toàn bộ màn hình - kính mờ nhẹ, không làm đen kịt website */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={closeCart}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           />
 
-          {/* Drawer trượt từ bên phải */}
+          {/* Drawer trượt từ bên phải - chuẩn progressive-card-glass đồng bộ với toàn shop */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-white/10 bg-[#0e1622]/98 shadow-2xl backdrop-blur-2xl text-white"
+            className="progressive-card-glass absolute inset-y-0 right-0 flex w-full max-w-md flex-col !rounded-none sm:!rounded-l-[28px] !border-y-0 !border-r-0 border-l border-white/20 shadow-2xl text-white"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.02] px-6 py-4">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white ring-1 ring-white/15">
                   <ShoppingBagIcon className="h-5 w-5" />
                 </div>
                 <div>
@@ -66,7 +66,7 @@ export function CartDrawer({ onCheckout }: CartDrawerProps) {
             <div className="flex-1 overflow-y-auto px-6 py-4">
               {items.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center text-center">
-                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-white/40">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-white/40 ring-1 ring-white/10">
                     <ShoppingBagIcon className="h-8 w-8" />
                   </div>
                   <h3 className="mb-1 text-sm font-semibold text-white">Giỏ hàng đang trống</h3>
@@ -87,10 +87,10 @@ export function CartDrawer({ onCheckout }: CartDrawerProps) {
                   {items.map((track) => (
                     <div
                       key={track.id}
-                      className="group flex items-center gap-3.5 rounded-2xl border border-white/5 bg-white/[0.03] p-3 transition-colors hover:border-white/15 hover:bg-white/[0.06]"
+                      className="group flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition-colors hover:border-white/20 hover:bg-white/[0.08]"
                     >
                       {/* Bìa bài hát */}
-                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-black/40">
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-black/40 ring-1 ring-white/10">
                         {track.cover ? (
                           <img
                             src={track.cover}
@@ -131,9 +131,9 @@ export function CartDrawer({ onCheckout }: CartDrawerProps) {
               )}
             </div>
 
-            {/* Footer */}
+            {/* Footer - Kính mờ đồng bộ không còn nền đen kịt */}
             {items.length > 0 && (
-              <div className="border-t border-white/10 bg-[#091018]/95 p-6 backdrop-blur-md">
+              <div className="border-t border-white/10 bg-white/[0.03] p-6 backdrop-blur-xl">
                 <div className="mb-4 space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-white/60">
                     <span>Số lượng</span>
