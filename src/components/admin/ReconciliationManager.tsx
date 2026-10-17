@@ -18,11 +18,38 @@ import {
   Undo2Icon
 } from "lucide-react";
 import { toast } from "sonner";
-import { Order, ReconciliationData } from "../../types/store";
+import { Order, ProcessedTransaction, ReconciliationData } from "../../types/store";
 import { api, errorMessage } from "../../utils/api";
 import { formatPrice } from "../../utils/format";
 
-type FilterStatus = "has_payment" | "exact" | "paid" | "underpaid" | "overpaid" | "pending_verification";
+type FilterStatus = "has_payment" | "exact" | "underpaid" | "overpaid" | "unmatched" | "pending_verification" | "all";
+
+interface UnifiedItem {
+  key: string;
+  kind: "order" | "unmatched_tx";
+  order?: Order;
+  transaction?: ProcessedTransaction;
+  hasPayment: boolean;
+  effectiveTime: number;
+  status: "exact" | "underpaid" | "overpaid" | "unmatched" | "pending_verification";
+  amount: number;
+  paidAmount: number;
+  shortfallAmount: number;
+  overpaidAmount: number;
+  transferNote: string;
+  referenceCode?: string;
+  transactionId?: string;
+  gateway?: string;
+  trackTitle?: string;
+  email?: string;
+  phone?: string;
+  emailSentAt?: string;
+  apipayPublicId?: string;
+  payUrl?: string;
+  reconciledVia?: string;
+  createdAt?: string;
+  paidAt?: string;
+}
 
 export function ReconciliationManager() {
   const [data, setData] = useState<ReconciliationData | null>(null);
@@ -167,86 +194,157 @@ export function ReconciliationManager() {
     }
   };
 
-  const stats = useMemo(() => {
+  // Gom toàn bộ Đơn hàng và Biến động ngân hàng thành 1 danh sách hợp nhất (Unified List)
+  const unifiedItems = useMemo<UnifiedItem[]>(() => {
     const orders = data?.orders || [];
-    const hasPaymentOrders = orders.filter(
-      (o) =>
-        o.status === "paid" ||
-        o.status === "underpaid" ||
-        (o.paidAmount || 0) > 0 ||
-        (o.overpaidAmount || 0) > 0 ||
-        o.paymentResolution === "overpaid"
-    );
-    const paidOrders = orders.filter((o) => o.status === "paid");
-    const exactOrders = orders.filter(
-      (o) => o.status === "paid" && (o.paymentResolution === "exact" || !((o.overpaidAmount || 0) > 0))
-    );
-    const underpaidOrders = orders.filter((o) => o.status === "underpaid");
-    const overpaidOrders = orders.filter(
-      (o) => (o.overpaidAmount || 0) > 0 || o.paymentResolution === "overpaid"
-    );
-    const pendingOrders = orders.filter(
-      (o) => (!o.status || o.status === "pending_verification") && !(o.paidAmount > 0)
-    );
-    const totalRevenue = orders.reduce(
-      (sum, o) => sum + Number(o.paidAmount || (o.status === "paid" ? o.amount : 0) || 0),
-      0
-    );
-    return {
-      totalOrders: orders.length,
-      hasPaymentCount: hasPaymentOrders.length,
-      paidCount: paidOrders.length,
-      exactCount: exactOrders.length,
-      underpaidCount: underpaidOrders.length,
-      overpaidCount: overpaidOrders.length,
-      pendingCount: pendingOrders.length,
-      totalRevenue
-    };
+    const transactions = data?.processedTransactions || [];
+
+    const matchedTxIds = new Set<string>();
+
+    orders.forEach((o) => {
+      if (o.transactionId) matchedTxIds.add(o.transactionId);
+      if (Array.isArray(o.paymentHistory)) {
+        o.paymentHistory.forEach((h) => {
+          if (h.transactionId) matchedTxIds.add(h.transactionId);
+        });
+      }
+    });
+
+    const items: UnifiedItem[] = [];
+
+    // 1. Chuyển đổi toàn bộ Đơn hàng sang item
+    for (const order of orders) {
+      const isPaid = order.status === "paid";
+      const isUnderpaid = order.status === "underpaid";
+      const isOverpaid = (order.overpaidAmount || 0) > 0 || order.paymentResolution === "overpaid";
+      const hasPayment = isPaid || isUnderpaid || (order.paidAmount || 0) > 0 || isOverpaid;
+
+      let status: UnifiedItem["status"] = "pending_verification";
+      if (isUnderpaid) status = "underpaid";
+      else if (isOverpaid) status = "overpaid";
+      else if (isPaid) status = "exact";
+
+      const effectiveTime = hasPayment
+        ? Date.parse(order.paidAt || order.lastPaymentAt || order.createdAt || "") || 0
+        : Date.parse(order.createdAt || "") || 0;
+
+      items.push({
+        key: `order_${order.id}`,
+        kind: "order",
+        order,
+        hasPayment,
+        effectiveTime,
+        status,
+        amount: order.amount,
+        paidAmount: order.paidAmount || (isPaid ? order.amount : 0),
+        shortfallAmount: order.shortfallAmount || (isUnderpaid ? Math.max(0, order.amount - (order.paidAmount || 0)) : 0),
+        overpaidAmount: order.overpaidAmount || 0,
+        transferNote: order.transferNote,
+        referenceCode: order.referenceCode,
+        transactionId: order.transactionId,
+        gateway: order.paymentMethod === "paypal_card" ? "PayPal" : "MBBank",
+        trackTitle: order.trackTitle || order.trackId,
+        email: order.email,
+        phone: order.phone,
+        emailSentAt: order.emailSentAt,
+        apipayPublicId: order.apipayPublicId,
+        payUrl: order.payUrl,
+        reconciledVia: order.reconciledVia,
+        createdAt: order.createdAt,
+        paidAt: order.paidAt
+      });
+    }
+
+    // 2. Chuyển đổi các biến động ngân hàng chưa khớp sang item
+    for (const tx of transactions) {
+      const isMatched = (tx.orderId && orders.some((o) => o.id === tx.orderId)) || matchedTxIds.has(tx.transactionId);
+      if (isMatched) continue;
+
+      const txAmount = Number(tx.amount || 0);
+      const effectiveTime = Date.parse(tx.transactionDate || tx.processedAt || "") || 0;
+
+      items.push({
+        key: `tx_${tx.transactionId}`,
+        kind: "unmatched_tx",
+        transaction: tx,
+        hasPayment: true,
+        effectiveTime,
+        status: "unmatched",
+        amount: txAmount,
+        paidAmount: txAmount,
+        shortfallAmount: 0,
+        overpaidAmount: 0,
+        transferNote: tx.content,
+        referenceCode: tx.referenceCode || tx.transactionId,
+        transactionId: tx.transactionId,
+        gateway: tx.gateway || "MBBank",
+        trackTitle: "Chưa gán bài hát",
+        createdAt: tx.transactionDate || tx.processedAt,
+        paidAt: tx.transactionDate || tx.processedAt
+      });
+    }
+
+    // 3. Quy tắc cốt lõi: CỨ NHẬN TIỀN LÀ LÊN TRƯỚC HẾT!
+    // Giao dịch mới nhận tiền nhất sẽ đứng ngay dòng 1.
+    items.sort((a, b) => {
+      if (a.hasPayment !== b.hasPayment) {
+        return a.hasPayment ? -1 : 1;
+      }
+      return b.effectiveTime - a.effectiveTime;
+    });
+
+    return items;
   }, [data]);
 
-  const filteredOrders = useMemo(() => {
-    const orders = data?.orders || [];
-    const q = search.trim().toLowerCase();
-    return orders.filter((o) => {
-      const currentStatus = o.status || "pending_verification";
-      const isOverpaid = (o.overpaidAmount || 0) > 0 || o.paymentResolution === "overpaid";
-      const isUnderpaid = currentStatus === "underpaid";
-      const isPaid = currentStatus === "paid";
-      const hasPayment = isPaid || isUnderpaid || (o.paidAmount || 0) > 0 || isOverpaid;
+  const stats = useMemo(() => {
+    const hasPaymentItems = unifiedItems.filter((i) => i.hasPayment);
+    const exactItems = unifiedItems.filter((i) => i.status === "exact");
+    const underpaidItems = unifiedItems.filter((i) => i.status === "underpaid");
+    const overpaidItems = unifiedItems.filter((i) => i.status === "overpaid");
+    const unmatchedItems = unifiedItems.filter((i) => i.status === "unmatched");
+    const pendingItems = unifiedItems.filter((i) => i.status === "pending_verification");
 
-      if (filterStatus === "has_payment" && !hasPayment) return false;
-      if (filterStatus === "exact" && (!isPaid || isOverpaid)) return false;
-      if (filterStatus === "paid" && !isPaid) return false;
-      if (filterStatus === "underpaid" && !isUnderpaid) return false;
-      if (filterStatus === "overpaid" && !isOverpaid) return false;
-      if (filterStatus === "pending_verification" && (currentStatus !== "pending_verification" || hasPayment)) return false;
+    const totalRevenue = unifiedItems.reduce(
+      (sum, i) => sum + Number(i.paidAmount || 0),
+      0
+    );
+
+    return {
+      totalCount: unifiedItems.length,
+      hasPaymentCount: hasPaymentItems.length,
+      exactCount: exactItems.length,
+      underpaidCount: underpaidItems.length,
+      overpaidCount: overpaidItems.length,
+      unmatchedCount: unmatchedItems.length,
+      pendingCount: pendingItems.length,
+      totalRevenue
+    };
+  }, [unifiedItems]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return unifiedItems.filter((item) => {
+      if (filterStatus === "has_payment" && !item.hasPayment) return false;
+      if (filterStatus === "exact" && item.status !== "exact") return false;
+      if (filterStatus === "underpaid" && item.status !== "underpaid") return false;
+      if (filterStatus === "overpaid" && item.status !== "overpaid") return false;
+      if (filterStatus === "unmatched" && item.status !== "unmatched") return false;
+      if (filterStatus === "pending_verification" && item.status !== "pending_verification") return false;
 
       if (!q) return true;
       return (
-        (o.transferNote || "").toLowerCase().includes(q) ||
-        (o.id || "").toLowerCase().includes(q) ||
-        (o.trackTitle || "").toLowerCase().includes(q) ||
-        (o.email || "").toLowerCase().includes(q) ||
-        (o.phone || "").toLowerCase().includes(q) ||
-        (o.referenceCode || "").toLowerCase().includes(q) ||
-        (o.transactionId || "").toLowerCase().includes(q) ||
-        (o.apipayPublicId || "").toLowerCase().includes(q)
+        (item.transferNote || "").toLowerCase().includes(q) ||
+        (item.key || "").toLowerCase().includes(q) ||
+        (item.trackTitle || "").toLowerCase().includes(q) ||
+        (item.email || "").toLowerCase().includes(q) ||
+        (item.phone || "").toLowerCase().includes(q) ||
+        (item.referenceCode || "").toLowerCase().includes(q) ||
+        (item.transactionId || "").toLowerCase().includes(q) ||
+        (item.apipayPublicId || "").toLowerCase().includes(q) ||
+        (item.gateway || "").toLowerCase().includes(q)
       );
     });
-  }, [data, search, filterStatus]);
-
-  const filteredTransactions = useMemo(() => {
-    const list = data?.processedTransactions || [];
-    const q = search.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (tx) =>
-        (tx.content || "").toLowerCase().includes(q) ||
-        (tx.referenceCode || "").toLowerCase().includes(q) ||
-        (tx.transactionId || "").toLowerCase().includes(q) ||
-        (tx.orderId || "").toLowerCase().includes(q)
-    );
-  }, [data, search]);
+  }, [unifiedItems, search, filterStatus]);
 
   if (loading) {
     return (
@@ -296,7 +394,7 @@ export function ReconciliationManager() {
           <p className="text-xs font-medium uppercase tracking-wider text-white/50">Doanh thu đã đối soát</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-ember">{formatPrice(stats.totalRevenue)}</p>
           <p className="mt-1 text-xs text-white/45">
-            Từ {stats.paidCount} đơn hoàn tất {stats.underpaidCount > 0 ? `(+${stats.underpaidCount} đơn chuyển thiếu)` : ""}
+            Từ {stats.exactCount + stats.overpaidCount} đơn hoàn tất {stats.underpaidCount > 0 ? `(+${stats.underpaidCount} đơn chuyển thiếu)` : ""}
           </p>
         </div>
 
@@ -311,25 +409,31 @@ export function ReconciliationManager() {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-white/50">Đã thanh toán (Đủ / Thiếu / Thừa)</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-white/50">Phân loại nhận tiền</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-white">
             <span className="text-emerald-400" title="Đã thanh toán đủ">{stats.exactCount} đủ</span>
             <span className="mx-1 text-white/30">·</span>
             <span className="text-orange-400" title="Chuyển thiếu">{stats.underpaidCount} thiếu</span>
             <span className="mx-1 text-white/30">·</span>
             <span className="text-cyan-400" title="Chuyển thừa">{stats.overpaidCount} thừa</span>
+            {stats.unmatchedCount > 0 && (
+              <>
+                <span className="mx-1 text-white/30">·</span>
+                <span className="text-amber-400" title="Chưa khớp">{stats.unmatchedCount} chưa khớp</span>
+              </>
+            )}
           </p>
           <p className="mt-1 text-xs text-white/45">
-            Tổng {stats.hasPaymentCount} đơn có giao dịch ({stats.pendingCount} đơn chờ)
+            Tổng {stats.hasPaymentCount} giao dịch có tiền ({stats.pendingCount} đơn chưa CK)
           </p>
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-white/50">Biến động Webhook đã lưu</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-white/50">Tổng số đơn hàng</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-white">
-            {data?.processedTransactions?.length || 0}
+            {stats.totalCount}
           </p>
-          <p className="mt-1 text-xs text-white/45">Chống trùng lặp bằng transactionId</p>
+          <p className="mt-1 text-xs text-white/45">Được đồng bộ và bảo vệ chống trùng lặp</p>
         </div>
       </div>
 
@@ -437,33 +541,35 @@ export function ReconciliationManager() {
       </div>
 
       {/* Bộ lọc & Thanh tìm kiếm */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="relative flex-1">
           <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" aria-hidden />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo nội dung CK (VD: NGHAO ...), mã đơn, tên bài nhạc, email, mã tham chiếu..."
-            className="w-full rounded-2xl bg-white/[0.04] py-2.5 pl-11 pr-4 text-sm text-white ring-1 ring-inset ring-white/10 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+            placeholder="Tìm theo nội dung CK (VD: NGHAO ...), mã đơn, tên bài nhạc, email, SĐT, mã tham chiếu..."
+            className="w-full rounded-2xl bg-white/[0.04] py-3 pl-11 pr-4 text-sm text-white ring-1 ring-inset ring-white/10 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-white/[0.04] p-1 ring-1 ring-inset ring-white/10">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-2xl bg-white/[0.04] p-1.5 ring-1 ring-inset ring-white/10">
           {(
             [
-              { id: "has_payment", label: `Đã thanh toán (Đủ / Thiếu / Thừa) (${stats.hasPaymentCount})` },
+              { id: "has_payment", label: `Đã nhận tiền (${stats.hasPaymentCount})` },
               { id: "exact", label: `Đủ tiền (${stats.exactCount})` },
               { id: "underpaid", label: `Chuyển thiếu (${stats.underpaidCount})` },
               { id: "overpaid", label: `Chuyển thừa (${stats.overpaidCount})` },
-              { id: "pending_verification", label: `Đơn chưa CK (${stats.pendingCount})` }
+              { id: "unmatched", label: `Chưa khớp (${stats.unmatchedCount})` },
+              { id: "pending_verification", label: `Đơn chưa CK (${stats.pendingCount})` },
+              { id: "all", label: `Tất cả (${stats.totalCount})` }
             ] as const
           ).map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => setFilterStatus(item.id)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`rounded-xl px-3.5 py-2 text-xs font-medium transition-all ${
                 filterStatus === item.id
                   ? "bg-white text-black font-semibold shadow-sm"
                   : "text-white/65 hover:text-white hover:bg-white/[0.04]"
@@ -474,117 +580,142 @@ export function ReconciliationManager() {
         </div>
       </div>
 
-      {/* Bảng 1: Danh sách Đơn hàng & Đối soát */}
+      {/* DUY NHẤT 1 BẢNG MASTER: Danh sách Đơn hàng & Đối soát Giao dịch */}
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
-        <div className="border-b border-white/10 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <h3 className="text-base font-semibold">1. Danh sách Đơn hàng & Trạng thái Đối soát ({filteredOrders.length})</h3>
-          <span className="text-xs text-white/50">
-            {filterStatus === "has_payment" && "Toàn bộ đơn đã có giao dịch tiền (Đủ / Thiếu / Thừa)"}
-            {filterStatus === "exact" && "Chỉ hiển thị đơn chuyển đủ tiền"}
-            {filterStatus === "underpaid" && "Chỉ hiển thị đơn chuyển thiếu cần bù"}
-            {filterStatus === "overpaid" && "Chỉ hiển thị đơn chuyển thừa"}
-            {filterStatus === "pending_verification" && "Danh sách đơn khách tạo nhưng chưa chuyển khoản"}
+        <div className="border-b border-white/10 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold">Danh sách Đối soát & Giao dịch ({filteredItems.length})</h3>
+            <p className="mt-0.5 text-xs text-white/50">
+              {filterStatus === "has_payment" && "Toàn bộ giao dịch ngân hàng đã nhận tiền — xếp giao dịch mới nhận lên đầu tiên"}
+              {filterStatus === "exact" && "Chỉ hiển thị các đơn đã chuyển đủ chính xác giá bản nhạc"}
+              {filterStatus === "underpaid" && "Chỉ hiển thị các đơn chuyển thiếu cần bù thêm"}
+              {filterStatus === "overpaid" && "Chỉ hiển thị các đơn chuyển thừa cần lưu ý"}
+              {filterStatus === "unmatched" && "Giao dịch ngân hàng đã nhận nhưng khách ghi khác cú pháp mã đơn"}
+              {filterStatus === "pending_verification" && "Đơn hàng khách bấm mua nhưng chưa quét mã chuyển khoản"}
+              {filterStatus === "all" && "Toàn bộ đơn hàng và biến động số dư hệ thống"}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3 py-1 text-xs text-white/60">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            Ưu tiên hiển thị: Giao dịch có tiền lên đầu
           </span>
         </div>
 
-        {filteredOrders.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-white/50">
-            Không có đơn hàng nào khớp với bộ lọc hiện tại.
+        {filteredItems.length === 0 ? (
+          <div className="px-6 py-16 text-center text-sm text-white/50">
+            Không có giao dịch hoặc đơn hàng nào khớp với bộ lọc hiện tại.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[1280px] text-left text-sm">
               <thead className="border-b border-white/10 bg-white/[0.02] text-xs uppercase tracking-wider text-white/50">
                 <tr>
-                  <th className="px-4 py-3.5">Thời gian</th>
-                  <th className="px-4 py-3.5">Nội dung CK rà soát</th>
-                  <th className="px-4 py-3.5">Bài hát</th>
-                  <th className="px-4 py-3.5">Giá / Đã nhận</th>
-                  <th className="px-4 py-3.5">Khách hàng</th>
-                  <th className="px-4 py-3.5">Trạng thái & Đối soát</th>
-                  <th className="px-4 py-3.5 text-right">Thao tác</th>
+                  <th className="px-5 py-4 w-[170px] min-w-[160px]">Thời gian & Mã GD</th>
+                  <th className="px-5 py-4 w-[230px] min-w-[210px]">Nội dung CK & Cổng TT</th>
+                  <th className="px-5 py-4 min-w-[260px]">Bài hát & Khách hàng</th>
+                  <th className="px-5 py-4 w-[180px] min-w-[170px]">Số tiền / Đã nhận</th>
+                  <th className="px-5 py-4 w-[220px] min-w-[200px]">Trạng thái & Đối soát</th>
+                  <th className="px-5 py-4 w-[250px] min-w-[240px] text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {filteredOrders.map((order) => {
-                  const isPaid = order.status === "paid";
-                  const isUnderpaid = order.status === "underpaid";
-                  const isOverpaid = (order.overpaidAmount || 0) > 0 || order.paymentResolution === "overpaid";
-                  const isUpdating = updatingOrderId === order.id;
+                {filteredItems.map((item) => {
+                  const isOrder = item.kind === "order";
+                  const order = item.order;
+                  const isPaid = item.status === "exact" || item.status === "overpaid";
+                  const isUnderpaid = item.status === "underpaid";
+                  const isOverpaid = item.status === "overpaid";
+                  const isUnmatched = item.status === "unmatched";
+                  const isUpdating = order ? updatingOrderId === order.id : false;
+
                   return (
-                    <tr key={order.id} className="hover:bg-white/[0.02]">
-                      <td className="whitespace-nowrap px-4 py-3.5 text-xs text-white/65">
-                        <div>
-                          {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "—"}
+                    <tr
+                      key={item.key}
+                      className={`transition-colors hover:bg-white/[0.03] ${
+                        item.hasPayment ? "bg-white/[0.01]" : ""
+                      }`}>
+                      {/* Cột 1: Thời gian & Mã */}
+                      <td className="px-5 py-4 text-xs text-white/70">
+                        <div className="font-medium text-white/90">
+                          {item.paidAt
+                            ? new Date(item.paidAt).toLocaleString("vi-VN")
+                            : item.createdAt
+                            ? new Date(item.createdAt).toLocaleString("vi-VN")
+                            : "—"}
                         </div>
-                        <div className="mt-0.5 font-mono text-[11px] text-white/40">{order.id}</div>
+                        <div className="mt-1 flex items-center gap-1.5 font-mono text-[11px] text-white/40">
+                          <span>{order ? order.id : item.transactionId}</span>
+                        </div>
+                        {item.hasPayment && (
+                          <div className="mt-1">
+                            <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                              Đã nhận tiền
+                            </span>
+                          </div>
+                        )}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3.5">
-                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-ember/15 px-2.5 py-1 font-mono text-xs font-semibold text-ember ring-1 ring-ember/30">
-                          <span>{order.transferNote}</span>
+                      {/* Cột 2: Nội dung chuyển khoản & Cổng TT */}
+                      <td className="px-5 py-4">
+                        <div className="inline-flex items-center gap-1.5 rounded-xl bg-ember/15 px-3 py-1.5 font-mono text-xs font-semibold text-ember ring-1 ring-ember/30 max-w-full">
+                          <span className="truncate" title={item.transferNote}>
+                            {item.transferNote}
+                          </span>
                           <button
                             type="button"
-                            onClick={() => handleCopy(order.transferNote)}
+                            onClick={() => handleCopy(item.transferNote)}
                             title="Sao chép nội dung chuyển khoản"
-                            className="text-white/70 hover:text-white">
-                            {copiedText === order.transferNote ? (
+                            className="shrink-0 text-white/70 hover:text-white">
+                            {copiedText === item.transferNote ? (
                               <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
                             ) : (
                               <CopyIcon className="h-3.5 w-3.5" />
                             )}
                           </button>
                         </div>
-                        {order.apipayPublicId && (
-                          <div className="mt-1 flex items-center gap-1 text-[11px] text-white/45">
-                            <span>ApiPay: {order.apipayPublicId}</span>
-                            {order.payUrl && (
-                              <a
-                                href={order.payUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-ember hover:underline"
-                                title="Mở trang thanh toán ApiPay">
-                                <ExternalLinkIcon className="h-3 w-3" />
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        {order.paymentMethod === "paypal_card" && (
-                          <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
-                            <span>💳 Thẻ Visa/Mastercard (PayPal {order.amountUsd ? `$${order.amountUsd}` : ""})</span>
-                          </div>
-                        )}
+
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-white/50">
+                          <span className="rounded bg-white/5 px-2 py-0.5 font-medium text-white/70">
+                            {item.gateway || "MBBank"}
+                          </span>
+                          {item.apipayPublicId && (
+                            <span className="flex items-center gap-1">
+                              <span>ApiPay: {item.apipayPublicId}</span>
+                              {item.payUrl && (
+                                <a
+                                  href={item.payUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-ember hover:underline"
+                                  title="Mở trang thanh toán ApiPay">
+                                  <ExternalLinkIcon className="h-3 w-3" />
+                                </a>
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
-                      <td className="px-4 py-3.5">
-                        <div className="font-medium text-white">{order.trackTitle || order.trackId}</div>
-                      </td>
+                      {/* Cột 3: Tên bài hát & Khách hàng */}
+                      <td className="px-5 py-4 text-xs">
+                        <div className="font-semibold text-white text-sm">
+                          {item.trackTitle}
+                        </div>
 
-                      <td className="whitespace-nowrap px-4 py-3.5 tabular-nums">
-                        <div className="font-semibold text-ember">{formatPrice(order.amount)}</div>
-                        {order.amountUsd && (
-                          <div className="text-[11px] text-emerald-400 font-medium">${order.amountUsd} USD</div>
-                        )}
-                        {(order.paidAmount || 0) > 0 && (
-                          <div className="mt-0.5 text-xs text-white/70">
-                            Đã nhận: <strong className="text-emerald-300">{formatPrice(order.paidAmount || 0)}</strong>
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3.5 text-xs text-white/70">
-                        <div className="space-y-1.5">
-                          {order.email ? (
-                            <div className="flex items-center gap-1.5 font-medium text-white">
-                              <MailIcon className="h-3 w-3 shrink-0 text-white/45" />
-                              <span className="truncate max-w-[160px]" title={order.email}>{order.email}</span>
+                        <div className="mt-2 space-y-1">
+                          {item.email ? (
+                            <div className="flex items-center gap-1.5 font-medium text-white/90">
+                              <MailIcon className="h-3.5 w-3.5 shrink-0 text-white/45" />
+                              <span className="truncate max-w-[200px]" title={item.email}>
+                                {item.email}
+                              </span>
                               <button
                                 type="button"
-                                onClick={() => handleCopy(order.email!)}
-                                title="Sao chép Gmail khách hàng"
+                                onClick={() => handleCopy(item.email!)}
+                                title="Sao chép Gmail"
                                 className="text-white/50 hover:text-white">
-                                {copiedText === order.email ? (
+                                {copiedText === item.email ? (
                                   <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
                                 ) : (
                                   <CopyIcon className="h-3.5 w-3.5" />
@@ -592,24 +723,21 @@ export function ReconciliationManager() {
                               </button>
                             </div>
                           ) : (
-                            <span className="text-white/35">Chưa nhập Gmail</span>
+                            <span className="text-white/35 italic">Chưa nhập Gmail</span>
                           )}
 
-                          {order.phone && (
+                          {item.phone && (
                             <div className="flex items-center gap-1.5 font-medium text-ember">
-                              <PhoneIcon className="h-3 w-3 shrink-0 text-ember/70" />
-                              <a
-                                href={`tel:${order.phone}`}
-                                title="Bấm để gọi"
-                                className="hover:underline">
-                                {order.phone}
+                              <PhoneIcon className="h-3.5 w-3.5 shrink-0 text-ember/70" />
+                              <a href={`tel:${item.phone}`} className="hover:underline" title="Bấm để gọi">
+                                {item.phone}
                               </a>
                               <button
                                 type="button"
-                                onClick={() => handleCopy(order.phone!)}
-                                title="Sao chép SĐT khách hàng"
+                                onClick={() => handleCopy(item.phone!)}
+                                title="Sao chép SĐT"
                                 className="text-white/50 hover:text-white">
-                                {copiedText === order.phone ? (
+                                {copiedText === item.phone ? (
                                   <CheckIcon className="h-3.5 w-3.5 text-emerald-400" />
                                 ) : (
                                   <CopyIcon className="h-3.5 w-3.5" />
@@ -618,13 +746,13 @@ export function ReconciliationManager() {
                             </div>
                           )}
 
-                          <div>
-                            {order.emailSentAt ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
-                                ✓ Đã gửi Gmail
+                          <div className="pt-0.5">
+                            {item.emailSentAt ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                                ✓ Đã gửi Gmail file nhạc
                               </span>
-                            ) : isPaid ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">
+                            ) : isPaid && isOrder ? (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-amber-300">
                                 Chờ gửi file
                               </span>
                             ) : null}
@@ -632,171 +760,154 @@ export function ReconciliationManager() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-3.5">
-                        {isPaid ? (
-                          <div className="space-y-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/30">
-                                <CheckCircle2Icon className="h-3.5 w-3.5" />
-                                Đã thanh toán
-                              </span>
-                              {isOverpaid && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2.5 py-1 text-xs font-semibold text-cyan-300 ring-1 ring-cyan-500/30">
-                                  Chuyển thừa (+{formatPrice(order.overpaidAmount || 0)})
-                                </span>
-                              )}
-                            </div>
-                            {order.referenceCode && (
-                              <div className="font-mono text-[11px] text-white/55">
-                                Mã tham chiếu: {order.referenceCode}
-                              </div>
-                            )}
-                            {order.reconciledVia === "manual_admin" && (
-                              <div className="text-[11px] text-amber-300/80">Duyệt thủ công bởi Admin</div>
-                            )}
+                      {/* Cột 4: Số tiền & Đã nhận */}
+                      <td className="px-5 py-4 tabular-nums">
+                        <div className="font-medium text-white/60 text-xs">
+                          Giá niêm yết: <strong className="text-white font-semibold">{formatPrice(item.amount)}</strong>
+                        </div>
+                        {order?.amountUsd && (
+                          <div className="text-[11px] text-emerald-400 font-medium">
+                            (${order.amountUsd} USD)
                           </div>
-                        ) : isUnderpaid ? (
-                          <div className="space-y-1">
-                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/20 px-2.5 py-1 text-xs font-semibold text-orange-300 ring-1 ring-orange-500/40">
-                              <AlertTriangleIcon className="h-3.5 w-3.5" />
-                              Chuyển thiếu (-{formatPrice(order.shortfallAmount || 0)})
-                            </span>
-                            <div className="text-[11px] text-white/65">
-                              Đã nhận {formatPrice(order.paidAmount || 0)} / Cần {formatPrice(order.amount)}
-                            </div>
-                            {order.referenceCode && (
-                              <div className="font-mono text-[11px] text-white/55">
-                                Mã tham chiếu: {order.referenceCode}
-                              </div>
-                            )}
+                        )}
+
+                        {item.paidAmount > 0 ? (
+                          <div className="mt-1 text-sm font-bold text-emerald-400">
+                            +{formatPrice(item.paidAmount)}
                           </div>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-300 ring-1 ring-amber-500/30">
-                            <ClockIcon className="h-3.5 w-3.5" />
-                            Chờ thanh toán
-                          </span>
+                          <div className="mt-1 text-xs text-white/40">Chưa nhận</div>
+                        )}
+
+                        {isUnderpaid && item.shortfallAmount > 0 && (
+                          <div className="mt-0.5 text-[11px] font-medium text-orange-400">
+                            Thiếu: -{formatPrice(item.shortfallAmount)}
+                          </div>
+                        )}
+                        {isOverpaid && item.overpaidAmount > 0 && (
+                          <div className="mt-0.5 text-[11px] font-medium text-cyan-400">
+                            Thừa: +{formatPrice(item.overpaidAmount)}
+                          </div>
                         )}
                       </td>
 
-                      <td className="whitespace-nowrap px-4 py-3.5 text-right">
-                        <div className="inline-flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleOpenManualGmail(order)}
-                            title="Mở Gmail soạn thư gửi file nhạc cho khách"
-                            className="inline-flex items-center gap-1 rounded-full bg-ember/20 px-3 py-1.5 text-xs font-semibold text-ember transition-colors hover:bg-ember hover:text-white disabled:opacity-50">
-                            <MailIcon className="h-3.5 w-3.5" />
-                            <span>{order.emailSentAt ? "Gửi lại Gmail" : "Mở Gmail gửi khách"}</span>
-                          </button>
-
-                          {order.phone && (
-                            <a
-                              href={`https://zalo.me/${order.phone.replace(/[^0-9]/g, "")}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Nhắn tin qua Zalo cho khách"
-                              className="inline-flex items-center gap-1 rounded-full bg-sky-500/20 px-2.5 py-1.5 text-xs font-semibold text-sky-300 transition-colors hover:bg-sky-500 hover:text-white">
-                              <MessageCircleIcon className="h-3.5 w-3.5" />
-                              <span>Zalo</span>
-                            </a>
+                      {/* Cột 5: Trạng thái & Đối soát */}
+                      <td className="px-5 py-4">
+                        <div className="space-y-1.5">
+                          {isPaid ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
+                                <CheckCircle2Icon className="h-3.5 w-3.5" />
+                                Đã thanh toán (Đủ tiền)
+                              </span>
+                              {isOverpaid && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-cyan-300 ring-1 ring-cyan-500/30">
+                                  Chuyển thừa (+{formatPrice(item.overpaidAmount)})
+                                </span>
+                              )}
+                            </div>
+                          ) : isUnderpaid ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/20 px-3 py-1 text-xs font-semibold text-orange-300 ring-1 ring-orange-500/40">
+                              <AlertTriangleIcon className="h-3.5 w-3.5" />
+                              Chuyển thiếu (-{formatPrice(item.shortfallAmount)})
+                            </span>
+                          ) : isUnmatched ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-300 ring-1 ring-amber-500/40">
+                              <AlertTriangleIcon className="h-3.5 w-3.5" />
+                              Chưa khớp tự động
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-zinc-500/20 px-3 py-1 text-xs font-medium text-white/60 ring-1 ring-white/10">
+                              <ClockIcon className="h-3.5 w-3.5" />
+                              Chờ chuyển khoản
+                            </span>
                           )}
 
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleToggleOrderStatus(order)}
-                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                              isPaid
-                                ? "bg-white/10 text-white/80 hover:bg-white/20"
-                                : "bg-emerald-500 text-black hover:bg-emerald-400"
-                            }`}>
-                            {isUpdating ? (
-                              <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
-                            ) : isPaid ? (
-                              <Undo2Icon className="h-3.5 w-3.5" />
-                            ) : (
-                              <CheckCircle2Icon className="h-3.5 w-3.5" />
-                            )}
-                            <span>{isPaid ? "Đặt lại chờ" : "Duyệt đã thu"}</span>
-                          </button>
+                          {item.referenceCode && (
+                            <div className="font-mono text-[11px] text-white/55">
+                              Mã tham chiếu: <span className="text-white/80">{item.referenceCode}</span>
+                            </div>
+                          )}
 
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleDeleteOrder(order)}
-                            title="Xoá đơn hàng"
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/50 transition-colors hover:bg-red-500/20 hover:text-red-300">
-                            <Trash2Icon className="h-3.5 w-3.5" />
-                          </button>
+                          {item.reconciledVia === "manual_admin" && (
+                            <div className="text-[11px] text-amber-300/80">Duyệt thủ công bởi Admin</div>
+                          )}
+                          {item.reconciledVia === "apipay_sync" && (
+                            <div className="text-[11px] text-emerald-400/80">Khớp tự động qua ApiPay</div>
+                          )}
                         </div>
+                      </td>
+
+                      {/* Cột 6: Thao tác */}
+                      <td className="px-5 py-4 text-right">
+                        {isOrder && order ? (
+                          <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleOpenManualGmail(order)}
+                              title="Mở Gmail soạn thư gửi file nhạc cho khách"
+                              className="inline-flex items-center gap-1.5 rounded-full bg-ember/20 px-3 py-1.5 text-xs font-semibold text-ember transition-colors hover:bg-ember hover:text-white disabled:opacity-50">
+                              <MailIcon className="h-3.5 w-3.5" />
+                              <span>{order.emailSentAt ? "Gửi lại Gmail" : "Mở Gmail gửi khách"}</span>
+                            </button>
+
+                            {order.phone && (
+                              <a
+                                href={`https://zalo.me/${order.phone.replace(/[^0-9]/g, "")}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Nhắn tin qua Zalo cho khách"
+                                className="inline-flex items-center gap-1 rounded-full bg-sky-500/20 px-2.5 py-1.5 text-xs font-semibold text-sky-300 transition-colors hover:bg-sky-500 hover:text-white">
+                                <MessageCircleIcon className="h-3.5 w-3.5" />
+                                <span>Zalo</span>
+                              </a>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleToggleOrderStatus(order)}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                                isPaid
+                                  ? "bg-white/10 text-white/80 hover:bg-white/20"
+                                  : "bg-emerald-500 text-black hover:bg-emerald-400"
+                              }`}>
+                              {isUpdating ? (
+                                <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+                              ) : isPaid ? (
+                                <Undo2Icon className="h-3.5 w-3.5" />
+                              ) : (
+                                <CheckCircle2Icon className="h-3.5 w-3.5" />
+                              )}
+                              <span>{isPaid ? "Đặt lại chờ" : "Duyệt đã thu"}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleDeleteOrder(order)}
+                              title="Xoá đơn hàng"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/50 transition-colors hover:bg-red-500/20 hover:text-red-300">
+                              <Trash2Icon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              disabled={syncing}
+                              onClick={() => loadData(true)}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-500 hover:text-black">
+                              <RefreshCwIcon className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+                              <span>Đồng bộ / Khớp đơn</span>
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Bảng 2: Lịch sử Biến động số dư Ngân hàng & Webhook */}
-      <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.02]">
-        <div className="border-b border-white/10 px-5 py-4">
-          <h3 className="text-base font-semibold">
-            2. Lịch sử Biến động số dư Ngân hàng & Webhook transaction.in ({filteredTransactions.length})
-          </h3>
-          <p className="mt-0.5 text-xs text-white/50">
-            Hiển thị nguyên văn nội dung chuyển khoản thực tế ngân hàng nhận được để Admin rà soát nếu khách ghi nhầm mã đơn.
-          </p>
-        </div>
-
-        {filteredTransactions.length === 0 ? (
-          <div className="px-6 py-12 text-center text-sm text-white/50">
-            Chưa có biến động số dư nào được ghi nhận từ Webhook hoặc ApiPay.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-white/10 bg-white/[0.02] text-xs uppercase tracking-wider text-white/50">
-                <tr>
-                  <th className="px-4 py-3.5">Thời gian GD</th>
-                  <th className="px-4 py-3.5">Số tiền vào</th>
-                  <th className="px-4 py-3.5">Nội dung chuyển khoản thực tế (Ngân hàng)</th>
-                  <th className="px-4 py-3.5">Mã tham chiếu / Ngân hàng</th>
-                  <th className="px-4 py-3.5">Đơn hàng đã khớp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {filteredTransactions.map((tx) => (
-                  <tr key={tx.transactionId} className="hover:bg-white/[0.02]">
-                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-white/65">
-                      {tx.transactionDate ? new Date(tx.transactionDate).toLocaleString("vi-VN") : "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 font-semibold tabular-nums text-emerald-400">
-                      +{formatPrice(Number(tx.amount || 0))}
-                    </td>
-                    <td className="px-4 py-3.5 font-mono text-xs text-white">
-                      {tx.content || "—"}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-white/65">
-                      <div>{tx.referenceCode || tx.transactionId}</div>
-                      <div className="text-[11px] text-white/40">Ngân hàng: {tx.gateway || "MB"}</div>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-xs">
-                      {tx.orderId ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 font-mono text-emerald-300 ring-1 ring-emerald-500/30">
-                          <CheckCircle2Icon className="h-3 w-3" />
-                          {tx.orderId}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-1 text-amber-300 ring-1 ring-amber-500/30">
-                          Chưa khớp tự động (Khách ghi khác mã)
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>

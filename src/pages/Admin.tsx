@@ -154,7 +154,7 @@ function AdminDashboard({
       <Toaster theme="dark" position="top-center" richColors />
 
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0b0c]/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 pt-4 md:px-8">
+        <div className="mx-auto flex max-w-[1720px] w-full flex-wrap items-center justify-between gap-3 px-4 pt-4 md:px-8">
           <div className="flex items-center gap-3">
             <img src="/logo-mark-white.png" alt="NGHAO Logo" className="h-10 w-10 object-contain" />
             <div>
@@ -190,7 +190,7 @@ function AdminDashboard({
           </div>
         </div>
 
-        <nav aria-label="Mục quản trị" className="mx-auto mt-3 flex max-w-6xl gap-1 overflow-x-auto px-4 md:px-8" role="tablist">
+        <nav aria-label="Mục quản trị" className="mx-auto mt-3 flex max-w-[1720px] w-full gap-1 overflow-x-auto px-4 md:px-8" role="tablist">
           {tabs.map((t) => {
             const active = t.id === tab;
             return (
@@ -212,7 +212,7 @@ function AdminDashboard({
         </nav>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
+      <main className="mx-auto max-w-[1720px] w-full px-4 py-8 md:px-8 md:py-10">
         {state.status === "loading" && (
           <div className="flex items-center justify-center py-24 text-white/60" role="status">
             <Loader2Icon className="h-6 w-6 animate-spin" aria-hidden />

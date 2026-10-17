@@ -455,6 +455,93 @@ export function reconcileDbWithApiPay(db, { transactions = [], paymentRequests =
   let newlyMatchedCount = 0;
   const nowIso = new Date().toISOString();
 
+  // 0. Đối soát lại các giao dịch đã lưu trong db.processedTransactions nhưng chưa khớp với order nào
+  for (const pTx of db.processedTransactions) {
+    if (pTx.orderId) continue;
+    const pContentNorm = normalizeCode(pTx.content);
+    if (!pContentNorm) continue;
+
+    let matchedOrder = db.orders.find((ord) => {
+      const noteNorm = normalizeCode(ord.transferNote);
+      const pubNorm = normalizeCode(ord.apipayPublicId);
+      return (
+        (noteNorm && pContentNorm.includes(noteNorm)) ||
+        (pubNorm && pContentNorm.includes(pubNorm))
+      );
+    });
+
+    if (!matchedOrder) {
+      const matchedPr = (paymentRequests || []).find((pr) => {
+        const prContentNorm = normalizeCode(pr.content);
+        const prPubNorm = normalizeCode(pr.publicId);
+        return (
+          (prContentNorm && pContentNorm.includes(prContentNorm)) ||
+          (prPubNorm && pContentNorm.includes(prPubNorm))
+        );
+      });
+
+      if (matchedPr) {
+        const tracks = Array.isArray(db.tracks) ? db.tracks : [];
+        const cleanTitle = (matchedPr.title || "")
+          .replace(/^(Thanh toan bai hat|Thanh toan|Mua bai hat)\s+/i, "")
+          .trim()
+          .toLowerCase();
+        const matchedTrack =
+          tracks.find((t) => {
+            const tNorm = (t.title || "").trim().toLowerCase();
+            return cleanTitle && (cleanTitle.includes(tNorm) || tNorm.includes(cleanTitle));
+          }) || tracks[0];
+
+        const orderAmount = Number(matchedPr.amount || pTx.amount || matchedTrack?.price || 200000);
+        const orderDate = pTx.transactionDate || matchedPr.createdAt || nowIso;
+        matchedOrder = {
+          id: `ord_${Date.parse(orderDate) || Date.now()}`,
+          trackId: matchedTrack?.id || "t1791908040220",
+          trackTitle: matchedTrack?.title || matchedPr.title?.replace(/^(Thanh toan bai hat|Thanh toan)\s+/i, "") || "Bản nhạc",
+          amount: orderAmount,
+          paidAmount: 0,
+          status: "pending_verification",
+          transferNote: matchedPr.content || pTx.content,
+          apipayPublicId: matchedPr.publicId,
+          payUrl: matchedPr.payUrl || undefined,
+          qrUrl: matchedPr.qrUrl || undefined,
+          reconciledVia: "apipay_sync",
+          createdAt: matchedPr.createdAt || orderDate
+        };
+        db.orders.unshift(matchedOrder);
+      } else if (pContentNorm.includes("NGHAO") || Number(pTx.amount || 0) > 0) {
+        const tracks = Array.isArray(db.tracks) ? db.tracks : [];
+        const orderAmount = Number(pTx.amount || 200000);
+        const orderDate = pTx.transactionDate || nowIso;
+        const noteMatch = (pTx.content || "").match(/NGHAO\s+([A-Z0-9]+)/i);
+        matchedOrder = {
+          id: `ord_${Date.parse(orderDate) || Date.now()}`,
+          trackId: tracks[0]?.id || "t1791908040220",
+          trackTitle: tracks[0]?.title || "Toidaidot - Greyd",
+          amount: orderAmount,
+          paidAmount: 0,
+          status: "pending_verification",
+          transferNote: noteMatch ? noteMatch[0] : (pTx.content || "NGHAO"),
+          reconciledVia: "apipay_sync",
+          createdAt: orderDate
+        };
+        db.orders.unshift(matchedOrder);
+      }
+    }
+
+    if (matchedOrder) {
+      applyPaymentToOrder(matchedOrder, Number(pTx.amount || 0), {
+        transactionId: pTx.transactionId,
+        referenceCode: pTx.referenceCode || null,
+        transactionDate: pTx.transactionDate || nowIso,
+        reconciledVia: "apipay_sync"
+      });
+      pTx.orderId = matchedOrder.id;
+      pTx.orderResolution = matchedOrder.paymentResolution || "exact";
+      newlyMatchedCount++;
+    }
+  }
+
   // 1. Đối soát từ danh sách biến động số dư thực tế (transactions) trên ApiPay
   for (const tx of transactions) {
     const txId = String(tx.transactionId || tx.id || tx.referenceCode || "").trim();
@@ -483,10 +570,53 @@ export function reconcileDbWithApiPay(db, { transactions = [], paymentRequests =
       );
     });
 
-    const matchedOrder =
+    let matchedOrder =
       matchingOrders.find((ord) => ord.status !== "paid") ||
       matchingOrders[0] ||
       null;
+
+    if (!matchedOrder) {
+      // Tìm trong paymentRequests xem có PR nào khớp với nội dung chuyển khoản này không
+      const matchedPr = (paymentRequests || []).find((pr) => {
+        const prContentNorm = normalizeCode(pr.content);
+        const prPubNorm = normalizeCode(pr.publicId);
+        return (
+          (prContentNorm && txContentNorm.includes(prContentNorm)) ||
+          (prPubNorm && txContentNorm.includes(prPubNorm))
+        );
+      });
+
+      if (matchedPr) {
+        const tracks = Array.isArray(db.tracks) ? db.tracks : [];
+        const cleanTitle = (matchedPr.title || "")
+          .replace(/^(Thanh toan bai hat|Thanh toan|Mua bai hat)\s+/i, "")
+          .trim()
+          .toLowerCase();
+        const matchedTrack =
+          tracks.find((t) => {
+            const tNorm = (t.title || "").trim().toLowerCase();
+            return cleanTitle && (cleanTitle.includes(tNorm) || tNorm.includes(cleanTitle));
+          }) || tracks[0];
+
+        const orderAmount = Number(matchedPr.amount || txAmount || matchedTrack?.price || 200000);
+        const orderDate = tx.transactionDate || tx.createdAt || matchedPr.createdAt || nowIso;
+        matchedOrder = {
+          id: `ord_${Date.parse(orderDate) || Date.now()}`,
+          trackId: matchedTrack?.id || "t1791908040220",
+          trackTitle: matchedTrack?.title || matchedPr.title?.replace(/^(Thanh toan bai hat|Thanh toan)\s+/i, "") || "Bản nhạc",
+          amount: orderAmount,
+          paidAmount: 0,
+          status: "pending_verification",
+          transferNote: matchedPr.content || txContent,
+          apipayPublicId: matchedPr.publicId,
+          payUrl: matchedPr.payUrl || undefined,
+          qrUrl: matchedPr.qrUrl || undefined,
+          reconciledVia: "apipay_sync",
+          createdAt: matchedPr.createdAt || orderDate
+        };
+        db.orders.unshift(matchedOrder);
+      }
+    }
 
     if (matchedOrder) {
       applyPaymentToOrder(matchedOrder, txAmount, {
@@ -518,8 +648,7 @@ export function reconcileDbWithApiPay(db, { transactions = [], paymentRequests =
     const prPubNorm = normalizeCode(pr.publicId);
     const prContentNorm = normalizeCode(pr.content);
 
-    const matchedOrder = db.orders.find((ord) => {
-      if (ord.status === "paid") return false;
+    let matchedOrder = db.orders.find((ord) => {
       const ordPubNorm = normalizeCode(ord.apipayPublicId);
       const ordNoteNorm = normalizeCode(ord.transferNote);
       return (
@@ -528,15 +657,57 @@ export function reconcileDbWithApiPay(db, { transactions = [], paymentRequests =
       );
     });
 
-    if (matchedOrder) {
+    if (!matchedOrder) {
+      const tracks = Array.isArray(db.tracks) ? db.tracks : [];
+      const cleanTitle = (pr.title || "")
+        .replace(/^(Thanh toan bai hat|Thanh toan|Mua bai hat)\s+/i, "")
+        .trim()
+        .toLowerCase();
+      const matchedTrack =
+        tracks.find((t) => {
+          const tNorm = (t.title || "").trim().toLowerCase();
+          return cleanTitle && (cleanTitle.includes(tNorm) || tNorm.includes(cleanTitle));
+        }) || tracks[0];
+
+      const orderAmount = Number(pr.amount || matchedTrack?.price || 200000);
+      const prCreatedDate = pr.createdAt || nowIso;
+      matchedOrder = {
+        id: `ord_${Date.parse(prCreatedDate) || Date.now()}`,
+        trackId: matchedTrack?.id || "t1791908040220",
+        trackTitle: matchedTrack?.title || pr.title?.replace(/^(Thanh toan bai hat|Thanh toan)\s+/i, "") || "Bản nhạc",
+        amount: orderAmount,
+        paidAmount: 0,
+        status: "pending_verification",
+        transferNote: pr.content || "NGHAO",
+        apipayPublicId: pr.publicId,
+        payUrl: pr.payUrl || undefined,
+        qrUrl: pr.qrUrl || undefined,
+        reconciledVia: "apipay_sync",
+        createdAt: prCreatedDate
+      };
+      db.orders.unshift(matchedOrder);
+    }
+
+    if (matchedOrder && matchedOrder.status !== "paid") {
       const needed = Math.max(0, Number(matchedOrder.amount || 0) - Number(matchedOrder.paidAmount || 0));
       applyPaymentToOrder(matchedOrder, needed || Number(pr.amount || matchedOrder.amount), {
         transactionId: `pr_${pr.publicId}`,
         referenceCode: pr.publicId,
-        transactionDate: nowIso,
+        transactionDate: pr.createdAt || nowIso,
         reconciledVia: "apipay_payment_request"
       });
       newlyMatchedCount++;
+    }
+
+    // Đảm bảo các processedTransactions tương ứng được gắn orderId
+    for (const tx of db.processedTransactions) {
+      if (!tx.orderId && matchedOrder) {
+        const txContentNorm = normalizeCode(tx.content);
+        if (txContentNorm && (txContentNorm.includes(prContentNorm) || (prPubNorm && txContentNorm.includes(prPubNorm)))) {
+          tx.orderId = matchedOrder.id;
+          tx.orderResolution = matchedOrder.paymentResolution || "exact";
+        }
+      }
     }
   }
 

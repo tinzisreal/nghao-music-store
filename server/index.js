@@ -1745,6 +1745,16 @@ async function buildReconciliationResponse(db, syncWithApiPay = true) {
     } catch (err) {
       console.error("Reconciliation ApiPay sync warning:", err.message);
     }
+  } else {
+    try {
+      const syncResult = reconcileDbWithApiPay(db);
+      newlyMatchedCount = syncResult.newlyMatchedCount;
+      if (newlyMatchedCount > 0) {
+        writeDb(db);
+      }
+    } catch (err) {
+      console.error("Local reconciliation warning:", err.message);
+    }
   }
 
   const tracks = db.tracks || [];

@@ -33,6 +33,31 @@
   "albums": [],
   "orders": [
     {
+      "id": "ord_1792222415000",
+      "trackId": "t1791968271030",
+      "trackTitle": "PRE-ORDER (HD)",
+      "amount": 200000,
+      "paidAmount": 200000,
+      "status": "paid",
+      "transferNote": "NGHAO MVC2WAF4IDX",
+      "reconciledVia": "apipay_sync",
+      "createdAt": "2026-10-17T07:33:35.000Z",
+      "paymentHistory": [
+        {
+          "transactionId": "cmvc2ya8205pv01loxhlrp50j",
+          "referenceCode": "FT26290658910703",
+          "amount": 200000,
+          "transactionDate": "2026-10-17T07:33:35.000Z"
+        }
+      ],
+      "transactionId": "cmvc2ya8205pv01loxhlrp50j",
+      "referenceCode": "FT26290658910703",
+      "paymentResolution": "exact",
+      "shortfallAmount": 0,
+      "overpaidAmount": 0,
+      "paidAt": "2026-10-17T07:33:35.000Z"
+    },
+    {
       "id": "ord_1791771639112",
       "bank": {
         "bankId": "MB",
@@ -1415,15 +1440,15 @@
       },
       "2026-10-17": {
         "plays": 61,
-        "views": 30,
-        "uniques": 24,
+        "views": 33,
+        "uniques": 26,
         "downloads": 3
       }
     },
     "devices": {
       "mobile": 42,
       "tablet": 0,
-      "desktop": 54
+      "desktop": 57
     },
     "uniqueIps": {
       "05e93a9a6da633a0": "2026-10-17",
@@ -1461,6 +1486,7 @@
       "952b828e7f8b648d": "2026-10-17",
       "963ab35bd8be55a6": "2026-10-15",
       "9c066de14a0036bd": "2026-10-17",
+      "9d7e0060bd5f1b47": "2026-10-17",
       "a31767b82f7fa13b": "2026-10-15",
       "acb5261b88774122": "2026-10-16",
       "ade686eab6b88dd6": "2026-10-17",
@@ -1468,7 +1494,7 @@
       "ba8179f6db96a4f9": "2026-10-17",
       "c04bb4d73e01aacb": "2026-10-17",
       "c9a26a8b5f63f029": "2026-10-15",
-      "ca4a89542c392e53": "2026-10-16",
+      "ca4a89542c392e53": "2026-10-17",
       "ca693efd080c4901": "2026-10-16",
       "d031632600c7175e": "2026-10-17",
       "d068d0d10c09b359": "2026-10-17",
@@ -1483,7 +1509,7 @@
       "ff7d63138da0db9f": "2026-10-17"
     },
     "totalPlays": 165,
-    "totalViews": 96,
+    "totalViews": 99,
     "trackPlays": {
       "t1791863000230": 13,
       "t1791863432050": 4,
@@ -2379,7 +2405,7 @@
         "downloadedAt": "2026-10-15T15:18:20.724Z"
       }
     ],
-    "totalUniqueVisitors": 58
+    "totalUniqueVisitors": 60
   },
   "bankAccount": {
     "bankId": "MB",
@@ -2406,11 +2432,11 @@
       "amount": "200000",
       "content": "QAMTAP6196  PAY36090 1  NGHAO MVC2WAF4IDX",
       "gateway": "MB",
-      "orderId": null,
+      "orderId": "ord_1792222415000",
       "processedAt": "2026-10-17T12:15:21.848Z",
       "referenceCode": "FT26290658910703",
       "transactionId": "cmvc2ya8205pv01loxhlrp50j",
-      "orderResolution": null,
+      "orderResolution": "exact",
       "transactionDate": "2026-10-17T07:33:35.000Z",
       "bankAccountPublicId": null
     },
