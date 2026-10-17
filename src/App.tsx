@@ -5,6 +5,7 @@ import { Admin } from "./pages/Admin";
 import { WarrantyPolicy } from "./pages/WarrantyPolicy";
 import { InitialRedirect } from "./components/InitialRedirect";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { CartProvider } from "./contexts/CartContext";
 import { api } from "./utils/api";
 
 interface AppProps {
@@ -27,16 +28,18 @@ function PageViewTracker() {
 export function App({ previewPage = "store" }: AppProps) {
   return (
     <LanguageProvider>
-      <BrowserRouter>
-        <PageViewTracker />
-        {previewPage === "admin" && <InitialRedirect to="/admin" />}
-        <Routes>
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/chinh-sach-bao-hanh" element={<WarrantyPolicy />} />
-          <Route path="/policy" element={<WarrantyPolicy />} />
-          <Route path="*" element={<Store />} />
-        </Routes>
-      </BrowserRouter>
+      <CartProvider>
+        <BrowserRouter>
+          <PageViewTracker />
+          {previewPage === "admin" && <InitialRedirect to="/admin" />}
+          <Routes>
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/chinh-sach-bao-hanh" element={<WarrantyPolicy />} />
+            <Route path="/policy" element={<WarrantyPolicy />} />
+            <Route path="*" element={<Store />} />
+          </Routes>
+        </BrowserRouter>
+      </CartProvider>
     </LanguageProvider>
   );
 }
