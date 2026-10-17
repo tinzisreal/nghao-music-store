@@ -170,7 +170,7 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                       aria-label={isInCart(track.id) ? "Đã trong giỏ hàng" : "Thêm vào giỏ hàng"}
                       className={`flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-90 ${
                         isInCart(track.id)
-                          ? "bg-ember text-black shadow-md shadow-amber-500/30 ring-1 ring-amber-400 font-bold"
+                          ? "bg-white text-black shadow-md ring-1 ring-white font-bold"
                           : "bg-white/10 text-white/80 ring-1 ring-white/15 hover:bg-white/20 hover:text-white"
                       }`}
                     >
