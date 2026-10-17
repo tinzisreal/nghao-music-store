@@ -75,6 +75,18 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailFeedback, setEmailFeedback] = useState("");
 
+  // Tích nhận thông báo qua Gmail khi có bài mới (mặc định tích)
+  const [subscribeNewsletter, setSubscribeNewsletter] = useState(true);
+  const subscribeNewsletterRef = useRef(subscribeNewsletter);
+  subscribeNewsletterRef.current = subscribeNewsletter;
+
+  // Trạng thái tải nhạc Miễn phí
+  const [freeEmail, setFreeEmail] = useState("");
+  const [freeSubscribed, setFreeSubscribed] = useState(true);
+  const [freeSubmitting, setFreeSubmitting] = useState(false);
+  const [freeDownloaded, setFreeDownloaded] = useState(false);
+  const [freeError, setFreeError] = useState("");
+
   const emailRef = useRef(email);
   emailRef.current = email;
 
@@ -90,24 +102,40 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
     setError(err);
   }, []);
 
-  // Đối với các bài nhạc Miễn phí (price <= 0), tự động tải file MP3 Full ngay khi mở
-  useEffect(() => {
-    if (!isFreeTrack) return;
-    api.trackEvent({
-      type: "download",
-      trackId: track.id,
-      trackTitle: track.title
-    });
-    const timer = window.setTimeout(() => {
+  const handleFreeDownloadSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanEmail = freeEmail.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setFreeError("Vui lòng nhập đúng địa chỉ Gmail để nhận bài hát miễn phí.");
+      return;
+    }
+    if (!freeSubscribed) {
+      setFreeError("Vui lòng tích nhận thông báo bài mới để tải nhạc miễn phí.");
+      return;
+    }
+    setFreeSubmitting(true);
+    setFreeError("");
+    try {
+      await api.subscribeNewsletter({
+        email: cleanEmail,
+        source: "free_download",
+        trackId: track.id,
+        trackTitle: track.title,
+        subscribeNewsletter: true
+      });
       const link = document.createElement("a");
       link.href = freeDownloadUrl;
       link.download = `${track.title} - NGHAO Free.mp3`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    }, 250);
-    return () => window.clearTimeout(timer);
-  }, [isFreeTrack, freeDownloadUrl, track.id, track.title]);
+      setFreeDownloaded(true);
+    } catch (err) {
+      setFreeError(errorMessage(err, "Không thể xử lý yêu cầu lúc này. Vui lòng thử lại."));
+    } finally {
+      setFreeSubmitting(false);
+    }
+  };
 
 
   const createOrder = useCallback(() => {
@@ -152,7 +180,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
             const cleanPhone = phoneRef.current.trim();
             if (cleanMail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanMail)) {
               api
-                .confirmOrder(updated.id, cleanMail, cleanPhone)
+                .confirmOrder(updated.id, cleanMail, cleanPhone, subscribeNewsletterRef.current)
                 .then((res) => {
                   setOrder((prev) =>
                     prev
@@ -201,7 +229,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
     setError("");
     setStatusNote("");
     api
-      .confirmOrder(order.id, cleanEmail, cleanPhone)
+      .confirmOrder(order.id, cleanEmail, cleanPhone, subscribeNewsletter)
       .then((res) => {
         if (res?.status === "paid") {
           setOrder((prev) =>
@@ -264,7 +292,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
     setSendingEmail(true);
     setError("");
     api
-      .confirmOrder(order.id, cleanEmail, cleanPhone)
+      .confirmOrder(order.id, cleanEmail, cleanPhone, subscribeNewsletter)
       .then((res) => {
         setOrder((prev) =>
           prev
@@ -300,6 +328,52 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   }, [onClose]);
 
   if (isFreeTrack) {
+    if (freeDownloaded) {
+      return (
+        <>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t("close")}
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors duration-150 hover:bg-white/20">
+            <XIcon className="h-4 w-4" aria-hidden />
+          </button>
+
+          <div className="flex flex-col items-center px-3 py-8 text-center sm:px-6 sm:py-10">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30">
+              <CheckCircle2Icon className="h-8 w-8" />
+            </div>
+            <span className="mt-4 inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
+              Đã nhận bài hát miễn phí
+            </span>
+            <h2 id="payment-title" className="mt-3 text-xl font-semibold sm:text-2xl">
+              {track.title}
+            </h2>
+            <p className="mt-2 max-w-md text-xs text-white/75 sm:text-sm leading-relaxed">
+              Bản MP3 Full đang được tải về thiết bị của bạn. Chúng tôi cũng đã lưu Gmail <strong className="text-white">{freeEmail}</strong> để thông báo sớm nhất mỗi khi <strong>Nghao Producer</strong> ra mắt bài nhạc mới!
+            </p>
+
+            <div className="mt-6 flex flex-col sm:flex-row items-center gap-3">
+              <a
+                href={freeDownloadUrl}
+                download={`${track.title} - NGHAO Free.mp3`}
+                className="inline-flex items-center gap-2 rounded-full bg-ember px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-ember/25 transition-transform duration-150 hover:scale-105 active:scale-95">
+                <DownloadIcon className="h-4 w-4" aria-hidden />
+                <span>Tải lại MP3 ({track.title})</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/20">
+                {t("backToMusic")}
+              </button>
+            </div>
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         <button
@@ -310,34 +384,86 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
           <XIcon className="h-4 w-4" aria-hidden />
         </button>
 
-        <div className="flex flex-col items-center px-3 py-8 text-center sm:px-6 sm:py-10">
+        <div className="flex flex-col items-center px-3 py-6 text-center sm:px-6 sm:py-8">
           <img
             src={track.cover}
             alt=""
             className="h-20 w-20 rounded-2xl object-cover shadow-lg ring-1 ring-white/15"
           />
           <span className="mt-3 inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
-            Bài hát Miễn phí · Tự động nhận file
+            Bài hát Miễn phí · Tải MP3 Full
           </span>
-          <h2 id="payment-title" className="mt-3 text-xl font-semibold sm:text-2xl">
+          <h2 id="payment-title" className="mt-2.5 text-xl font-semibold sm:text-2xl">
             {track.title}
           </h2>
           <p className="mt-1.5 max-w-md text-xs text-white/70 sm:text-sm">
-            Hệ thống đang tự động tải file MP3 Full miễn phí về thiết bị của bạn. Nếu trình duyệt chưa tự tải, hãy bấm nút bên dưới:
+            Nhập Gmail và tích nhận thông báo để tải ngay bản MP3 Full chất lượng cao từ <strong>Nghao Producer</strong>.
           </p>
 
-          <a
-            href={freeDownloadUrl}
-            download={`${track.title} - NGHAO Free.mp3`}
-            className="mt-6 inline-flex items-center gap-2 rounded-full bg-ember px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-ember/25 transition-transform duration-150 hover:scale-105 active:scale-95">
-            <DownloadIcon className="h-4 w-4" aria-hidden />
-            <span>Tải ngay bản MP3 Full ({track.title})</span>
-          </a>
+          <form onSubmit={handleFreeDownloadSubmit} className="mt-5 w-full max-w-md text-left space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-white/85">
+                <span className="flex items-center gap-1.5">
+                  <MailIcon className="h-3.5 w-3.5 text-ember" aria-hidden />
+                  <span>
+                    Địa chỉ Gmail của bạn <span className="text-ember">*</span>
+                  </span>
+                </span>
+              </label>
+              <input
+                type="email"
+                required
+                value={freeEmail}
+                onChange={(e) => {
+                  setFreeEmail(e.target.value);
+                  if (freeError) setFreeError("");
+                }}
+                placeholder="nhapgmailcuaban@gmail.com"
+                className="mt-1.5 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/20 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
+              />
+            </div>
+
+            <label className="flex items-start gap-2.5 cursor-pointer select-none group pt-1">
+              <input
+                type="checkbox"
+                checked={freeSubscribed}
+                onChange={(e) => {
+                  setFreeSubscribed(e.target.checked);
+                  if (freeError) setFreeError("");
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-ember focus:ring-ember cursor-pointer accent-ember"
+              />
+              <span className="text-xs text-white/80 group-hover:text-white transition-colors leading-snug">
+                Nhận thông báo qua Gmail khi <strong>Nghao Producer</strong> ra mắt bài nhạc mới <span className="text-ember">*</span>
+              </span>
+            </label>
+
+            {freeError && (
+              <div
+                className="flex items-center gap-2 rounded-xl bg-rose-500/15 border border-rose-500/30 px-3.5 py-2 text-xs text-rose-300"
+                role="alert">
+                <AlertCircleIcon className="h-4 w-4 shrink-0" />
+                <span>{freeError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={freeSubmitting}
+              className="mt-2 w-full inline-flex items-center justify-center gap-2 rounded-full bg-ember px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-ember/25 transition-transform duration-150 hover:scale-[1.02] active:scale-95 disabled:opacity-50">
+              {freeSubmitting ? (
+                <Loader2Icon className="h-4 w-4 animate-spin" />
+              ) : (
+                <DownloadIcon className="h-4 w-4" aria-hidden />
+              )}
+              <span>{freeSubmitting ? "Đang xử lý..." : "Xác nhận & Tải nhạc Miễn phí"}</span>
+            </button>
+          </form>
 
           <button
             type="button"
             onClick={onClose}
-            className="mt-5 rounded-full bg-white/10 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20">
+            className="mt-4 rounded-full bg-white/10 px-5 py-2 text-xs font-medium text-white/80 transition-colors hover:bg-white/20">
             {t("backToMusic")}
           </button>
         </div>
@@ -428,6 +554,18 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                   className="mt-1 w-full rounded-2xl bg-black/40 px-4 py-2.5 text-base sm:text-sm text-white ring-1 ring-inset ring-white/15 placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-ember"
                 />
               </div>
+
+              <label className="flex items-start gap-2.5 cursor-pointer select-none group pt-0.5">
+                <input
+                  type="checkbox"
+                  checked={subscribeNewsletter}
+                  onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-ember focus:ring-ember cursor-pointer accent-ember"
+                />
+                <span className="text-xs text-white/75 group-hover:text-white transition-colors leading-snug">
+                  Nhận thông báo qua Gmail khi <strong>Nghao Producer</strong> ra mắt bài nhạc mới
+                </span>
+              </label>
 
               <button
                 type="button"
@@ -673,6 +811,18 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
                       />
                       <span className="mt-1 block text-[11px] text-white/50">
                         Để Nghao Producer liên hệ hỗ trợ hoặc gửi file qua Zalo nếu cần thiết.
+                      </span>
+                    </label>
+
+                    <label className="mt-3 flex items-start gap-2.5 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={subscribeNewsletter}
+                        onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-ember focus:ring-ember cursor-pointer accent-ember"
+                      />
+                      <span className="text-xs text-white/75 group-hover:text-white transition-colors leading-snug">
+                        Nhận thông báo qua Gmail khi <strong>Nghao Producer</strong> ra mắt bài nhạc mới
                       </span>
                     </label>
 

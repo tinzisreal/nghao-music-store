@@ -91,6 +91,9 @@ export function PayPalCardCheckout({
   const [sdkReady, setSdkReady] = useState(Boolean(typeof window !== "undefined" && window.paypal));
   const [processing, setProcessing] = useState(false);
   const [localError, setLocalError] = useState("");
+  const [subscribeNewsletter, setSubscribeNewsletter] = useState(true);
+  const subscribeNewsletterRef = useRef(subscribeNewsletter);
+  subscribeNewsletterRef.current = subscribeNewsletter;
   const activeOrderRef = useRef<string | null>(null);
   const renderedTrackIdRef = useRef<string | null>(null);
 
@@ -229,7 +232,8 @@ export function PayPalCardCheckout({
               currentOrderId,
               data.orderID,
               cleanEmail,
-              cleanPhone
+              cleanPhone,
+              subscribeNewsletterRef.current
             );
 
             onSuccessRef.current?.({
@@ -365,6 +369,18 @@ export function PayPalCardCheckout({
           />
           <span className="mt-1 block text-[11px] text-white/50">
             Để Nghao Producer liên hệ hỗ trợ hoặc gửi file qua Zalo nếu cần thiết.
+          </span>
+        </label>
+
+        <label className="flex items-start gap-2.5 cursor-pointer select-none group pt-0.5">
+          <input
+            type="checkbox"
+            checked={subscribeNewsletter}
+            onChange={(e) => setSubscribeNewsletter(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-black/40 text-ember focus:ring-ember cursor-pointer accent-ember"
+          />
+          <span className="text-xs text-white/75 group-hover:text-white transition-colors leading-snug">
+            Nhận thông báo qua Gmail khi <strong>Nghao Producer</strong> ra mắt bài nhạc mới
           </span>
         </label>
       </div>

@@ -149,7 +149,7 @@ app.use((req, res, next) => {
     }
 
     // Nếu cố tình gọi trực tiếp các route nội bộ (không qua proxy và không phải webhook / health / download)
-    const isDirectInternal = ["/tracks", "/producer", "/albums", "/store-info", "/sections", "/orders", "/paypal"].some(
+    const isDirectInternal = ["/tracks", "/producer", "/albums", "/store-info", "/sections", "/orders", "/paypal", "/subscribe"].some(
       (p) => pathname === p || pathname.startsWith(`${p}/`)
     );
     const hasAdminToken = (req.headers["authorization"] || "").startsWith("Bearer ");
@@ -173,6 +173,7 @@ app.use((req, res, next) => {
   else if (pathname === "/v2/events/paypal/create-order") req.url = `/paypal/create-order${qs}`;
   else if (pathname === "/v2/events/paypal/capture-order") req.url = `/paypal/capture-order${qs}`;
   else if (pathname === "/v2/events/analytics") req.url = `/analytics/event${qs}`;
+  else if (pathname === "/v2/events/subscribe") req.url = `/subscribe${qs}`;
   else if (pathname.startsWith("/v2/events/status/")) {
     const id = pathname.slice("/v2/events/status/".length);
     req.url = `/orders/${id}${qs}`;
@@ -482,6 +483,38 @@ function recordAnalyticsEvent({ type, trackId, trackTitle, req }) {
   }
 }
 
+function saveSubscriber(db, { email, phone, source = "free_download", trackId, trackTitle, active = true }) {
+  if (!email || typeof email !== "string") return null;
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) return null;
+
+  db.subscribers = db.subscribers || [];
+  const existingIndex = db.subscribers.findIndex((s) => s.email && s.email.toLowerCase() === cleanEmail);
+  const now = new Date().toISOString();
+
+  if (existingIndex >= 0) {
+    const existing = db.subscribers[existingIndex];
+    existing.active = Boolean(active);
+    existing.updatedAt = now;
+    if (phone) existing.phone = String(phone).trim();
+    if (trackTitle) existing.lastTrackTitle = trackTitle;
+    if (trackId) existing.lastTrackId = trackId;
+    return existing;
+  } else {
+    const newSub = {
+      id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      email: cleanEmail,
+      phone: phone ? String(phone).trim() : undefined,
+      source: source || "free_download",
+      trackId: trackId || undefined,
+      trackTitle: trackTitle || undefined,
+      subscribedAt: now,
+      active: Boolean(active)
+    };
+    db.subscribers.unshift(newSub);
+    return newSub;
+  }
+}
 
 async function triggerEmailIfPaid(order, db, { force = false } = {}) {
   // Chế độ gửi email thủ công theo yêu cầu: Khách để lại Gmail, Nghao Producer tự mở Gmail gửi file thủ công từ trang Admin
@@ -753,6 +786,53 @@ app.get("/tracks/:id/free-download", async (req, res) => {
     console.error("Free audio download error:", err.message);
     return res.status(502).send("Lỗi kết nối khi tải file nhạc miễn phí.");
   }
+});
+
+// POST /subscribe — Đăng ký nhận thông báo bài nhạc mới (kèm tải nhạc free)
+app.post("/subscribe", (req, res) => {
+  const { email, phone, source = "free_download", trackId, trackTitle, subscribeNewsletter = true } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ message: "Vui lòng nhập địa chỉ Gmail hợp lệ." });
+  }
+  const cleanEmail = String(email).trim().toLowerCase();
+  if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return res.status(400).json({ message: "Địa chỉ Gmail không đúng định dạng." });
+  }
+  if (source === "free_download" && !subscribeNewsletter) {
+    return res.status(400).json({ message: "Vui lòng tích nhận thông báo bài mới để tải nhạc miễn phí." });
+  }
+
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  let sub = null;
+  if (subscribeNewsletter) {
+    sub = saveSubscriber(db, {
+      email: cleanEmail,
+      phone,
+      source,
+      trackId,
+      trackTitle,
+      active: true
+    });
+    writeDb(db);
+  }
+
+  // Nếu tải nhạc free, ghi nhận thêm analytics download
+  if (source === "free_download" && trackId) {
+    recordAnalyticsEvent({
+      type: "download",
+      trackId,
+      trackTitle: trackTitle || "Free Track",
+      req
+    });
+  }
+
+  return res.json({
+    success: true,
+    email: cleanEmail,
+    message: "Đã đăng ký nhận thông báo bài nhạc mới thành công!"
+  });
 });
 
 // GET /tracks/:id/cover — Proxy ảnh bìa bài hát (ẩn tuyệt đối link Cloudinary đối với người dùng)
@@ -1123,6 +1203,18 @@ app.post("/paypal/capture-order", async (req, res) => {
       order.payerName = captureResult.payerName;
     }
 
+    if (order.email && req.body?.subscribeNewsletter !== false) {
+      const track = (db.tracks || []).find((t) => t.id === order.trackId);
+      saveSubscriber(db, {
+        email: order.email,
+        phone: order.phone,
+        source: "paid_order",
+        trackId: order.trackId,
+        trackTitle: track ? track.title : undefined,
+        active: true
+      });
+    }
+
     writeDb(db);
 
     const track = (db.tracks || []).find((t) => t.id === order.trackId);
@@ -1239,7 +1331,7 @@ app.get("/api/apipay/redirect-verify", (req, res) => {
 // POST /orders/:id/confirm — Lưu Gmail & SĐT khách hàng, kiểm tra thanh toán và tự động gửi file MP3 Full qua Gmail
 app.post("/orders/:id/confirm", async (req, res) => {
   const { id } = req.params;
-  const { email, phone } = req.body || {};
+  const { email, phone, subscribeNewsletter = true } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1255,6 +1347,20 @@ app.post("/orders/:id/confirm", async (req, res) => {
   if (!order.status) {
     order.status = "pending_verification";
   }
+
+  // Tự động lưu Gmail vào danh sách nhận thông báo bài mới nếu được tích (mặc định tích)
+  if (order.email && subscribeNewsletter !== false) {
+    const track = (db.tracks || []).find((t) => t.id === order.trackId);
+    saveSubscriber(db, {
+      email: order.email,
+      phone: order.phone,
+      source: "paid_order",
+      trackId: order.trackId,
+      trackTitle: track ? track.title : undefined,
+      active: true
+    });
+  }
+
   writeDb(db);
 
   const isPaid = order.status === "paid";
@@ -1713,6 +1819,9 @@ app.get("/admin/analytics", requireAdmin, (req, res) => {
     });
   }
 
+  const subscribers = db.subscribers || [];
+  const totalSubscribers = subscribers.filter((s) => s.active !== false).length;
+
   res.json({
     totalViews: store.totalViews || 0,
     todayViews: todayStats.views || 0,
@@ -1722,6 +1831,8 @@ app.get("/admin/analytics", requireAdmin, (req, res) => {
     todayPlays: todayStats.plays || 0,
     totalDownloads: store.totalDownloads || 0,
     todayDownloads: todayStats.downloads || 0,
+    totalSubscribers,
+    subscribers,
     topTracksByPlay: topTracksWithPercentage,
     topTracksByDownload,
     dailyTrend,
@@ -1729,6 +1840,29 @@ app.get("/admin/analytics", requireAdmin, (req, res) => {
     recentPlays: store.recentPlays || [],
     devices: store.devices || { mobile: 0, desktop: 0, tablet: 0 }
   });
+});
+
+// GET /admin/subscribers — Danh sách tất cả khách đăng ký nhận thông báo bài nhạc mới
+app.get("/admin/subscribers", requireAdmin, (req, res) => {
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+  const list = db.subscribers || [];
+  return res.json({
+    total: list.filter((s) => s.active !== false).length,
+    subscribers: list
+  });
+});
+
+// DELETE /admin/subscribers/:id — Xóa người đăng ký khỏi danh sách
+app.delete("/admin/subscribers/:id", requireAdmin, (req, res) => {
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+  const idOrEmail = req.params.id;
+  db.subscribers = (db.subscribers || []).filter(
+    (s) => s.id !== idOrEmail && s.email !== idOrEmail
+  );
+  writeDb(db);
+  return res.json({ success: true, message: "Đã xóa khỏi danh sách đăng ký." });
 });
 
 // PATCH /admin/orders/:id/status — Duyệt thủ công hoặc đặt lại trạng thái đơn hàng

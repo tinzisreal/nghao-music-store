@@ -42,7 +42,8 @@ import {
   ReconciliationData,
   StoreData,
   StoreInfo,
-  StoreSections
+  StoreSections,
+  SubscriberEntry
 } from "../types/store";
 import { sections as mockSections } from "../data/sections";
 import { producer as mockProducer, tracks as mockTracks } from "../data/tracks";
@@ -291,18 +292,36 @@ export const api = {
     return Promise.reject(new ApiError("Mock mode"));
   },
 
-  confirmOrder(orderId: string, email?: string, phone?: string): Promise<OrderConfirmation> {
+  confirmOrder(orderId: string, email?: string, phone?: string, subscribeNewsletter: boolean = true): Promise<OrderConfirmation> {
     if (!USE_MOCK) {
       return request<OrderConfirmation>(
         `/v2/events/complete/${encodeURIComponent(orderId)}`,
         {
           method: "POST",
-          body: JSON.stringify({ email, phone })
+          body: JSON.stringify({ email, phone, subscribeNewsletter })
         },
         MEDIA_PROXY_BASE
       );
     }
     return mock({ orderId, status: "pending_verification" as const }, 700);
+  },
+
+  subscribeNewsletter(payload: {
+    email: string;
+    phone?: string;
+    source?: string;
+    trackId?: string;
+    trackTitle?: string;
+    subscribeNewsletter?: boolean;
+  }): Promise<{ success: boolean; email: string; message: string }> {
+    return request<{ success: boolean; email: string; message: string }>(
+      "/v2/events/subscribe",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      MEDIA_PROXY_BASE
+    );
   },
 
   resendOrderEmail(
@@ -347,7 +366,7 @@ export const api = {
     );
   },
 
-  capturePayPalOrder(orderId: string, paypalOrderId: string, email?: string, phone?: string): Promise<PayPalCaptureResult> {
+  capturePayPalOrder(orderId: string, paypalOrderId: string, email?: string, phone?: string, subscribeNewsletter: boolean = true): Promise<PayPalCaptureResult> {
     if (USE_MOCK) {
       return mock({
         success: true,
@@ -363,7 +382,7 @@ export const api = {
       "/v2/events/paypal/capture-order",
       {
         method: "POST",
-        body: JSON.stringify({ orderId, paypalOrderId, email, phone })
+        body: JSON.stringify({ orderId, paypalOrderId, email, phone, subscribeNewsletter })
       },
       MEDIA_PROXY_BASE
     );
@@ -568,5 +587,15 @@ export const api = {
       recentPlays: [],
       devices: { mobile: 0, desktop: 0, tablet: 0 }
     } as AnalyticsData);
+  },
+
+  getSubscribers(): Promise<{ total: number; subscribers: SubscriberEntry[] }> {
+    return request<{ total: number; subscribers: SubscriberEntry[] }>("/admin/subscribers");
+  },
+
+  deleteSubscriber(id: string): Promise<{ success: boolean; message: string }> {
+    return request<{ success: boolean; message: string }>(`/admin/subscribers/${encodeURIComponent(id)}`, {
+      method: "DELETE"
+    });
   }
 };

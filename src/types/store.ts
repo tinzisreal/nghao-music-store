@@ -239,6 +239,18 @@ export interface DeviceStats {
   tablet: number;
 }
 
+export interface SubscriberEntry {
+  id: string;
+  email: string;
+  phone?: string;
+  source?: "free_download" | "paid_order" | string;
+  trackId?: string;
+  trackTitle?: string;
+  subscribedAt: string;
+  updatedAt?: string;
+  active: boolean;
+}
+
 export interface AnalyticsData {
   totalViews: number;
   todayViews: number;
@@ -248,6 +260,8 @@ export interface AnalyticsData {
   todayPlays: number;
   totalDownloads: number;
   todayDownloads: number;
+  totalSubscribers?: number;
+  subscribers?: SubscriberEntry[];
   dailyTrend: DailyStatEntry[];
   topTracksByPlay: TopTrackByPlay[];
   topTracksByDownload: TopTrackByDownload[];

@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3Icon,
-  CalendarIcon,
+  BellIcon,
   CheckCircle2Icon,
+  CheckIcon,
   ClockIcon,
+  CopyIcon,
   DownloadIcon,
   EyeIcon,
   FlameIcon,
@@ -11,16 +13,18 @@ import {
   HeadphonesIcon,
   LaptopIcon,
   Loader2Icon,
+  MailIcon,
   MusicIcon,
   RefreshCwIcon,
   SearchIcon,
   SmartphoneIcon,
   TabletIcon,
+  Trash2Icon,
   TrendingUpIcon,
   UsersIcon
 } from "lucide-react";
 import { toast } from "sonner";
-import { AnalyticsData, RecentDownloadEntry, TopTrackByPlay } from "../../types/store";
+import { AnalyticsData } from "../../types/store";
 import { api, errorMessage } from "../../utils/api";
 
 export function AnalyticsManager() {
@@ -28,7 +32,11 @@ export function AnalyticsManager() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadSearch, setDownloadSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "downloads" | "plays">("overview");
+  const [subscriberSearch, setSubscriberSearch] = useState("");
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "downloads" | "plays" | "subscribers">("overview");
 
   const loadData = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -65,6 +73,77 @@ export function AnalyticsManager() {
         d.device.toLowerCase().includes(q)
     );
   }, [data?.recentDownloads, downloadSearch]);
+
+  // Lọc danh sách người đăng ký nhận bài mới
+  const filteredSubscribers = useMemo(() => {
+    const list = data?.subscribers || [];
+    const q = subscriberSearch.toLowerCase().trim();
+    if (!q) return list;
+    return list.filter(
+      (s) =>
+        (s.email && s.email.toLowerCase().includes(q)) ||
+        (s.phone && s.phone.toLowerCase().includes(q)) ||
+        (s.trackTitle && s.trackTitle.toLowerCase().includes(q)) ||
+        (s.source && s.source.toLowerCase().includes(q))
+    );
+  }, [data?.subscribers, subscriberSearch]);
+
+  const handleCopyAllGmails = async (separator: "," | "\n" = ",") => {
+    const subs = data?.subscribers || [];
+    const activeEmails = subs
+      .filter((s) => s.active !== false && s.email)
+      .map((s) => s.email.trim().toLowerCase());
+
+    const uniqueEmails = Array.from(new Set(activeEmails));
+    if (uniqueEmails.length === 0) {
+      toast.error("Chưa có địa chỉ Gmail nào để sao chép!");
+      return;
+    }
+    const textToCopy = separator === "," ? uniqueEmails.join(", ") : uniqueEmails.join("\n");
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+      toast.success(`Đã sao chép ${uniqueEmails.length} địa chỉ Gmail vào clipboard!`);
+    } catch {
+      toast.error("Không thể truy cập clipboard.");
+    }
+  };
+
+  const handleCopySingleEmail = async (email: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+      toast.success(`Đã sao chép ${email}!`);
+    } catch {
+      toast.error("Không thể sao chép.");
+    }
+  };
+
+  const handleDeleteSubscriber = async (id: string, email: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa "${email}" khỏi danh sách nhận thông báo?`)) {
+      return;
+    }
+    setDeletingSubId(id);
+    try {
+      await api.deleteSubscriber(id);
+      setData((prev) => {
+        if (!prev) return prev;
+        const newSubs = (prev.subscribers || []).filter((s) => s.id !== id && s.email !== email);
+        return {
+          ...prev,
+          totalSubscribers: newSubs.filter((s) => s.active !== false).length,
+          subscribers: newSubs
+        };
+      });
+      toast.success(`Đã xóa ${email} khỏi danh sách.`);
+    } catch (err) {
+      toast.error(errorMessage(err, "Không thể xóa email lúc này."));
+    } finally {
+      setDeletingSubId(null);
+    }
+  };
 
   const maxDailyViews = useMemo(() => {
     if (!data?.dailyTrend || data.dailyTrend.length === 0) return 10;
@@ -133,8 +212,8 @@ export function AnalyticsManager() {
         </div>
       </div>
 
-      {/* 4 Thẻ chỉ số tổng quan */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* 5 Thẻ chỉ số tổng quan */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Lượt xem trang */}
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur">
           <div className="flex items-center justify-between">
@@ -216,6 +295,28 @@ export function AnalyticsManager() {
             <CheckCircle2Icon className="mr-1 h-3.5 w-3.5" />
             <span className="font-semibold">+{todayDownloads.toLocaleString("vi-VN")}</span>
             <span className="ml-1 text-white/40">hôm nay</span>
+          </div>
+        </div>
+
+        {/* Đăng ký nhận bài mới */}
+        <div
+          onClick={() => setActiveTab("subscribers")}
+          className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur cursor-pointer hover:border-ember/40 hover:bg-white/[0.05] transition-all">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-white/50 uppercase tracking-wider">Đăng ký bài mới</span>
+            <div className="rounded-xl bg-rose-500/10 p-2.5 text-rose-400 ring-1 ring-rose-500/20">
+              <BellIcon className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-baseline gap-2">
+            <span className="text-3xl font-extrabold tracking-tight text-white tabular-nums">
+              {(data?.totalSubscribers ?? data?.subscribers?.length ?? 0).toLocaleString("vi-VN")}
+            </span>
+            <span className="text-xs text-white/40">Gmail</span>
+          </div>
+          <div className="mt-2 flex items-center text-xs text-rose-400">
+            <MailIcon className="mr-1 h-3.5 w-3.5" />
+            <span className="font-semibold">Xem & sao chép Gmail →</span>
           </div>
         </div>
       </div>
@@ -399,6 +500,16 @@ export function AnalyticsManager() {
                 : "border-transparent text-white/50 hover:text-white/80"
             }`}>
             🎵 Lượt nghe gần đây ({recentPlays.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("subscribers")}
+            className={`pb-3 text-sm font-medium transition-colors border-b-2 ${
+              activeTab === "subscribers"
+                ? "border-rose-400 text-white"
+                : "border-transparent text-white/50 hover:text-white/80"
+            }`}>
+            📬 Đăng ký nhận bài mới ({data?.subscribers?.length || 0})
           </button>
         </nav>
       </div>
@@ -648,6 +759,125 @@ export function AnalyticsManager() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: DANH SÁCH KHÁCH ĐĂNG KÝ NHẬN THÔNG BÁO BÀI MỚI */}
+      {activeTab === "subscribers" && (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 sm:max-w-md">
+              <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+              <input
+                type="text"
+                value={subscriberSearch}
+                onChange={(e) => setSubscriberSearch(e.target.value)}
+                placeholder="Tìm theo Gmail, SĐT, bài hát..."
+                className="w-full rounded-full border border-white/10 bg-white/[0.05] py-2 pl-10 pr-4 text-xs text-white placeholder-white/40 outline-none focus:border-white/30 focus:ring-1 focus:ring-white/30"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopyAllGmails(",")}
+                className="flex items-center gap-1.5 rounded-full bg-ember px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-ember/25 transition-transform hover:scale-[1.02] active:scale-95">
+                {copiedAll ? <CheckIcon className="h-3.5 w-3.5" /> : <CopyIcon className="h-3.5 w-3.5" />}
+                <span>Sao chép tất cả Gmail (BCC)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyAllGmails("\n")}
+                className="flex items-center gap-1.5 rounded-full bg-white/[0.08] px-3.5 py-2 text-xs font-medium text-white/85 ring-1 ring-inset ring-white/10 hover:bg-white/15">
+                <CopyIcon className="h-3.5 w-3.5" />
+                <span>Sao chép theo dòng</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.03]">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-white/10 bg-white/[0.02] text-white/50 uppercase tracking-wider">
+                <tr>
+                  <th className="px-6 py-3 font-medium">STT</th>
+                  <th className="px-6 py-3 font-medium">Địa chỉ Gmail</th>
+                  <th className="px-6 py-3 font-medium">Số điện thoại</th>
+                  <th className="px-6 py-3 font-medium">Nguồn</th>
+                  <th className="px-6 py-3 font-medium">Bài quan tâm gần nhất</th>
+                  <th className="px-6 py-3 font-medium">Ngày đăng ký</th>
+                  <th className="px-6 py-3 font-medium text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-white/80">
+                {filteredSubscribers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-12 text-center text-white/40">
+                      {subscriberSearch
+                        ? "Không tìm thấy người đăng ký phù hợp."
+                        : "Chưa có người đăng ký nhận bài mới nào."}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSubscribers.map((sub, idx) => (
+                    <tr key={sub.id || idx} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="px-6 py-3.5 text-white/40 tabular-nums">#{idx + 1}</td>
+                      <td className="px-6 py-3.5 font-medium text-white">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono">{sub.email}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopySingleEmail(sub.email, sub.id)}
+                            title="Sao chép Gmail này"
+                            className="p-1 rounded hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+                            {copiedId === sub.id ? (
+                              <CheckIcon className="h-3 w-3 text-emerald-400" />
+                            ) : (
+                              <CopyIcon className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5 text-white/70">
+                        {sub.phone ? (
+                          <span className="font-mono text-emerald-300">{sub.phone}</span>
+                        ) : (
+                          <span className="text-white/30">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5">
+                        {sub.source === "paid_order" ? (
+                          <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/20">
+                            Mua bài hát
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-cyan-500/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300 ring-1 ring-inset ring-cyan-500/20">
+                            Tải Free
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3.5 text-white/90 font-medium">
+                        {sub.trackTitle || "—"}
+                      </td>
+                      <td className="px-6 py-3.5 text-white/50 tabular-nums whitespace-nowrap">
+                        {sub.subscribedAt ? new Date(sub.subscribedAt).toLocaleString("vi-VN") : "—"}
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <button
+                          type="button"
+                          disabled={deletingSubId === sub.id}
+                          onClick={() => handleDeleteSubscriber(sub.id, sub.email)}
+                          className="rounded-lg p-1.5 text-white/40 hover:bg-rose-500/20 hover:text-rose-300 transition-colors disabled:opacity-50"
+                          title="Xóa khỏi danh sách">
+                          <Trash2Icon className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
