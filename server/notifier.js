@@ -328,7 +328,7 @@ export async function sendGmailOrderAlert({ order, track, transaction = null, fe
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          from: "NGHAO Store <onboarding@resend.dev>",
+          from: (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <release@nghaoproducer.shop>").trim(),
           to: [adminEmail],
           subject,
           html
@@ -431,7 +431,7 @@ export async function sendTrackReleaseNewsletter({
     };
   }
 
-  const senderEmail = (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <onboarding@resend.dev>").trim();
+  const senderEmail = (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <release@nghaoproducer.shop>").trim();
   const siteUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "");
   const trackUrl = `${siteUrl}/#track-${track.id}`;
 

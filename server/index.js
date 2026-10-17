@@ -1911,7 +1911,7 @@ app.delete("/admin/subscribers/:id", requireAdmin, (req, res) => {
 // GET /admin/newsletter/status — Trạng thái cấu hình Resend và số lượng subscriber
 app.get("/admin/newsletter/status", requireAdmin, (req, res) => {
   const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
-  const senderEmail = (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <onboarding@resend.dev>").trim();
+  const senderEmail = (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <release@nghaoproducer.shop>").trim();
   const db = readDb();
   const totalSubscribers = (db?.subscribers || []).filter((s) => s.active !== false).length;
 
