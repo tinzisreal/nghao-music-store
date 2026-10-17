@@ -1192,23 +1192,32 @@ app.get("/sections", (req, res) => {
 
 // POST /orders — Tạo yêu cầu thanh toán qua ApiPay
 app.post("/orders", orderRateLimiter, async (req, res) => {
-  const { trackId, redirectUrl, email, phone } = req.body || {};
+  const { trackId, trackIds, redirectUrl, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
-  if (!trackId || typeof trackId !== "string") {
-    return res.status(400).json({ message: "Thiếu mã bài hát (trackId)." });
+  const rawTrackIds = Array.isArray(trackIds) ? trackIds : trackId ? [trackId] : [];
+  const selectedTrackIds = rawTrackIds.filter((id) => typeof id === "string" && id.trim().length > 0);
+  if (selectedTrackIds.length === 0) {
+    return res.status(400).json({ message: "Thiếu mã bài hát (trackId hoặc trackIds)." });
   }
 
-  const track = db.tracks.find((t) => t.id === trackId);
-  if (!track) return res.status(404).json({ message: "Không tìm thấy bài hát." });
+  const selectedTracks = selectedTrackIds
+    .map((id) => (db.tracks || []).find((t) => t.id === id))
+    .filter(Boolean);
 
-  const trackPrice = Math.max(0, Math.floor(Number(track.price) || 0));
-  if (trackPrice <= 0) {
+  if (selectedTracks.length === 0) {
+    return res.status(404).json({ message: "Không tìm thấy bài hát nào trong đơn hàng." });
+  }
+
+  const paidTracks = selectedTracks.filter((t) => Math.max(0, Math.floor(Number(t.price) || 0)) > 0);
+  if (paidTracks.length === 0) {
     return res.status(400).json({
-      message: "Bài hát này được phát hành Miễn phí. Bạn có thể tải file MP3 Full trực tiếp mà không cần thanh toán."
+      message: "Các bài hát này đều miễn phí. Bạn có thể tải file MP3 Full trực tiếp mà không cần thanh toán."
     });
   }
+
+  const totalAmount = paidTracks.reduce((sum, t) => sum + Math.max(0, Math.floor(Number(t.price) || 0)), 0);
 
   // Chống tấn công Open Redirect
   let safeRedirectUrl = undefined;
@@ -1243,14 +1252,18 @@ app.post("/orders", orderRateLimiter, async (req, res) => {
     process.env.APIPAY_BANK_PUBLIC_ID
   );
 
+  const orderTitle = paidTracks.length === 1
+    ? `Thanh toan bai hat ${paidTracks[0].title}`.slice(0, 100)
+    : `Thanh toan ${paidTracks.length} bai hat Nghao Producer`.slice(0, 100);
+
   let apipayData = null;
   if (isApiPayConfigured) {
     try {
       apipayData = await createPaymentRequest({
         bankPublicId: process.env.APIPAY_BANK_PUBLIC_ID,
-        amount: String(trackPrice),
+        amount: String(totalAmount),
         content: transferNote,
-        title: `Thanh toan bai hat ${track.title}`.slice(0, 100),
+        title: orderTitle,
         redirectUrl: safeRedirectUrl
       });
     } catch (err) {
@@ -1285,10 +1298,19 @@ app.post("/orders", orderRateLimiter, async (req, res) => {
     }
   }
 
+  const items = paidTracks.map((t) => ({
+    trackId: t.id,
+    title: t.title,
+    price: Math.max(0, Math.floor(Number(t.price) || 0)),
+    cover: t.cover || ""
+  }));
+
   const order = {
     id: orderId,
-    trackId,
-    amount: Number(apipayData?.amount ?? track.price),
+    trackId: paidTracks[0].id,
+    trackIds: paidTracks.map((t) => t.id),
+    items,
+    amount: Number(apipayData?.amount ?? totalAmount),
     transferNote: apipayData?.content || transferNote,
     bank,
     qrUrl: apipayData?.qrUrl || defaultBank.qrImage || "/bank-qr.png",
@@ -1505,10 +1527,10 @@ app.post("/paypal/capture-order", async (req, res) => {
   }
 });
 
-// GET /orders/:id/download?token=... — Link tải MP3 Full bảo mật (chỉ gửi qua Gmail cho đơn đã thanh toán)
+// GET /orders/:id/download?token=...&trackId=... — Link tải MP3 Full bảo mật (chỉ gửi qua Gmail cho đơn đã thanh toán)
 app.get("/orders/:id/download", downloadRateLimiter, async (req, res) => {
   const { id } = req.params;
-  const { token } = req.query;
+  const { token, trackId: queryTrackId } = req.query;
   const db = readDb();
   if (!db) return res.status(500).send("Lỗi máy chủ.");
 
@@ -1522,7 +1544,13 @@ app.get("/orders/:id/download", downloadRateLimiter, async (req, res) => {
     return res.status(403).send("Đường dẫn tải nhạc không hợp lệ hoặc đã hết hạn.");
   }
 
-  const track = (db.tracks || []).find((t) => t.id === order.trackId);
+  const targetTrackId = (queryTrackId && typeof queryTrackId === "string") ? queryTrackId : order.trackId;
+  const orderTrackIds = Array.isArray(order.trackIds) && order.trackIds.length > 0 ? order.trackIds : [order.trackId];
+  if (!orderTrackIds.includes(targetTrackId)) {
+    return res.status(403).send("Bài hát không thuộc đơn hàng này.");
+  }
+
+  const track = (db.tracks || []).find((t) => t.id === targetTrackId);
   const fullUrl = track?.fullAudioUrl || track?.audioUrl;
   if (!fullUrl) {
     return res.status(404).send("Không tìm thấy file nhạc gốc cho đơn hàng này.");

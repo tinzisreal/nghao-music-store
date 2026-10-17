@@ -392,6 +392,21 @@ export function sanitizeOrderForClient(order, tracks = [], { includeDownloadUrl 
   } else {
     delete safeOrder.downloadUrl;
   }
+
+  // Xử lý danh sách items cho đơn hàng nhiều bài (giỏ hàng)
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    safeOrder.items = order.items.map((item) => {
+      const itemCopy = { ...item };
+      if (includeDownloadUrl && order.status === "paid") {
+        const itemTrack = tracks.find((t) => t.id === item.trackId);
+        itemCopy.downloadUrl = itemTrack?.fullAudioUrl || itemTrack?.audioUrl || "";
+      } else {
+        delete itemCopy.downloadUrl;
+      }
+      return itemCopy;
+    });
+  }
+
   // Ngụy trang QR thanh toán và link checkout sang chuẩn TikTok SDK
   if (safeOrder.id) {
     if (order.qrUrl) {

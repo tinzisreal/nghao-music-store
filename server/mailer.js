@@ -16,10 +16,11 @@ export function verifyOrderDownloadToken(orderId, token, secret) {
   return crypto.timingSafeEqual(Buffer.from(token, "hex"), Buffer.from(expected, "hex"));
 }
 
-export function buildSignedDownloadUrl(orderId, secret) {
+export function buildSignedDownloadUrl(orderId, secret, trackId) {
   const baseUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "");
   const token = buildOrderDownloadToken(orderId, secret);
-  return `${baseUrl}/api-proxy/orders/${encodeURIComponent(orderId)}/download?token=${token}`;
+  const trackParam = trackId ? `&trackId=${encodeURIComponent(trackId)}` : "";
+  return `${baseUrl}/api-proxy/orders/${encodeURIComponent(orderId)}/download?token=${token}${trackParam}`;
 }
 
 export function buildFulfillmentEmailHtml({ trackTitle, order, downloadUrl }) {
