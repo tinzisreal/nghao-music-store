@@ -1,6 +1,7 @@
 import React from "react";
-import { PauseIcon, PlayIcon, SparklesIcon } from "lucide-react";
+import { PauseIcon, PlayIcon, SparklesIcon, CheckIcon, ShoppingBagIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCart } from "../contexts/CartContext";
 import { Track } from "../types/track";
 import { LocalizedText } from "../types/store";
 import { formatPrice, formatTime } from "../utils/format";
@@ -16,6 +17,7 @@ interface NewReleasesProps {
 
 export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy }: NewReleasesProps) {
   const { t, pick } = useLanguage();
+  const { isInCart, addToCart, removeFromCart } = useCart();
 
   return (
     <section aria-labelledby="new-releases-title" className="progressive-card-glass rounded-[26px] p-2.5 sm:rounded-[32px] sm:p-4 md:p-5">
@@ -87,18 +89,42 @@ export function NewReleases({ title, tracks, currentId, isPlaying, onPlay, onBuy
                 {track.isPreorder ? (track.duration > 0 ? formatTime(track.duration) : "Pre-order") : formatTime(track.duration)}
               </span>
 
-              <button
-                type="button"
-                onClick={() => onBuy(track)}
-                aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-                className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-95 sm:px-3.5 sm:text-sm ${
-                  track.isPreorder
-                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-md shadow-amber-500/20 hover:brightness-110"
-                    : "bg-white/12 text-white ring-1 ring-inset ring-white/20 hover:bg-white hover:text-black sm:font-medium"
-                }`}>
-                
-                {track.isPreorder ? `Pre-order · ${formatPrice(track.price)}` : formatPrice(track.price)}
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onBuy(track)}
+                  aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
+                  className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 active:scale-95 sm:px-3.5 sm:text-sm ${
+                    track.isPreorder
+                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-md shadow-amber-500/20 hover:brightness-110"
+                      : "bg-white/12 text-white ring-1 ring-inset ring-white/20 hover:bg-white hover:text-black sm:font-medium"
+                  }`}>
+                  {track.isPreorder ? `Pre-order · ${formatPrice(track.price)}` : formatPrice(track.price)}
+                </button>
+
+                {!track.isPreorder && Math.max(0, Math.floor(Number(track.price) || 0)) > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      isInCart(track.id) ? removeFromCart(track.id) : addToCart(track);
+                    }}
+                    title={isInCart(track.id) ? "Đã trong giỏ hàng (Bấm để xóa)" : "Thêm vào giỏ hàng"}
+                    aria-label={isInCart(track.id) ? "Đã trong giỏ hàng" : "Thêm vào giỏ hàng"}
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-90 ${
+                      isInCart(track.id)
+                        ? "bg-purple-600 text-white shadow-md shadow-purple-500/30 ring-1 ring-purple-400"
+                        : "bg-white/10 text-white/80 ring-1 ring-white/15 hover:bg-white/20 hover:text-white"
+                    }`}
+                  >
+                    {isInCart(track.id) ? (
+                      <CheckIcon className="h-4 w-4" />
+                    ) : (
+                      <ShoppingBagIcon className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
+              </div>
             </li>);
 
         })}

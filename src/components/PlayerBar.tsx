@@ -1,7 +1,8 @@
 import React from "react";
-import { FastForwardIcon, PauseIcon, PlayIcon, RewindIcon, ShoppingBagIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, FastForwardIcon, PauseIcon, PlayIcon, RewindIcon, ShoppingBagIcon, SparklesIcon } from "lucide-react";
 import { VolumeControl } from "./VolumeControl";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCart } from "../contexts/CartContext";
 import { Track } from "../types/track";
 import { formatPrice, formatTime } from "../utils/format";
 
@@ -37,6 +38,7 @@ export function PlayerBar({
   onBuy
 }: PlayerBarProps) {
   const { t } = useLanguage();
+  const { isInCart, addToCart, removeFromCart } = useCart();
   const pct = duration > 0 ? Math.min(100, progress / duration * 100) : 0;
 
   return (
@@ -105,30 +107,51 @@ export function PlayerBar({
             <VolumeControl volume={volume} muted={muted} onVolumeChange={onVolumeChange} onToggleMute={onToggleMute} />
           </div>
 
-          {/* Buy or Pre-order button */}
-          <button
-            type="button"
-            onClick={onBuy}
-            aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold shadow-md transition-transform duration-150 active:scale-95 sm:order-4 sm:px-4 sm:py-2.5 sm:text-sm ${
-              track.isPreorder
-                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold hover:brightness-110"
-                : "bg-white text-black hover:bg-white/90 sm:font-medium"
-            }`}>
-            
-            {track.isPreorder ? (
-              <>
-                <SparklesIcon className="h-3.5 w-3.5 fill-black sm:h-4 sm:w-4" aria-hidden />
-                <span>Pre-order · {formatPrice(track.price)}</span>
-              </>
-            ) : (
-              <>
-                <ShoppingBagIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-                <span className="sm:hidden">{formatPrice(track.price)}</span>
-                <span className="hidden sm:inline">{t("buyPrice", { price: formatPrice(track.price) })}</span>
-              </>
+          {/* Buy or Pre-order button & Cart toggle */}
+          <div className="flex shrink-0 items-center gap-1.5 sm:order-4">
+            <button
+              type="button"
+              onClick={onBuy}
+              aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-2 text-xs font-semibold shadow-md transition-transform duration-150 active:scale-95 sm:px-4 sm:py-2.5 sm:text-sm ${
+                track.isPreorder
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold hover:brightness-110"
+                  : "bg-white text-black hover:bg-white/90 sm:font-medium"
+              }`}>
+              {track.isPreorder ? (
+                <>
+                  <SparklesIcon className="h-3.5 w-3.5 fill-black sm:h-4 sm:w-4" aria-hidden />
+                  <span>Pre-order · {formatPrice(track.price)}</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingBagIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+                  <span className="sm:hidden">{formatPrice(track.price)}</span>
+                  <span className="hidden sm:inline">{t("buyPrice", { price: formatPrice(track.price) })}</span>
+                </>
+              )}
+            </button>
+
+            {!track.isPreorder && Math.max(0, Math.floor(Number(track.price) || 0)) > 0 && (
+              <button
+                type="button"
+                onClick={() => isInCart(track.id) ? removeFromCart(track.id) : addToCart(track)}
+                title={isInCart(track.id) ? "Đã trong giỏ hàng (Bấm để xóa)" : "Thêm vào giỏ hàng"}
+                aria-label={isInCart(track.id) ? "Đã trong giỏ hàng" : "Thêm vào giỏ hàng"}
+                className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full transition-all duration-150 active:scale-90 ${
+                  isInCart(track.id)
+                    ? "bg-purple-600 text-white shadow-md shadow-purple-500/30 ring-1 ring-purple-400"
+                    : "bg-white/10 text-white/80 ring-1 ring-white/15 hover:bg-white/20 hover:text-white"
+                }`}
+              >
+                {isInCart(track.id) ? (
+                  <CheckIcon className="h-4 w-4" />
+                ) : (
+                  <ShoppingBagIcon className="h-4 w-4" />
+                )}
+              </button>
             )}
-          </button>
+          </div>
         </div>
 
         {/* Mobile full-width touch seekbar */}

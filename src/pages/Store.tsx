@@ -2,6 +2,7 @@ import React from "react";
 import { StoreView } from "../components/StoreView";
 import { StoreStatus } from "../components/StoreStatus";
 import { LanguageSwitch } from "../components/LanguageSwitch";
+import { CartButton } from "../components/CartButton";
 import { useStoreData } from "../hooks/useStoreData";
 
 const BG_IMAGE = "/bg-custom.png?v=2";
@@ -16,7 +17,10 @@ export function Store() {
         <div className="absolute inset-0 bg-black/15" />
       </div>
 
-      <LanguageSwitch />
+      <div className="fixed right-4 top-4 z-40 flex items-center gap-2.5 md:right-8">
+        <CartButton />
+        <LanguageSwitch className="relative !top-0 !right-0" />
+      </div>
 
       <div className="relative z-10">
         {state.status === "loading" && <StoreStatus kind="loading" />}

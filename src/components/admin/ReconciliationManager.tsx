@@ -243,7 +243,9 @@ export function ReconciliationManager() {
         referenceCode: order.referenceCode,
         transactionId: order.transactionId,
         gateway: order.paymentMethod === "paypal_card" ? "PayPal" : "MBBank",
-        trackTitle: order.trackTitle || order.trackId,
+        trackTitle: order.items && order.items.length > 1
+          ? `${order.items.length} bài (${order.items.map((i) => i.title).join(", ")})`
+          : order.trackTitle || order.trackId,
         email: order.email,
         phone: order.phone,
         emailSentAt: order.emailSentAt,

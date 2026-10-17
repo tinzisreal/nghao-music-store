@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDownIcon, PauseIcon, PlayIcon, SearchIcon, SparklesIcon } from "lucide-react";
+import { ChevronDownIcon, PauseIcon, PlayIcon, SearchIcon, SparklesIcon, CheckIcon, ShoppingBagIcon } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCart } from "../contexts/CartContext";
 import { Track } from "../types/track";
 import { formatPrice, formatTime } from "../utils/format";
 
@@ -18,6 +19,7 @@ const ALL = "__all__";
 
 export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTracksProps) {
   const { t } = useLanguage();
+  const { isInCart, addToCart, removeFromCart } = useCart();
   const [genre, setGenre] = useState(ALL);
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -142,20 +144,44 @@ export function AllTracks({ tracks, currentId, isPlaying, onPlay, onBuy }: AllTr
                   </div>
                 </button>
 
-                <button
-                type="button"
-                onClick={() => onBuy(track)}
-                aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
-                className={`mt-auto whitespace-nowrap rounded-full px-2.5 py-2 text-xs font-semibold transition-all duration-150 active:scale-95 sm:px-3 sm:text-sm ${
-                  track.isPreorder
-                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-lg shadow-amber-500/20 hover:brightness-110"
-                    : "bg-white/12 text-white ring-1 ring-inset ring-white/20 hover:bg-white hover:text-black sm:font-medium"
-                }`}>
-                
-                  {track.isPreorder
-                    ? `Pre-order · ${formatPrice(track.price)}`
-                    : `${t("buy")} · ${formatPrice(track.price)}`}
-                </button>
+                <div className="mt-auto flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onBuy(track)}
+                    aria-label={track.isPreorder ? `Pre-order ${track.title}` : t("buyAria", { title: track.title, price: formatPrice(track.price) })}
+                    className={`flex-1 whitespace-nowrap rounded-full px-2.5 py-2 text-xs font-semibold transition-all duration-150 active:scale-95 sm:px-3 sm:text-sm ${
+                      track.isPreorder
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black font-bold shadow-lg shadow-amber-500/20 hover:brightness-110"
+                        : "bg-white/12 text-white ring-1 ring-inset ring-white/20 hover:bg-white hover:text-black sm:font-medium"
+                    }`}>
+                    {track.isPreorder
+                      ? `Pre-order · ${formatPrice(track.price)}`
+                      : `${t("buy")} · ${formatPrice(track.price)}`}
+                  </button>
+
+                  {!track.isPreorder && Math.max(0, Math.floor(Number(track.price) || 0)) > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        isInCart(track.id) ? removeFromCart(track.id) : addToCart(track);
+                      }}
+                      title={isInCart(track.id) ? "Đã trong giỏ hàng (Bấm để xóa)" : "Thêm vào giỏ hàng"}
+                      aria-label={isInCart(track.id) ? "Đã trong giỏ hàng" : "Thêm vào giỏ hàng"}
+                      className={`flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-90 ${
+                        isInCart(track.id)
+                          ? "bg-purple-600 text-white shadow-md shadow-purple-500/30 ring-1 ring-purple-400"
+                          : "bg-white/10 text-white/80 ring-1 ring-white/15 hover:bg-white/20 hover:text-white"
+                      }`}
+                    >
+                      {isInCart(track.id) ? (
+                        <CheckIcon className="h-4 w-4" />
+                      ) : (
+                        <ShoppingBagIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                </div>
               </motion.li>);
 
         })}

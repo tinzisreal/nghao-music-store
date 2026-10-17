@@ -7,11 +7,11 @@ const OPTIONS: {value: Lang;label: string;}[] = [
 { value: "en", label: "EN" }];
 
 
-export function LanguageSwitch() {
+export function LanguageSwitch({ className = "fixed right-4 top-4 z-40 md:right-8" }: { className?: string }) {
   const { lang, setLang, t } = useLanguage();
 
   return (
-    <div role="radiogroup" aria-label={t("language")} className="liquid-glass fixed right-4 top-4 z-40 flex rounded-full p-1 md:right-8">
+    <div role="radiogroup" aria-label={t("language")} className={`liquid-glass flex rounded-full p-1 ${className}`}>
       {OPTIONS.map((o) => {
         const active = o.value === lang;
         return (

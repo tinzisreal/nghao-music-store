@@ -20,18 +20,28 @@ import { Order } from "../types/store";
 import { api, errorMessage } from "../utils/api";
 import { formatPrice, vndToUsdEstimate } from "../utils/format";
 import { PayPalCardCheckout } from "./PayPalCardCheckout";
+import { useCart } from "../contexts/CartContext";
 
 interface PaymentModalProps {
-  track: Track | null;
+  track?: Track | null;
+  tracks?: Track[] | null;
   onClose: () => void;
 }
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
-export function PaymentModal({ track, onClose }: PaymentModalProps) {
+export function PaymentModal({ track, tracks, onClose }: PaymentModalProps) {
+  const activeTracks = useMemo(() => {
+    if (tracks && tracks.length > 0) return tracks;
+    if (track) return [track];
+    return [];
+  }, [track, tracks]);
+
+  const primaryKey = activeTracks.map((t) => t.id).join("_");
+
   return (
     <AnimatePresence>
-      {track && (
+      {activeTracks.length > 0 && (
         <motion.div
           className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-6"
           initial={{ opacity: 0 }}
@@ -49,7 +59,7 @@ export function PaymentModal({ track, onClose }: PaymentModalProps) {
             transition={{ duration: 0.24, ease: EASE }}
             className="progressive-card-glass relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-t-[30px] px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3.5 text-white shadow-2xl sm:rounded-[32px] sm:p-6 md:p-7">
             <div aria-hidden className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-white/20 sm:hidden" />
-            <PaymentContent key={track.id} track={track} onClose={onClose} />
+            <PaymentContent key={primaryKey} tracks={activeTracks} onClose={onClose} />
           </motion.div>
         </motion.div>
       )}
@@ -59,10 +69,13 @@ export function PaymentModal({ track, onClose }: PaymentModalProps) {
 
 type Phase = "creating" | "ready" | "confirming" | "done" | "error";
 
-function PaymentContent({ track, onClose }: { track: Track; onClose: () => void }) {
+function PaymentContent({ tracks, onClose }: { tracks: Track[]; onClose: () => void }) {
   const { t } = useLanguage();
-  const trackPrice = Math.max(0, Math.floor(Number(track?.price) || 0));
-  const isFreeTrack = trackPrice <= 0;
+  const { clearCart } = useCart();
+  const isMulti = tracks.length > 1;
+  const track = tracks[0];
+  const totalTracksPrice = tracks.reduce((sum, t) => sum + Math.max(0, Math.floor(Number(t.price) || 0)), 0);
+  const isFreeTrack = !isMulti && totalTracksPrice <= 0;
   const freeDownloadUrl = api.getFreeDownloadUrl(track.id);
 
   const [phase, setPhase] = useState<Phase>(isFreeTrack ? "done" : "creating");
@@ -96,7 +109,8 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
   const handlePayPalSuccess = useCallback((paidData: Partial<Order>) => {
     setOrder((prev) => ({ ...(prev || {}), ...paidData } as Order));
     setPhase("done");
-  }, []);
+    clearCart();
+  }, [clearCart]);
 
   const handlePayPalError = useCallback((err: string) => {
     setError(err);
@@ -144,14 +158,16 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
     setError("");
     setStatusNote("");
     const redirectUrl = typeof window !== "undefined" ? window.location.origin : undefined;
+    const trackIds = tracks.map((t) => t.id);
     api
-      .createOrder(track.id, redirectUrl)
+      .createOrder(trackIds, redirectUrl)
       .then((o) => {
         setOrder(o);
         if (o.email) setEmail(o.email);
         if (o.phone) setPhone(o.phone);
         if (o.status === "paid") {
           setPhase("done");
+          clearCart();
         } else {
           setPhase("ready");
         }
@@ -161,7 +177,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
         setPhase("error");
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [track.id, isFreeTrack]);
+  }, [tracks, isFreeTrack, clearCart]);
 
   useEffect(() => createOrder(), [createOrder]);
 
@@ -176,6 +192,7 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
           if (updated.status === "paid") {
             setOrder(updated);
             setPhase("done");
+            clearCart();
             const cleanMail = emailRef.current.trim();
             const cleanPhone = phoneRef.current.trim();
             if (cleanMail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanMail)) {
@@ -488,12 +505,21 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
             {t("thanks")}
           </h2>
           <p className="mt-2 max-w-md text-sm text-white/75">
-            Thanh toán bài hát <strong>{track.title}</strong>
+            {isMulti ? (
+              <>
+                Đơn hàng gồm <strong>{tracks.length} bài hát</strong> (
+                {tracks.map((t) => t.title).join(", ")})
+              </>
+            ) : (
+              <>
+                Thanh toán bài hát <strong>{track.title}</strong>
+              </>
+            )}
             {order?.paymentMethod === "paypal_card" ? (
               <>
                 {" "}qua <strong>Thẻ Quốc tế (Visa / Mastercard)</strong> (Số tiền:{" "}
                 <span className="font-semibold text-emerald-400">
-                  ${order.amountUsd || vndToUsdEstimate(track.price)} USD
+                  ${order.amountUsd || vndToUsdEstimate(order.amount || totalTracksPrice)} USD
                 </span>
                 )
               </>
@@ -505,6 +531,28 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
             )}{" "}
             đã được xác nhận thành công!
           </p>
+
+          {isMulti && (
+            <div className="mt-4 w-full max-w-md space-y-2">
+              {tracks.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img src={t.cover} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold text-white">{t.title}</p>
+                      <p className="truncate text-[11px] text-white/50">{formatPrice(t.price)}</p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-emerald-500/20 px-2.5 py-1 text-[11px] font-semibold text-emerald-400">
+                    Đã thanh toán
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {order && (order.overpaidAmount || 0) > 0 && (
             <div className="mt-4 max-w-md rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs leading-relaxed text-amber-200">
@@ -632,12 +680,28 @@ function PaymentContent({ track, onClose }: { track: Track; onClose: () => void 
       ) : (
         <>
           <div className="flex items-center gap-3 pr-10">
-            <img src={track.cover} alt="" className="h-12 w-12 rounded-xl object-cover" />
+            {isMulti ? (
+              <div className="flex -space-x-4 overflow-hidden shrink-0">
+                {tracks.slice(0, 3).map((t, idx) => (
+                  <img
+                    key={t.id}
+                    src={t.cover}
+                    alt=""
+                    className="h-12 w-12 rounded-xl object-cover ring-2 ring-black/80"
+                    style={{ zIndex: 10 - idx }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <img src={track.cover} alt="" className="h-12 w-12 rounded-xl object-cover shrink-0" />
+            )}
             <div className="min-w-0">
               <h2 id="payment-title" className="truncate text-lg font-semibold">
-                {t("buyTitle", { title: track.title })}
+                {isMulti ? `Thanh toán ${tracks.length} bài hát` : t("buyTitle", { title: track.title })}
               </h2>
-              <p className="truncate text-sm text-white/60">{track.album} · Gửi file Full qua Gmail</p>
+              <p className="truncate text-sm text-white/60">
+                {isMulti ? tracks.map((t) => t.title).join(", ") : `${track.album} · Gửi file Full qua Gmail`}
+              </p>
             </div>
           </div>
 

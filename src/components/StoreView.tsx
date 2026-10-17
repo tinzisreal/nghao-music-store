@@ -9,6 +9,7 @@ import { ContactFooter } from "./ContactFooter";
 import { PlayerBar } from "./PlayerBar";
 import { PaymentModal } from "./PaymentModal";
 import { PreorderModal } from "./PreorderModal";
+import { CartDrawer } from "./CartDrawer";
 import { usePlayer } from "../hooks/usePlayer";
 import { MAX_FEATURED } from "../data/sections";
 import { Track } from "../types/track";
@@ -18,6 +19,7 @@ export function StoreView({ data }: {data: StoreData;}) {
   const { producer, tracks, info } = data;
   const player = usePlayer(tracks);
   const [buying, setBuying] = useState<Track | null>(null);
+  const [cartCheckoutTracks, setCartCheckoutTracks] = useState<Track[] | null>(null);
   const [preordering, setPreordering] = useState<Track | null>(null);
 
   const indexOf = (id: string) => tracks.findIndex((t) => t.id === id);
@@ -147,8 +149,16 @@ export function StoreView({ data }: {data: StoreData;}) {
         onBuy={() => handleBuy(player.current)} />
       
 
-      <PaymentModal track={buying} onClose={() => setBuying(null)} />
+      <PaymentModal
+        track={buying}
+        tracks={cartCheckoutTracks}
+        onClose={() => {
+          setBuying(null);
+          setCartCheckoutTracks(null);
+        }}
+      />
       <PreorderModal track={preordering} onClose={() => setPreordering(null)} />
+      <CartDrawer onCheckout={(tracks) => setCartCheckoutTracks(tracks)} />
     </>);
 
 }
