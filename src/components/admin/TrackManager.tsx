@@ -10,6 +10,7 @@ import {
   PlayIcon,
   PlusIcon,
   SearchIcon,
+  SendIcon,
   Trash2Icon
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ import { Album } from "../../types/album";
 import { formatPrice, formatTime } from "../../utils/format";
 import { errorMessage, MEDIA_PROXY_BASE } from "../../utils/api";
 import { MAX_FEATURED } from "../../data/sections";
+import { NewsletterBroadcastModal } from "./NewsletterBroadcastModal";
 
 interface TrackManagerProps {
   tracks: Track[];
@@ -36,6 +38,7 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [broadcastTrack, setBroadcastTrack] = useState<Track | null>(null);
   const listAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const genres = useMemo(() => Array.from(new Set(tracks.map((t) => t.genre))), [tracks]);
@@ -467,6 +470,15 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
                       <>
                         <button
                           type="button"
+                          onClick={() => setBroadcastTrack(t)}
+                          aria-label={`Gửi thông báo bài hát ${t.title}`}
+                          title={`Gửi email thông báo phát hành bài "${t.title}" qua Resend`}
+                          className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors duration-150 hover:bg-rose-500/20 hover:text-rose-300"
+                        >
+                          <SendIcon className="h-4 w-4" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => openEdit(t)}
                           aria-label={`Sửa ${t.title}`}
                           className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition-colors duration-150 hover:bg-white/10 hover:text-white"
@@ -530,6 +542,13 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
       albums={albums}
       featuredFull={featuredCount - (editing?.featured ? 1 : 0) >= MAX_FEATURED}
       onClose={() => setEditorOpen(false)} onSave={onSave} />
+
+      <NewsletterBroadcastModal
+        isOpen={Boolean(broadcastTrack)}
+        onClose={() => setBroadcastTrack(null)}
+        tracks={tracks}
+        initialTrackId={broadcastTrack?.id}
+      />
     </section>);
 
 }

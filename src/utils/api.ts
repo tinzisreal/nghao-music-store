@@ -43,7 +43,9 @@ import {
   StoreData,
   StoreInfo,
   StoreSections,
-  SubscriberEntry
+  SubscriberEntry,
+  NewsletterStatus,
+  BroadcastNewsletterResult
 } from "../types/store";
 import { sections as mockSections } from "../data/sections";
 import { producer as mockProducer, tracks as mockTracks } from "../data/tracks";
@@ -596,6 +598,21 @@ export const api = {
   deleteSubscriber(id: string): Promise<{ success: boolean; message: string }> {
     return request<{ success: boolean; message: string }>(`/admin/subscribers/${encodeURIComponent(id)}`, {
       method: "DELETE"
+    });
+  },
+
+  getNewsletterStatus(): Promise<NewsletterStatus> {
+    return request<NewsletterStatus>("/admin/newsletter/status");
+  },
+
+  broadcastNewsletter(payload: {
+    trackId: string;
+    customSubject?: string;
+    customMessage?: string;
+  }): Promise<BroadcastNewsletterResult> {
+    return request<BroadcastNewsletterResult>("/admin/newsletter/broadcast", {
+      method: "POST",
+      body: JSON.stringify(payload)
     });
   }
 };

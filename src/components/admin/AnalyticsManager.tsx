@@ -21,18 +21,35 @@ import {
   TabletIcon,
   Trash2Icon,
   TrendingUpIcon,
-  UsersIcon
+  UsersIcon,
+  SendIcon
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnalyticsData } from "../../types/store";
+import { Track } from "../../types/track";
 import { api, errorMessage } from "../../utils/api";
+import { NewsletterBroadcastModal } from "./NewsletterBroadcastModal";
 
-export function AnalyticsManager() {
+interface AnalyticsManagerProps {
+  tracks?: Track[];
+}
+
+export function AnalyticsManager({ tracks = [] }: AnalyticsManagerProps) {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadSearch, setDownloadSearch] = useState("");
   const [subscriberSearch, setSubscriberSearch] = useState("");
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
+  const [storeTracks, setStoreTracks] = useState<Track[]>(tracks);
+
+  useEffect(() => {
+    if (tracks.length > 0) {
+      setStoreTracks(tracks);
+    } else {
+      api.getTracks().then((t) => setStoreTracks(t)).catch(() => {});
+    }
+  }, [tracks]);
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
@@ -781,6 +798,14 @@ export function AnalyticsManager() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
+                onClick={() => setBroadcastModalOpen(true)}
+                className="flex items-center gap-1.5 rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-rose-500/25 transition-transform hover:scale-[1.02] active:scale-95">
+                <SendIcon className="h-3.5 w-3.5" />
+                <span>🚀 Gửi email bài mới qua Resend</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleCopyAllGmails(",")}
                 className="flex items-center gap-1.5 rounded-full bg-ember px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-ember/25 transition-transform hover:scale-[1.02] active:scale-95">
                 {copiedAll ? <CheckIcon className="h-3.5 w-3.5" /> : <CopyIcon className="h-3.5 w-3.5" />}
@@ -881,6 +906,14 @@ export function AnalyticsManager() {
           </div>
         </div>
       )}
+
+      <NewsletterBroadcastModal
+        isOpen={broadcastModalOpen}
+        onClose={() => setBroadcastModalOpen(false)}
+        tracks={storeTracks}
+        totalSubscribersCount={data?.totalSubscribers ?? data?.subscribers?.length ?? 0}
+        onSuccess={() => loadData(true)}
+      />
     </div>
   );
 }

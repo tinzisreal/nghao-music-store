@@ -269,3 +269,17 @@ export interface AnalyticsData {
   recentPlays: RecentPlayEntry[];
   devices: DeviceStats;
 }
+
+export interface NewsletterStatus {
+  configured: boolean;
+  senderEmail: string;
+  totalSubscribers: number;
+}
+
+export interface BroadcastNewsletterResult {
+  success: boolean;
+  sentCount: number;
+  failedCount?: number;
+  totalTargeted: number;
+  message: string;
+}

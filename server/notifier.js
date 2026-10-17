@@ -404,6 +404,181 @@ export async function notifyAdminNewPaidOrder({ order, track, transaction = null
   };
 }
 
+/**
+ * 5. Gửi email tự động hàng loạt qua Resend API khi Nghao Producer ra mắt bài nhạc mới
+ */
+export async function sendTrackReleaseNewsletter({
+  track,
+  subscribers,
+  customSubject,
+  customMessage,
+  fetchImpl = globalThis.fetch
+}) {
+  const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
+  if (!resendApiKey) {
+    return {
+      success: false,
+      error: "Chưa cấu hình RESEND_API_KEY. Vui lòng thêm RESEND_API_KEY vào biến môi trường (.env)."
+    };
+  }
+
+  const activeSubs = (subscribers || []).filter((s) => s.active !== false && s.email);
+  if (activeSubs.length === 0) {
+    return {
+      success: false,
+      error: "Chưa có người đăng ký nhận thông báo nào trong danh sách."
+    };
+  }
+
+  const senderEmail = (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <onboarding@resend.dev>").trim();
+  const siteUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "");
+  const trackUrl = `${siteUrl}/#track-${track.id}`;
+
+  let coverUrl = track.cover || "";
+  if (coverUrl && coverUrl.startsWith("/")) {
+    coverUrl = `${siteUrl}${coverUrl}`;
+  }
+
+  const subject = customSubject?.trim() || `🔥 [NGHAO Producer] Ra mắt bài nhạc mới: "${track.title}"`;
+  const priceText = Number(track.price) > 0
+    ? `${Number(track.price).toLocaleString("vi-VN")} ₫`
+    : "MIỄN PHÍ (Free Download)";
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin:0;padding:24px 12px;background-color:#0b0b0e;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:580px;margin:0 auto;background:#141419;border-radius:24px;border:1px solid rgba(255,255,255,0.1);overflow:hidden;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+    <!-- Header Banner -->
+    <tr>
+      <td style="padding:28px 28px 16px;text-align:center;">
+        <span style="display:inline-block;padding:4px 14px;border-radius:999px;background:rgba(255,90,31,0.15);border:1px solid rgba(255,90,31,0.3);color:#ff5a1f;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">
+          Bản phát hành mới
+        </span>
+        <h1 style="margin:14px 0 6px;color:#ffffff;font-size:24px;font-weight:800;letter-spacing:-0.02em;">
+          NGHAO PRODUCER
+        </h1>
+        <p style="margin:0;color:#9ca3af;font-size:13px;">
+          Bài nhạc mới vừa chính thức phát hành trên website!
+        </p>
+      </td>
+    </tr>
+
+    <!-- Track Card -->
+    <tr>
+      <td style="padding:12px 28px 24px;">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background:#1a1a22;border:1px solid rgba(255,255,255,0.08);border-radius:18px;overflow:hidden;">
+          ${coverUrl ? `
+          <tr>
+            <td style="padding:0;text-align:center;">
+              <img src="${coverUrl}" alt="${escapeHtml(track.title)}" style="width:100%;max-height:340px;object-fit:cover;display:block;" />
+            </td>
+          </tr>
+          ` : ""}
+          <tr>
+            <td style="padding:22px;">
+              <div style="font-size:11px;font-weight:600;color:#ff5a1f;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">
+                ${escapeHtml(track.album || "Single Release")} · ${escapeHtml(track.genre || "Music")}
+              </div>
+              <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#ffffff;">
+                ${escapeHtml(track.title)}
+              </h2>
+              <p style="margin:0 0 14px;color:#9ca3af;font-size:13px;line-height:1.5;">
+                Nghệ sĩ: <strong style="color:#ffffff;">${escapeHtml(track.artist || "Nghao Producer")}</strong>
+                &nbsp;·&nbsp;
+                Giá: <strong style="color:#22c55e;">${priceText}</strong>
+              </p>
+              ${customMessage?.trim() ? `
+              <div style="margin:14px 0 20px;padding:12px 14px;background:rgba(255,255,255,0.04);border-left:3px solid #ff5a1f;border-radius:6px;color:#e5e7eb;font-size:13px;line-height:1.6;">
+                ${escapeHtml(customMessage.trim()).replace(/\n/g, "<br />")}
+              </div>
+              ` : `
+              <p style="margin:0 0 20px;color:#d1d5db;font-size:13px;line-height:1.6;">
+                Bạn nhận được email này vì đã đăng ký nhận thông báo bài nhạc mới từ <strong>Nghao Producer</strong>. Bấm nút dưới đây để nghe thử hoặc tải ngay bản nhạc nhé!
+              </p>
+              `}
+              <div style="text-align:center;padding:4px 0 8px;">
+                <a href="${trackUrl}" target="_blank" style="display:inline-block;background:#ff5a1f;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:14px 34px;border-radius:999px;box-shadow:0 8px 20px rgba(255,90,31,0.35);">
+                  🎧 Nghe bài hát ngay trên website ↗
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding:20px 28px 28px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
+        <p style="margin:0 0 8px;font-size:12px;color:#6b7280;">
+          Liên hệ & Hỗ trợ: Zalo 0333 025 864 · <a href="https://www.facebook.com/prodnghao" style="color:#9ca3af;text-decoration:underline;">Facebook</a> · <a href="https://www.tiktok.com/@prod.nghao" style="color:#9ca3af;text-decoration:underline;">TikTok</a>
+        </p>
+        <p style="margin:0;font-size:11px;color:#4b5563;">
+          © ${new Date().getFullYear()} Nghao Producer · <a href="${siteUrl}" style="color:#ff5a1f;text-decoration:none;">nghaoproducer.shop</a>
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const uniqueEmails = Array.from(new Set(activeSubs.map((s) => s.email.trim().toLowerCase())));
+
+  let sentCount = 0;
+  let failedCount = 0;
+  const errors = [];
+
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < uniqueEmails.length; i += BATCH_SIZE) {
+    const chunk = uniqueEmails.slice(i, i + BATCH_SIZE);
+    const batchPayload = chunk.map((toEmail) => ({
+      from: senderEmail,
+      to: [toEmail],
+      subject,
+      html: emailHtml
+    }));
+
+    try {
+      const res = await fetchImpl("https://api.resend.com/emails/batch", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(batchPayload)
+      });
+
+      if (res.ok) {
+        sentCount += chunk.length;
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("[Resend batch error]", res.status, errorData);
+        failedCount += chunk.length;
+        errors.push(errorData.message || `HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.error("[Resend batch network error]", err);
+      failedCount += chunk.length;
+      errors.push(err.message);
+    }
+  }
+
+  return {
+    success: sentCount > 0,
+    sentCount,
+    failedCount,
+    totalTargeted: uniqueEmails.length,
+    errors: errors.length > 0 ? errors : undefined
+  };
+}
+
 function escapeHtml(str) {
   return String(str || "")
     .replace(/&/g, "&amp;")

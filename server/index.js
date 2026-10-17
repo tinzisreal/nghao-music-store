@@ -23,7 +23,8 @@ import {
   notifyAdminNewPaidOrder,
   sendNtfyOrderAlert,
   sendTelegramOrderAlert,
-  sendGmailOrderAlert
+  sendGmailOrderAlert,
+  sendTrackReleaseNewsletter
 } from "./notifier.js";
 import {
   createPayPalCheckoutOrder,
@@ -1863,6 +1864,68 @@ app.delete("/admin/subscribers/:id", requireAdmin, (req, res) => {
   );
   writeDb(db);
   return res.json({ success: true, message: "Đã xóa khỏi danh sách đăng ký." });
+});
+
+// GET /admin/newsletter/status — Trạng thái cấu hình Resend và số lượng subscriber
+app.get("/admin/newsletter/status", requireAdmin, (req, res) => {
+  const resendApiKey = (process.env.RESEND_API_KEY || "").trim();
+  const senderEmail = (process.env.RESEND_FROM_EMAIL || "NGHAO Producer <onboarding@resend.dev>").trim();
+  const db = readDb();
+  const totalSubscribers = (db?.subscribers || []).filter((s) => s.active !== false).length;
+
+  return res.json({
+    configured: Boolean(resendApiKey),
+    senderEmail,
+    totalSubscribers
+  });
+});
+
+// POST /admin/newsletter/broadcast — Tự động gửi thông báo bài nhạc mới hàng loạt qua Resend API
+app.post("/admin/newsletter/broadcast", requireAdmin, async (req, res) => {
+  const { trackId, customSubject, customMessage } = req.body || {};
+  if (!trackId) {
+    return res.status(400).json({ message: "Vui lòng chọn bài hát để gửi thông báo." });
+  }
+
+  const db = readDb();
+  if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
+
+  const track = (db.tracks || []).find((t) => t.id === trackId);
+  if (!track) {
+    return res.status(404).json({ message: "Không tìm thấy bài hát này." });
+  }
+
+  const subscribers = (db.subscribers || []).filter((s) => s.active !== false && s.email);
+  if (subscribers.length === 0) {
+    return res.status(400).json({ message: "Chưa có người đăng ký nhận thông báo nào trong danh sách." });
+  }
+
+  try {
+    const result = await sendTrackReleaseNewsletter({
+      track,
+      subscribers,
+      customSubject,
+      customMessage
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: result.error || "Gửi email thông báo thất bại.",
+        errors: result.errors
+      });
+    }
+
+    return res.json({
+      success: true,
+      sentCount: result.sentCount,
+      failedCount: result.failedCount,
+      totalTargeted: result.totalTargeted,
+      message: `Đã gửi email thông báo thành công tới ${result.sentCount} người đăng ký qua Resend!`
+    });
+  } catch (err) {
+    console.error("[newsletter broadcast error]", err);
+    return res.status(500).json({ message: err.message || "Lỗi hệ thống khi gửi email qua Resend." });
+  }
 });
 
 // PATCH /admin/orders/:id/status — Duyệt thủ công hoặc đặt lại trạng thái đơn hàng

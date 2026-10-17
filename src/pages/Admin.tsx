@@ -232,7 +232,7 @@ function AdminDashboard({
 
         {state.status === "ready" && (
           <>
-            {tab === "analytics" && <AnalyticsManager />}
+            {tab === "analytics" && <AnalyticsManager tracks={state.data.tracks} />}
             {tab === "tracks" && (
               <TrackManager
                 tracks={state.data.tracks}
