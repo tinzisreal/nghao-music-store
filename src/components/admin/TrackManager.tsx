@@ -147,7 +147,7 @@ export function TrackManager({ tracks, albums = [], onSave, onPatch, onDelete, o
     }
     const src = rawAudio.startsWith("http")
       ? rawAudio
-      : rawAudio.startsWith("/tiktok-sdk") || rawAudio.startsWith("/fb-tr")
+      : rawAudio.startsWith("/api") || rawAudio.startsWith("/tiktok-sdk") || rawAudio.startsWith("/fb-tr")
       ? rawAudio
       : `${MEDIA_PROXY_BASE}${rawAudio}`;
 

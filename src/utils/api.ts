@@ -53,11 +53,11 @@ import { storeInfo as mockStoreInfo } from "../data/contact";
 import { bankAccount as mockBank } from "../data/payment";
 
 export const API_BASE_URL = String(
-  import.meta.env.PROD ? "/fb-tr" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+  import.meta.env.PROD ? "/api" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
 
 export const MEDIA_PROXY_BASE = String(
-  import.meta.env.PROD ? "/tiktok-sdk" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+  import.meta.env.PROD ? "/api" : import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
 
 const USE_MOCK = false;
@@ -98,31 +98,7 @@ export function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
 }
 
-const TELEMETRY_SALT = "nghao_fb_telemetry_2024_secure_salt_k9x";
-
-function decodeCodecPayload<T>(body: unknown): T {
-  if (
-    body &&
-    typeof body === "object" &&
-    "_p" in body &&
-    typeof (body as { _p?: unknown })._p === "string"
-  ) {
-    try {
-      const rawBase64 = (body as { _p: string })._p;
-      const binStr = window.atob(rawBase64);
-      const keyBytes = new TextEncoder().encode(TELEMETRY_SALT);
-      const outBytes = new Uint8Array(binStr.length);
-      for (let i = 0; i < binStr.length; i++) {
-        outBytes[i] = binStr.charCodeAt(i) ^ keyBytes[i % keyBytes.length];
-      }
-      const jsonStr = new TextDecoder("utf-8").decode(outBytes);
-      return JSON.parse(jsonStr) as T;
-    } catch {
-      return body as T;
-    }
-  }
-  return body as T;
-}
+// Standard JSON API (XOR and pixel camouflage eliminated for speed & reliability)
 
 async function request<T>(path: string, init: RequestInit = {}, baseUrl = API_BASE_URL): Promise<T> {
   const isForm = init.body instanceof FormData;
@@ -132,7 +108,6 @@ async function request<T>(path: string, init: RequestInit = {}, baseUrl = API_BA
       ...init,
       headers: {
         ...(isForm ? {} : { "Content-Type": "application/json" }),
-        "x-fb-codec": "1",
         ...authHeaders(),
         ...(init.headers ?? {})
       }
@@ -144,16 +119,14 @@ async function request<T>(path: string, init: RequestInit = {}, baseUrl = API_BA
     let message = `Có lỗi xảy ra (${res.status}).`;
     try {
       const rawBody = await res.json();
-      const body = decodeCodecPayload<{ message?: string }>(rawBody);
-      if (body?.message) message = body.message;
+      if (rawBody?.message) message = rawBody.message;
     } catch {
-
-      /* non-JSON error body */}
+      /* non-JSON error body */
+    }
     throw new ApiError(message, res.status);
   }
   if (res.status === 204) return undefined as T;
-  const rawJson = await res.json();
-  return decodeCodecPayload<T>(rawJson);
+  return res.json() as Promise<T>;
 }
 
 /* ───────── Mock backend (in-memory) ───────── */
@@ -183,10 +156,10 @@ function resolveTrackMedia(track: Track): Track {
   if (!track) return track;
   let audioUrl = track.audioUrl;
   let cover = track.cover;
-  if (audioUrl && audioUrl.startsWith("/") && !audioUrl.startsWith("/tiktok-sdk") && !audioUrl.startsWith("/fb-tr") && !audioUrl.startsWith(MEDIA_PROXY_BASE)) {
+  if (audioUrl && audioUrl.startsWith("/") && !audioUrl.startsWith(MEDIA_PROXY_BASE)) {
     audioUrl = `${MEDIA_PROXY_BASE}${audioUrl}`;
   }
-  if (cover && cover.startsWith("/") && !cover.startsWith("/tiktok-sdk") && !cover.startsWith("/fb-tr") && !cover.startsWith(MEDIA_PROXY_BASE)) {
+  if (cover && cover.startsWith("/") && !cover.startsWith(MEDIA_PROXY_BASE)) {
     cover = `${MEDIA_PROXY_BASE}${cover}`;
   }
   return {
@@ -199,7 +172,7 @@ function resolveTrackMedia(track: Track): Track {
 function resolveAlbumMedia(album: Album): Album {
   if (!album) return album;
   let cover = album.cover;
-  if (cover && cover.startsWith("/")) {
+  if (cover && cover.startsWith("/") && !cover.startsWith(MEDIA_PROXY_BASE)) {
     cover = `${MEDIA_PROXY_BASE}${cover}`;
   }
   return { ...album, cover };
@@ -209,41 +182,41 @@ function resolveOrderMedia(order: Order): Order {
   if (!order) return order;
   let qrUrl = order.qrUrl;
   let payUrl = order.payUrl;
-  if (qrUrl && qrUrl.startsWith("/")) {
+  if (qrUrl && qrUrl.startsWith("/") && !qrUrl.startsWith(MEDIA_PROXY_BASE)) {
     qrUrl = `${MEDIA_PROXY_BASE}${qrUrl}`;
   }
-  if (payUrl && payUrl.startsWith("/")) {
+  if (payUrl && payUrl.startsWith("/") && !payUrl.startsWith(MEDIA_PROXY_BASE)) {
     payUrl = `${MEDIA_PROXY_BASE}${payUrl}`;
   }
   return { ...order, qrUrl, payUrl };
 }
 
-/* ───────── Public API (Camouflaged via /fb-tr & /tiktok-sdk) ───────── */
+/* ───────── Public Clean REST API ───────── */
 
 export const api = {
   getProducer(): Promise<Producer> {
-    return USE_MOCK ? mock(db.producer) : request<Producer>("/v19.0/pixel/config");
+    return USE_MOCK ? mock(db.producer) : request<Producer>("/producer");
   },
 
   async getTracks(options?: { admin?: boolean }): Promise<Track[]> {
     if (USE_MOCK) return mock(db.tracks);
     const query = options?.admin ? "?admin=1" : "";
-    const tracks = await request<Track[]>(`/v19.0/pixel/catalog${query}`);
+    const tracks = await request<Track[]>(`/tracks${query}`);
     return tracks.map(resolveTrackMedia);
   },
 
   async getAlbums(): Promise<Album[]> {
     if (USE_MOCK) return mock([]);
-    const albums = await request<Album[]>("/v19.0/pixel/collections");
+    const albums = await request<Album[]>("/albums");
     return albums.map(resolveAlbumMedia);
   },
 
   getStoreInfo(): Promise<StoreInfo> {
-    return USE_MOCK ? mock(db.info) : request<StoreInfo>("/v19.0/pixel/attribution");
+    return USE_MOCK ? mock(db.info) : request<StoreInfo>("/store-info");
   },
 
   getSections(): Promise<StoreSections> {
-    return USE_MOCK ? mock(db.sections) : request<StoreSections>("/v19.0/pixel/placements");
+    return USE_MOCK ? mock(db.sections) : request<StoreSections>("/sections");
   },
 
   async getStoreData(options?: { admin?: boolean }): Promise<StoreData> {
@@ -258,7 +231,7 @@ export const api = {
   },
 
   getFreeDownloadUrl(trackId: string): string {
-    return `${MEDIA_PROXY_BASE}/v2/media/asset/${encodeURIComponent(trackId)}`;
+    return `${MEDIA_PROXY_BASE}/tracks/${encodeURIComponent(trackId)}/free-download`;
   },
 
   async createOrder(trackIdOrIds: string | string[], redirectUrl?: string, email?: string, phone?: string): Promise<Order> {
@@ -268,7 +241,7 @@ export const api = {
 
     if (!USE_MOCK) {
       const ord = await request<Order>(
-        "/v2/events/initiate",
+        "/orders",
         {
           method: "POST",
           body: JSON.stringify({
@@ -299,7 +272,7 @@ export const api = {
 
   async getOrder(orderId: string): Promise<Order> {
     if (!USE_MOCK) {
-      const ord = await request<Order>(`/v2/events/status/${encodeURIComponent(orderId)}`, {}, MEDIA_PROXY_BASE);
+      const ord = await request<Order>(`/orders/${encodeURIComponent(orderId)}`, {}, MEDIA_PROXY_BASE);
       return resolveOrderMedia(ord);
     }
     return Promise.reject(new ApiError("Mock mode"));
@@ -308,7 +281,7 @@ export const api = {
   confirmOrder(orderId: string, email?: string, phone?: string, subscribeNewsletter: boolean = true): Promise<OrderConfirmation> {
     if (!USE_MOCK) {
       return request<OrderConfirmation>(
-        `/v2/events/complete/${encodeURIComponent(orderId)}`,
+        `/orders/${encodeURIComponent(orderId)}/confirm`,
         {
           method: "POST",
           body: JSON.stringify({ email, phone, subscribeNewsletter })
@@ -328,7 +301,7 @@ export const api = {
     subscribeNewsletter?: boolean;
   }): Promise<{ success: boolean; email: string; message: string }> {
     return request<{ success: boolean; email: string; message: string }>(
-      "/v2/events/subscribe",
+      "/subscribe",
       {
         method: "POST",
         body: JSON.stringify(payload)
@@ -357,7 +330,7 @@ export const api = {
     if (USE_MOCK) {
       return mock({ configured: true, clientId: "mock_client_id", currency: "USD", mode: "sandbox" });
     }
-    return request<PayPalConfig>("/v2/events/paypal/config", {}, MEDIA_PROXY_BASE);
+    return request<PayPalConfig>("/paypal/config", {}, MEDIA_PROXY_BASE);
   },
 
   createPayPalOrder(trackId: string, email?: string, phone?: string): Promise<PayPalCreateOrderResult> {
@@ -370,7 +343,7 @@ export const api = {
       });
     }
     return request<PayPalCreateOrderResult>(
-      "/v2/events/paypal/create-order",
+      "/paypal/create-order",
       {
         method: "POST",
         body: JSON.stringify({ trackId, email, phone })
@@ -392,7 +365,7 @@ export const api = {
       });
     }
     return request<PayPalCaptureResult>(
-      "/v2/events/paypal/capture-order",
+      "/paypal/capture-order",
       {
         method: "POST",
         body: JSON.stringify({ orderId, paypalOrderId, email, phone, subscribeNewsletter })
@@ -568,12 +541,10 @@ export const api = {
     trackTitle?: string;
   }): Promise<void> {
     try {
-      const endpoint = import.meta.env.PROD
-        ? "/fb-tr/v2/events/analytics"
-        : `${API_BASE_URL}/analytics/event`;
+      const endpoint = `${API_BASE_URL}/analytics/event`;
       await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-fb-codec": "1" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         keepalive: true
       });

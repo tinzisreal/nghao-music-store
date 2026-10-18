@@ -4,23 +4,42 @@ import crypto from "crypto";
  * Generates an HMAC-signed download token for a paid order so raw Cloudinary URLs
  * are never exposed in public APIs.
  */
-export function buildOrderDownloadToken(orderId, secret) {
+export function buildOrderDownloadToken(orderId, secret, expiresAt) {
   const key = secret || process.env.APIPAY_WEBHOOK_SECRET || "nghao_download_secret_2026";
+  if (expiresAt) {
+    const payload = `download:${orderId}:${expiresAt}`;
+    const sig = crypto.createHmac("sha256", key).update(payload).digest("hex");
+    return `${expiresAt}.${sig}`;
+  }
   return crypto.createHmac("sha256", key).update(`download:${orderId}`).digest("hex");
 }
 
 export function verifyOrderDownloadToken(orderId, token, secret) {
   if (!orderId || !token || typeof token !== "string") return false;
-  const expected = buildOrderDownloadToken(orderId, secret);
+  const key = secret || process.env.APIPAY_WEBHOOK_SECRET || "nghao_download_secret_2026";
+
+  if (token.includes(".")) {
+    const [expiresAtStr, sig] = token.split(".");
+    const expiresAt = Number(expiresAtStr);
+    if (!expiresAt || isNaN(expiresAt) || Date.now() > expiresAt) {
+      return false; // Token expired
+    }
+    const expectedSig = crypto.createHmac("sha256", key).update(`download:${orderId}:${expiresAt}`).digest("hex");
+    if (sig.length !== expectedSig.length || !/^[0-9a-fA-F]+$/.test(sig)) return false;
+    return crypto.timingSafeEqual(Buffer.from(sig, "hex"), Buffer.from(expectedSig, "hex"));
+  }
+
+  const expected = crypto.createHmac("sha256", key).update(`download:${orderId}`).digest("hex");
   if (token.length !== expected.length || !/^[0-9a-fA-F]+$/.test(token)) return false;
   return crypto.timingSafeEqual(Buffer.from(token, "hex"), Buffer.from(expected, "hex"));
 }
 
-export function buildSignedDownloadUrl(orderId, secret, trackId) {
+export function buildSignedDownloadUrl(orderId, secret, trackId, ttlHours = 48) {
   const baseUrl = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "");
-  const token = buildOrderDownloadToken(orderId, secret);
+  const expiresAt = Date.now() + ttlHours * 60 * 60 * 1000;
+  const token = buildOrderDownloadToken(orderId, secret, expiresAt);
   const trackParam = trackId ? `&trackId=${encodeURIComponent(trackId)}` : "";
-  return `${baseUrl}/api-proxy/orders/${encodeURIComponent(orderId)}/download?token=${token}${trackParam}`;
+  return `${baseUrl}/api/orders/${encodeURIComponent(orderId)}/download?token=${token}${trackParam}`;
 }
 
 export function buildFulfillmentEmailHtml({ trackTitle, order, downloadUrl }) {

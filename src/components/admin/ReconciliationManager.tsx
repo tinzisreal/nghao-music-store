@@ -66,7 +66,7 @@ export function ReconciliationManager() {
     try {
       const res = await api.testNotifications();
       if (res.ntfy?.sent) {
-        toast.success(`📲 Đã bắn chuông tới app ntfy điện thoại (kênh: ${res.ntfy.topic || "nghao-orders-2026"})!`);
+        toast.success(`📲 Đã bắn chuông tới app ntfy điện thoại (kênh: ${res.ntfy.topic || currentNtfyTopic})!`);
       } else if (res.ntfy) {
         toast.error(`Ntfy: ${res.ntfy.reason || "Lỗi gửi thông báo"}`);
       }
@@ -449,21 +449,21 @@ export function ReconciliationManager() {
             </div>
             <p className="text-xs leading-relaxed text-white/70">
               Cả bạn và bạn của bạn cùng tải app <strong>ntfy</strong> (trên App Store hoặc Google Play, miễn phí 100%, không cần tạo tài khoản), đăng ký kênh{" "}
-              <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-cyan-300">nghao-orders-2026</code> để cả 2 máy cùng reo chuông ting ting khi khách thanh toán thành công!
+              <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-cyan-300">{currentNtfyTopic}</code> để cả 2 máy cùng reo chuông ting ting khi khách thanh toán thành công!
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={() => handleCopy("nghao-orders-2026")}
+              onClick={() => handleCopy(currentNtfyTopic)}
               className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-1.5 text-xs font-medium text-cyan-200 transition hover:bg-cyan-500/20">
-              {copiedText === "nghao-orders-2026" ? <CheckIcon className="h-3.5 w-3.5 text-emerald-400" /> : <CopyIcon className="h-3.5 w-3.5" />}
-              <span>{copiedText === "nghao-orders-2026" ? "Đã chép kênh" : "Chép tên kênh: nghao-orders-2026"}</span>
+              {copiedText === currentNtfyTopic ? <CheckIcon className="h-3.5 w-3.5 text-emerald-400" /> : <CopyIcon className="h-3.5 w-3.5" />}
+              <span>{copiedText === currentNtfyTopic ? "Đã chép kênh" : "Chép tên kênh ntfy"}</span>
             </button>
 
             <a
-              href="https://ntfy.sh/nghao-orders-2026"
+              href={`https://ntfy.sh/${currentNtfyTopic}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white transition hover:bg-white/10">

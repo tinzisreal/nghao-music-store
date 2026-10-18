@@ -6,7 +6,8 @@ import {
   sendNtfyOrderAlert,
   sendTelegramOrderAlert,
   sendGmailOrderAlert,
-  notifyAdminNewPaidOrder
+  notifyAdminNewPaidOrder,
+  DEFAULT_NTFY_TOPIC
 } from "./notifier.js";
 
 test("sendNtfyOrderAlert publishes urgent alert to ntfy topic", async () => {
@@ -27,7 +28,7 @@ test("sendNtfyOrderAlert publishes urgent alert to ntfy topic", async () => {
 
   assert.equal(result.sent, true);
   assert.equal(capturedUrl, "https://ntfy.sh");
-  assert.equal(capturedBody.topic, "nghao-orders-2026");
+  assert.equal(capturedBody.topic, DEFAULT_NTFY_TOPIC);
   assert.equal(capturedBody.priority, 5);
   assert.ok(capturedBody.actions.some((a) => a.url.includes("mail.google.com")));
   assert.ok(capturedBody.message.includes("Ai ngoài anh"));

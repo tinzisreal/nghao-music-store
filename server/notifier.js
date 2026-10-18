@@ -5,7 +5,7 @@
  * 3. Gmail Alert — Gửi email thông báo về Gmail chủ shop (nghaoproducer@gmail.com).
  */
 
-export const DEFAULT_NTFY_TOPIC = "nghao-orders-2026";
+export const DEFAULT_NTFY_TOPIC = "nghao-orders-sec-9a8f2e4b7c1d3056";
 
 export function formatVnd(amount) {
   return `${Number(amount || 0).toLocaleString("vi-VN")} ₫`;
@@ -101,7 +101,7 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
 
     const res = await fetchImpl("https://ntfy.sh", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(process.env.NTFY_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NTFY_AUTH_TOKEN}` } : {}) },
       body: JSON.stringify(ntfyPayload),
       signal: controller.signal
     });

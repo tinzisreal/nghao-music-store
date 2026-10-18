@@ -184,6 +184,7 @@ export interface ReconciliationData {
   apipayTransactions: Record<string, unknown>[];
   apipayPaymentRequests: Record<string, unknown>[];
   newlyMatchedCount: number;
+  ntfyTopic?: string;
 }
 
 export interface TotpSetupInfo {

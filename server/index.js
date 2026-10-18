@@ -46,7 +46,7 @@ process.env.APIPAY_SECRET_KEY = process.env.APIPAY_SECRET_KEY || "TFRtzNJi6lHVz7
 process.env.APIPAY_BANK_PUBLIC_ID = process.env.APIPAY_BANK_PUBLIC_ID || "cmv615pke0c4001sxipdu87dw";
 process.env.APIPAY_WEBHOOK_SECRET = process.env.APIPAY_WEBHOOK_SECRET || "f5cb1c6958f358b779c7f00a499f6b036fafcb7e8945fc9d341a0bf9b15f03b4";
 process.env.ADMIN_ALERT_EMAIL = process.env.ADMIN_ALERT_EMAIL || "nghaoproducer@gmail.com";
-process.env.NTFY_TOPIC = process.env.NTFY_TOPIC || "nghao-orders-2026";
+process.env.NTFY_TOPIC = process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC;
 process.env.PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -232,76 +232,15 @@ function encryptTelemetry(data) {
   return output.toString("base64");
 }
 
-// Ngụy trang đường dẫn API sang chuẩn Facebook Pixel / TikTok SDK & mã hóa payload phản hồi
+// Chuẩn hóa đường dẫn API và hỗ trợ backward compatibility cho các URL cũ
 app.use((req, res, next) => {
-  const originalUrl = req.url;
-  const rawPath = originalUrl.split("?")[0];
-
-  // Bỏ tiền tố proxy nếu gọi trực tiếp hoặc qua Vercel proxy (/fb-tr, /tiktok-sdk, /api-proxy)
-  req.url = req.url.replace(/^\/(fb-tr|tiktok-sdk|api-proxy)(?=\/|$)/, "") || "/";
+  // Bỏ tiền tố proxy (/api, /api-proxy, /fb-tr, /tiktok-sdk)
+  req.url = req.url.replace(/^\/(api|api-proxy|fb-tr|tiktok-sdk)(?=\/|$)/, "") || "/";
 
   const [pathname, search = ""] = req.url.split("?");
   const qs = search ? `?${search}` : "";
 
-  const isFbDisguised = rawPath.startsWith("/fb-tr/") || pathname.startsWith("/v19.0/");
-  const isTtDisguised = rawPath.startsWith("/tiktok-sdk/") || pathname.startsWith("/v2/events/");
-  const isMediaStream = pathname.startsWith("/v2/media/stream/");
-  const isMediaAsset = pathname.startsWith("/v2/media/asset/");
-  const isMediaCover = pathname.startsWith("/v2/media/cover/") || pathname.startsWith("/v2/media/album-cover/");
-  const isMediaQr = pathname.startsWith("/v2/media/qr/");
-  const isMediaCheckout = pathname.startsWith("/v2/events/checkout/");
-  const isMediaRoute = isMediaStream || isMediaAsset || isMediaCover || isMediaQr || isMediaCheckout;
-  const hasClientCodec = req.headers["x-fb-codec"] === "1";
-  const acceptHeader = req.headers["accept"] || "";
-  const isBrowserNav =
-    acceptHeader.includes("text/html") ||
-    req.headers["sec-fetch-dest"] === "document" ||
-    req.headers["sec-fetch-mode"] === "navigate";
-
-  // 1. Nếu mở trực tiếp link ngụy trang trên trình duyệt hoặc không có client handshake hợp lệ
-  if (!isMediaRoute) {
-    if (isFbDisguised && !hasClientCodec) {
-      if (isBrowserNav) {
-        return res.redirect(302, "https://www.facebook.com/tr/");
-      }
-      return res.status(400).json({
-        error: {
-          message:
-            "Unsupported get request. Object with ID 'v19.0' does not exist, cannot be loaded due to missing permissions, or does not support this operation. Please read the Graph API documentation at https://developers.facebook.com/docs/graph-api",
-          type: "GraphMethodException",
-          code: 100,
-          error_subcode: 33,
-          fbtrace_id: "F" + Math.random().toString(36).slice(2, 10)
-        }
-      });
-    }
-
-    if (isTtDisguised && !hasClientCodec) {
-      if (isBrowserNav) {
-        return res.redirect(302, "https://analytics.tiktok.com/");
-      }
-      return res.status(401).json({
-        code: 40101,
-        message: "Access token is invalid or expired.",
-        data: null
-      });
-    }
-
-    // Nếu cố tình gọi trực tiếp các route nội bộ (không qua proxy và không phải webhook / health / download)
-    const isDirectInternal = ["/tracks", "/producer", "/albums", "/store-info", "/sections", "/orders", "/paypal", "/subscribe"].some(
-      (p) => pathname === p || pathname.startsWith(`${p}/`)
-    );
-    const hasAdminToken = (req.headers["authorization"] || "").startsWith("Bearer ");
-    if (isDirectInternal && !hasClientCodec && !hasAdminToken && !pathname.includes("/download")) {
-      if (isBrowserNav) {
-        const dest = (process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "") + "/";
-        return res.redirect(302, dest);
-      }
-      return res.status(404).json({ error: "Not found" });
-    }
-  }
-
-  // Ánh xạ các đường dẫn ngụy trang Facebook/TikTok về route nội bộ
+  // Ánh xạ các đường dẫn cũ (nếu có request từ cache) về route nội bộ chuẩn
   if (pathname === "/v19.0/pixel/config") req.url = `/producer${qs}`;
   else if (pathname === "/v19.0/pixel/catalog") req.url = `/tracks${qs}`;
   else if (pathname === "/v19.0/pixel/collections") req.url = `/albums${qs}`;
@@ -337,22 +276,6 @@ app.use((req, res, next) => {
   } else if (pathname.startsWith("/v2/media/qr/")) {
     const id = pathname.slice("/v2/media/qr/".length);
     req.url = `/orders/${id}/qr-image${qs}`;
-  }
-
-  // Nếu client gửi header x-fb-codec: 1, mã hóa payload phản hồi dạng nhị phân XOR giả lập Facebook Telemetry
-  if (hasClientCodec) {
-    const origJson = res.json.bind(res);
-    res.json = (body) => {
-      if (body && typeof body === "object" && !body._p) {
-        const encoded = encryptTelemetry(body);
-        return origJson({
-          fb_trace_id: `fb.1.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`,
-          tt_sdk_ver: "2.4.1",
-          _p: encoded
-        });
-      }
-      return origJson(body);
-    };
   }
 
   next();
@@ -733,7 +656,6 @@ app.get("/health", (req, res) => {
     cloudinary: isCloudinaryConfigured,
     paypal: isPayPalConfigured(),
     ntfyConfigured: true,
-    ntfyTopic: (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim(),
     gmailConfigured: Boolean(process.env.GMAIL_SCRIPT_URL || process.env.RESEND_API_KEY),
     telegramConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
   });
@@ -744,8 +666,7 @@ app.get(["/api/apipay/webhook", "/api/webhook", "/apipay/webhook"], (req, res) =
   res.json({
     status: "ok",
     message: "ApiPay Webhook Endpoint is ready to receive POST events.",
-    endpoint: `${(process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "")}/api/apipay/webhook`,
-    ntfyTopic: (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim()
+    endpoint: `${(process.env.PUBLIC_SITE_URL || "https://nghaoproducer.shop").replace(/\/+$/, "")}/api/apipay/webhook`
   });
 });
 
@@ -2051,7 +1972,8 @@ async function buildReconciliationResponse(db, syncWithApiPay = true) {
     apipayOverview: overview,
     apipayTransactions,
     apipayPaymentRequests,
-    newlyMatchedCount
+    newlyMatchedCount,
+    ntfyTopic: (process.env.NTFY_TOPIC || DEFAULT_NTFY_TOPIC).trim()
   };
 }
 
