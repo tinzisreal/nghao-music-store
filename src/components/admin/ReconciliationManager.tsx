@@ -61,6 +61,8 @@ export function ReconciliationManager() {
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [testingNotification, setTestingNotification] = useState(false);
 
+  const currentNtfyTopic = data?.ntfyTopic || "nghao-orders-sec-9a8f2e4b7c1d3056";
+
   const handleTestNotifications = async () => {
     setTestingNotification(true);
     try {

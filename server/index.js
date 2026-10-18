@@ -1190,7 +1190,8 @@ app.post("/orders", orderRateLimiter, async (req, res) => {
         amount: String(totalAmount),
         content: transferNote,
         title: orderTitle,
-        redirectUrl: safeRedirectUrl
+        redirectUrl: safeRedirectUrl,
+        webhookUrl: process.env.APIPAY_WEBHOOK_URL || `${siteUrl}/api/apipay/webhook`
       });
     } catch (err) {
       const status = err instanceof ApiPayError ? err.statusCode : 502;

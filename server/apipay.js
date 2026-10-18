@@ -35,6 +35,7 @@ export async function createPaymentRequest({
   content,
   title,
   redirectUrl,
+  webhookUrl,
   accessKey = process.env.APIPAY_ACCESS_KEY,
   secretKey = process.env.APIPAY_SECRET_KEY,
   fetchImpl = globalThis.fetch
@@ -56,7 +57,8 @@ export async function createPaymentRequest({
     amount: String(Math.round(numericAmount)),
     ...(sanitizedContent ? { content: sanitizedContent } : {}),
     ...(title ? { title: String(title).trim() } : {}),
-    ...(redirectUrl ? { redirectUrl: String(redirectUrl).trim() } : {})
+    ...(redirectUrl ? { redirectUrl: String(redirectUrl).trim() } : {}),
+    ...(webhookUrl ? { webhookUrl: String(webhookUrl).trim() } : {})
   };
 
   let response;

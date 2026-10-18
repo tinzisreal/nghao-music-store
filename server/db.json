@@ -33,6 +33,36 @@
   "albums": [],
   "orders": [
     {
+      "id": "ord_1792334220000",
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSC9ZSLG403T2/qr-image",
+      "amount": 200000,
+      "paidAt": "2026-10-18T14:37:00.000Z",
+      "payUrl": "https://pay.apipay.vn/APIPAYJSC9ZSLG403T2",
+      "status": "paid",
+      "trackId": "t1791865022686",
+      "createdAt": "2026-10-18T14:36:35.214Z",
+      "paidAmount": 200000,
+      "trackTitle": "Baby - MCK, Marzus",
+      "transferNote": "NGHAO MVDXI3IA7WI",
+      "reconciledVia": "apipay_sync",
+      "referenceCode": "FT26292869070320",
+      "transactionId": "cmvdxio1o0isa01mft32e6k6i",
+      "apipayPublicId": "APIPAYJSC9ZSLG403T2",
+      "ntfyNotifiedAt": "2026-10-18T14:41:38.193Z",
+      "overpaidAmount": 0,
+      "paymentHistory": [
+        {
+          "amount": 200000,
+          "referenceCode": "FT26292869070320",
+          "transactionId": "cmvdxio1o0isa01mft32e6k6i",
+          "transactionDate": "2026-10-18T14:37:00.000Z"
+        }
+      ],
+      "shortfallAmount": 0,
+      "paymentResolution": "exact",
+      "adminEmailNotifiedAt": "2026-10-18T14:41:38.193Z"
+    },
+    {
       "id": "ord_1792222323061",
       "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCY1K8QYUDY9/qr-image",
       "amount": 200000,
@@ -48,6 +78,7 @@
       "referenceCode": "APIPAYJSCY1K8QYUDY9",
       "transactionId": "pr_APIPAYJSCY1K8QYUDY9",
       "apipayPublicId": "APIPAYJSCY1K8QYUDY9",
+      "ntfyNotifiedAt": "2026-10-18T14:41:38.261Z",
       "overpaidAmount": 0,
       "paymentHistory": [
         {
@@ -58,7 +89,8 @@
         }
       ],
       "shortfallAmount": 0,
-      "paymentResolution": "exact"
+      "paymentResolution": "exact",
+      "adminEmailNotifiedAt": "2026-10-18T14:41:38.262Z"
     },
     {
       "id": "ord_1791771639112",
@@ -198,6 +230,7 @@
       "referenceCode": "FT26286400546969",
       "transactionId": "cmv65ihye05ci01lkz7i90vhs",
       "apipayPublicId": "APIPAYJSCNB7FWQP46T",
+      "ntfyNotifiedAt": "2026-10-18T14:41:38.332Z",
       "overpaidAmount": 0,
       "paymentHistory": [
         {
@@ -209,7 +242,8 @@
       ],
       "redirectSecret": "962a2acc2c3aa9498d373fdad50a6bf1285bed3d45ec1b5c72d09acc40b8da4a",
       "shortfallAmount": 0,
-      "paymentResolution": "exact"
+      "paymentResolution": "exact",
+      "adminEmailNotifiedAt": "2026-10-18T14:41:38.332Z"
     },
     {
       "id": "ord_1791865346072",
@@ -272,6 +306,7 @@
       "referenceCode": "FT26286915437909",
       "transactionId": "cmv67w0kz0dbn01mhav1skjt7",
       "apipayPublicId": "APIPAYJSC6STYRWZ3G2",
+      "ntfyNotifiedAt": "2026-10-18T14:41:38.412Z",
       "overpaidAmount": 0,
       "paymentHistory": [
         {
@@ -283,7 +318,8 @@
       ],
       "redirectSecret": "018bc1af32ae242e086a184f3e509704edcae845a20d9fb33f251085f16c514c",
       "shortfallAmount": 0,
-      "paymentResolution": "exact"
+      "paymentResolution": "exact",
+      "adminEmailNotifiedAt": "2026-10-18T14:41:38.412Z"
     },
     {
       "id": "ord_1791868302542",
@@ -1112,6 +1148,35 @@
       "transferNote": "NGHAO MVC6GSFJMCA",
       "apipayPublicId": "APIPAYJSCL7B65WBC1E",
       "redirectSecret": "1a506af388430de0d18e31cbb1faebd80f978cb613c3a38bc448741add45c9e9"
+    },
+    {
+      "id": "ord_1792301620159",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "items": [
+        {
+          "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791879917/music_store/images/n3vxqw9xvqbzdvuh0gdt.jpg",
+          "price": 500000,
+          "title": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)",
+          "trackId": "t1791880340329"
+        }
+      ],
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCM3BRJDP9ZE/qr-image",
+      "amount": 500000,
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCM3BRJDP9ZE",
+      "status": "pending_verification",
+      "trackId": "t1791880340329",
+      "trackIds": [
+        "t1791880340329"
+      ],
+      "createdAt": "2026-10-18T05:33:40.854Z",
+      "transferNote": "NGHAO MVDE3WZJK67",
+      "apipayPublicId": "APIPAYJSCM3BRJDP9ZE",
+      "redirectSecret": "6b1013db4a15252ba2909f23e5bef6b4fed41aaa57cbe13d91c5de0040b4612b"
     }
   ],
   "tracks": [
@@ -1446,12 +1511,18 @@
         "views": 36,
         "uniques": 28,
         "downloads": 5
+      },
+      "2026-10-18": {
+        "plays": 43,
+        "views": 14,
+        "uniques": 11,
+        "downloads": 1
       }
     },
     "devices": {
-      "mobile": 44,
+      "mobile": 51,
       "tablet": 0,
-      "desktop": 58
+      "desktop": 65
     },
     "uniqueIps": {
       "05e93a9a6da633a0": "2026-10-17",
@@ -1466,15 +1537,19 @@
       "28cade8a53fdd49c": "2026-10-17",
       "3023eb2578acb728": "2026-10-16",
       "32ba15c4c31e98ec": "2026-10-17",
-      "38ef03013159cb17": "2026-10-17",
+      "38ef03013159cb17": "2026-10-18",
       "39b1d3abcb9c9a93": "2026-10-15",
       "39ffdd3a527fec96": "2026-10-15",
+      "3ac0bbe659175908": "2026-10-18",
       "3f25dfd530fa5826": "2026-10-15",
+      "3f9dd8fb720c4c1d": "2026-10-18",
       "416e50427743d48f": "2026-10-17",
       "48112d62274bf518": "2026-10-17",
+      "50ac4b3727595407": "2026-10-18",
       "58411ea9914a48e2": "2026-10-15",
       "592671707f8d8b11": "2026-10-17",
-      "5e4b8cfeb3994dad": "2026-10-17",
+      "5e4b8cfeb3994dad": "2026-10-18",
+      "5f717b7a2cbdc91b": "2026-10-18",
       "61757cb567d6f2ce": "2026-10-15",
       "6c68dece3fb46aa8": "2026-10-16",
       "74949aef6ca0fa4a": "2026-10-15",
@@ -1492,6 +1567,7 @@
       "9c066de14a0036bd": "2026-10-17",
       "9d7e0060bd5f1b47": "2026-10-17",
       "a31767b82f7fa13b": "2026-10-15",
+      "a83a4c4db1c2a1b5": "2026-10-18",
       "acb5261b88774122": "2026-10-16",
       "ade686eab6b88dd6": "2026-10-17",
       "b2c6bf9957a6bcb5": "2026-10-17",
@@ -1500,42 +1576,347 @@
       "c9a26a8b5f63f029": "2026-10-15",
       "ca4a89542c392e53": "2026-10-17",
       "ca693efd080c4901": "2026-10-16",
+      "caed4094699a9a9b": "2026-10-18",
       "d031632600c7175e": "2026-10-17",
       "d068d0d10c09b359": "2026-10-17",
       "d454472c91961c9b": "2026-10-17",
+      "d6da381aa7ebd7e3": "2026-10-18",
       "d6fd5374217ab4eb": "2026-10-15",
       "d8562d99abba726d": "2026-10-16",
+      "dc2672d000a4cc18": "2026-10-18",
       "ded1d84ea2f00123": "2026-10-15",
       "e52da6ec4e08e073": "2026-10-17",
       "e5ddbca2236f2e33": "2026-10-15",
       "e8c7fe27bbd87c42": "2026-10-17",
       "ed76ec55fb99b72e": "2026-10-16",
+      "fcb0e959474b1762": "2026-10-18",
       "fe1b569690e27585": "2026-10-17",
       "ff7d63138da0db9f": "2026-10-17"
     },
-    "totalPlays": 165,
-    "totalViews": 102,
+    "totalPlays": 208,
+    "totalViews": 116,
     "trackPlays": {
-      "t1791863000230": 13,
+      "t1791863000230": 14,
       "t1791863432050": 4,
-      "t1791863592445": 11,
+      "t1791863592445": 12,
       "t1791865022686": 6,
-      "t1791867400589": 8,
-      "t1791874838261": 7,
-      "t1791877930070": 5,
-      "t1791879579077": 6,
-      "t1791880340329": 8,
-      "t1791881192161": 7,
-      "t1791881576650": 11,
-      "t1791881994825": 6,
-      "t1791882490980": 10,
-      "t1791883926651": 16,
-      "t1791908040220": 10,
-      "t1791948378483": 10,
-      "t1791948682068": 5,
-      "t1791964364619": 22
+      "t1791867400589": 10,
+      "t1791874838261": 11,
+      "t1791877930070": 7,
+      "t1791879579077": 7,
+      "t1791880340329": 10,
+      "t1791881192161": 10,
+      "t1791881576650": 13,
+      "t1791881994825": 8,
+      "t1791882490980": 16,
+      "t1791883926651": 17,
+      "t1791908040220": 15,
+      "t1791948378483": 11,
+      "t1791948682068": 6,
+      "t1791964364619": 31
     },
     "recentPlays": [
+      {
+        "id": "pl_1792332271571_xq9v",
+        "device": "Desktop",
+        "trackId": "t1791877930070",
+        "playedAt": "2026-10-18T14:04:31.571Z",
+        "trackTitle": "Từng là của nhau - Bảo Anh"
+      },
+      {
+        "id": "pl_1792332261262_rjmk",
+        "device": "Desktop",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T14:04:21.262Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792332255439_jkqc",
+        "device": "Desktop",
+        "trackId": "t1791879579077",
+        "playedAt": "2026-10-18T14:04:15.439Z",
+        "trackTitle": "Bật nhạc lên - HIEUTHUHAI"
+      },
+      {
+        "id": "pl_1792332254325_qwoi",
+        "device": "Desktop",
+        "trackId": "t1791908040220",
+        "playedAt": "2026-10-18T14:04:14.325Z",
+        "trackTitle": "Toidaidot - Greyd"
+      },
+      {
+        "id": "pl_1792332233477_by4w",
+        "device": "Desktop",
+        "trackId": "t1791882490980",
+        "playedAt": "2026-10-18T14:03:53.477Z",
+        "trackTitle": "CLMEv2 - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792332232759_4rny",
+        "device": "Desktop",
+        "trackId": "t1791882490980",
+        "playedAt": "2026-10-18T14:03:52.759Z",
+        "trackTitle": "CLMEv2 - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792332232462_0p49",
+        "device": "Desktop",
+        "trackId": "t1791908040220",
+        "playedAt": "2026-10-18T14:03:52.462Z",
+        "trackTitle": "Toidaidot - Greyd"
+      },
+      {
+        "id": "pl_1792332229097_b062",
+        "device": "Desktop",
+        "trackId": "t1791948378483",
+        "playedAt": "2026-10-18T14:03:49.097Z",
+        "trackTitle": "Ai khóc nỗi đau này - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792332216892_316v",
+        "device": "Desktop",
+        "trackId": "t1791877930070",
+        "playedAt": "2026-10-18T14:03:36.892Z",
+        "trackTitle": "Từng là của nhau - Bảo Anh"
+      },
+      {
+        "id": "pl_1792332198273_4y7w",
+        "device": "Desktop",
+        "trackId": "t1791908040220",
+        "playedAt": "2026-10-18T14:03:18.273Z",
+        "trackTitle": "Toidaidot - Greyd"
+      },
+      {
+        "id": "pl_1792327215043_p4hm",
+        "device": "Mobile",
+        "trackId": "t1791863592445",
+        "playedAt": "2026-10-18T12:40:15.043Z",
+        "trackTitle": "Dù có cách xa ( Slot )"
+      },
+      {
+        "id": "pl_1792327208712_bjql",
+        "device": "Mobile",
+        "trackId": "t1791867400589",
+        "playedAt": "2026-10-18T12:40:08.712Z",
+        "trackTitle": "Ai ngoài anh - Vstra"
+      },
+      {
+        "id": "pl_1792327205408_9t7y",
+        "device": "Mobile",
+        "trackId": "t1791874838261",
+        "playedAt": "2026-10-18T12:40:05.407Z",
+        "trackTitle": "Real love"
+      },
+      {
+        "id": "pl_1792327202575_g5nz",
+        "device": "Mobile",
+        "trackId": "t1791881994825",
+        "playedAt": "2026-10-18T12:40:02.575Z",
+        "trackTitle": "Ngàn năm ánh sáng"
+      },
+      {
+        "id": "pl_1792327187638_aa36",
+        "device": "Mobile",
+        "trackId": "t1791881576650",
+        "playedAt": "2026-10-18T12:39:47.637Z",
+        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792327178600_fy7t",
+        "device": "Mobile",
+        "trackId": "t1791882490980",
+        "playedAt": "2026-10-18T12:39:38.600Z",
+        "trackTitle": "CLMEv2 - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792327166157_q3m0",
+        "device": "Mobile",
+        "trackId": "t1791948682068",
+        "playedAt": "2026-10-18T12:39:26.157Z",
+        "trackTitle": "Giá như"
+      },
+      {
+        "id": "pl_1792327054064_a6p8",
+        "device": "Mobile",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T12:37:34.064Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792325009883_zwgm",
+        "device": "Desktop",
+        "trackId": "t1791908040220",
+        "playedAt": "2026-10-18T12:03:29.883Z",
+        "trackTitle": "Toidaidot - Greyd"
+      },
+      {
+        "id": "pl_1792323461124_jeh3",
+        "device": "Desktop",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T11:37:41.123Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792313303236_9b5v",
+        "device": "Desktop",
+        "trackId": "t1791881994825",
+        "playedAt": "2026-10-18T08:48:23.236Z",
+        "trackTitle": "Ngàn năm ánh sáng"
+      },
+      {
+        "id": "pl_1792313276991_iypl",
+        "device": "Desktop",
+        "trackId": "t1791908040220",
+        "playedAt": "2026-10-18T08:47:56.991Z",
+        "trackTitle": "Toidaidot - Greyd"
+      },
+      {
+        "id": "pl_1792313221239_3x07",
+        "device": "Desktop",
+        "trackId": "t1791863000230",
+        "playedAt": "2026-10-18T08:47:01.239Z",
+        "trackTitle": "Và thế giới mất đi một người cô đơn - Marzus ( Slot)"
+      },
+      {
+        "id": "pl_1792313212931_p8f8",
+        "device": "Desktop",
+        "trackId": "t1791882490980",
+        "playedAt": "2026-10-18T08:46:52.930Z",
+        "trackTitle": "CLMEv2 - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792313208838_aejq",
+        "device": "Desktop",
+        "trackId": "t1791881576650",
+        "playedAt": "2026-10-18T08:46:48.838Z",
+        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792313206019_s457",
+        "device": "Desktop",
+        "trackId": "t1791881192161",
+        "playedAt": "2026-10-18T08:46:46.019Z",
+        "trackTitle": "CLME - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792313205494_t97b",
+        "device": "Desktop",
+        "trackId": "t1791874838261",
+        "playedAt": "2026-10-18T08:46:45.493Z",
+        "trackTitle": "Real love"
+      },
+      {
+        "id": "pl_1792313204847_eopg",
+        "device": "Desktop",
+        "trackId": "t1791867400589",
+        "playedAt": "2026-10-18T08:46:44.846Z",
+        "trackTitle": "Ai ngoài anh - Vstra"
+      },
+      {
+        "id": "pl_1792308219640_tshz",
+        "device": "Mobile",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T07:23:39.640Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792305140480_pj1j",
+        "device": "Desktop",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T06:32:20.479Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792304572265_q62s",
+        "device": "Mobile",
+        "trackId": "t1791874838261",
+        "playedAt": "2026-10-18T06:22:52.265Z",
+        "trackTitle": "Real love"
+      },
+      {
+        "id": "pl_1792304572145_xlfh",
+        "device": "Mobile",
+        "trackId": "t1791874838261",
+        "playedAt": "2026-10-18T06:22:52.144Z",
+        "trackTitle": "Real love"
+      },
+      {
+        "id": "pl_1792304553999_dixx",
+        "device": "Mobile",
+        "trackId": "t1791881192161",
+        "playedAt": "2026-10-18T06:22:33.999Z",
+        "trackTitle": "CLME - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792304553810_lsvj",
+        "device": "Mobile",
+        "trackId": "t1791881192161",
+        "playedAt": "2026-10-18T06:22:33.810Z",
+        "trackTitle": "CLME - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792304544006_uzm6",
+        "device": "Mobile",
+        "trackId": "t1791882490980",
+        "playedAt": "2026-10-18T06:22:24.006Z",
+        "trackTitle": "CLMEv2 - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792304543847_w5ig",
+        "device": "Mobile",
+        "trackId": "t1791882490980",
+        "playedAt": "2026-10-18T06:22:23.847Z",
+        "trackTitle": "CLMEv2 - Hoàng Tôn"
+      },
+      {
+        "id": "pl_1792304534536_elhg",
+        "device": "Mobile",
+        "trackId": "t1791880340329",
+        "playedAt": "2026-10-18T06:22:14.536Z",
+        "trackTitle": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)"
+      },
+      {
+        "id": "pl_1792303644351_r676",
+        "device": "Desktop",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T06:07:24.351Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792301739737_s8wp",
+        "device": "Mobile",
+        "trackId": "t1791883926651",
+        "playedAt": "2026-10-18T05:35:39.737Z",
+        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)"
+      },
+      {
+        "id": "pl_1792301739711_hvlh",
+        "device": "Mobile",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T05:35:39.711Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792301648994_7j26",
+        "device": "Mobile",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T05:34:08.993Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
+      {
+        "id": "pl_1792301617877_85lj",
+        "device": "Mobile",
+        "trackId": "t1791880340329",
+        "playedAt": "2026-10-18T05:33:37.877Z",
+        "trackTitle": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)"
+      },
+      {
+        "id": "pl_1792301546755_a8hr",
+        "device": "Mobile",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T05:32:26.754Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
       {
         "id": "pl_1792240181914_0oy3",
         "device": "Mobile",
@@ -1934,312 +2315,11 @@
         "trackId": "t1791964364619",
         "playedAt": "2026-10-17T03:26:45.013Z",
         "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792197600441_sawu",
-        "device": "Mobile",
-        "trackId": "t1791881576650",
-        "playedAt": "2026-10-17T00:40:00.440Z",
-        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792197164385_44qe",
-        "device": "Mobile",
-        "trackId": "t1791881576650",
-        "playedAt": "2026-10-17T00:32:44.384Z",
-        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792197164309_o950",
-        "device": "Mobile",
-        "trackId": "t1791881576650",
-        "playedAt": "2026-10-17T00:32:44.309Z",
-        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792196839632_2gnb",
-        "device": "Mobile",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-17T00:27:19.631Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792167654448_oghq",
-        "device": "Mobile",
-        "trackId": "t1791883926651",
-        "playedAt": "2026-10-16T16:20:54.448Z",
-        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)"
-      },
-      {
-        "id": "pl_1792167630010_5ivr",
-        "device": "Mobile",
-        "trackId": "t1791865022686",
-        "playedAt": "2026-10-16T16:20:30.010Z",
-        "trackTitle": "Baby - MCK, Marzus"
-      },
-      {
-        "id": "pl_1792167629859_c192",
-        "device": "Mobile",
-        "trackId": "t1791865022686",
-        "playedAt": "2026-10-16T16:20:29.859Z",
-        "trackTitle": "Baby - MCK, Marzus"
-      },
-      {
-        "id": "pl_1792167599913_gizl",
-        "device": "Mobile",
-        "trackId": "t1791881192161",
-        "playedAt": "2026-10-16T16:19:59.913Z",
-        "trackTitle": "CLME - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167599755_3cbx",
-        "device": "Mobile",
-        "trackId": "t1791881192161",
-        "playedAt": "2026-10-16T16:19:59.755Z",
-        "trackTitle": "CLME - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167580833_80c6",
-        "device": "Mobile",
-        "trackId": "t1791881576650",
-        "playedAt": "2026-10-16T16:19:40.833Z",
-        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167580812_psu6",
-        "device": "Mobile",
-        "trackId": "t1791881576650",
-        "playedAt": "2026-10-16T16:19:40.812Z",
-        "trackTitle": "Em đang nghĩ gì - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167567049_4hvu",
-        "device": "Mobile",
-        "trackId": "t1791882490980",
-        "playedAt": "2026-10-16T16:19:27.049Z",
-        "trackTitle": "CLMEv2 - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167530817_ob8g",
-        "device": "Mobile",
-        "trackId": "t1791882490980",
-        "playedAt": "2026-10-16T16:18:50.817Z",
-        "trackTitle": "CLMEv2 - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167530657_i9hj",
-        "device": "Mobile",
-        "trackId": "t1791882490980",
-        "playedAt": "2026-10-16T16:18:50.657Z",
-        "trackTitle": "CLMEv2 - Hoàng Tôn"
-      },
-      {
-        "id": "pl_1792167500278_7ehg",
-        "device": "Mobile",
-        "trackId": "t1791948682068",
-        "playedAt": "2026-10-16T16:18:20.278Z",
-        "trackTitle": "Giá như"
-      },
-      {
-        "id": "pl_1792167500162_i0cz",
-        "device": "Mobile",
-        "trackId": "t1791948682068",
-        "playedAt": "2026-10-16T16:18:20.162Z",
-        "trackTitle": "Giá như"
-      },
-      {
-        "id": "pl_1792164747857_lz39",
-        "device": "Mobile",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-16T15:32:27.856Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792148561061_1qa7",
-        "device": "Mobile",
-        "trackId": "t1791877930070",
-        "playedAt": "2026-10-16T11:02:41.061Z",
-        "trackTitle": "Từng là của nhau - Bảo Anh"
-      },
-      {
-        "id": "pl_1792148560827_n28g",
-        "device": "Mobile",
-        "trackId": "t1791877930070",
-        "playedAt": "2026-10-16T11:02:40.827Z",
-        "trackTitle": "Từng là của nhau - Bảo Anh"
-      },
-      {
-        "id": "pl_1792148553239_14ak",
-        "device": "Mobile",
-        "trackId": "t1791908040220",
-        "playedAt": "2026-10-16T11:02:33.239Z",
-        "trackTitle": "Toidaidot - Greyd"
-      },
-      {
-        "id": "pl_1792148553211_p8sl",
-        "device": "Mobile",
-        "trackId": "t1791908040220",
-        "playedAt": "2026-10-16T11:02:33.211Z",
-        "trackTitle": "Toidaidot - Greyd"
-      },
-      {
-        "id": "pl_1792148548663_o8x9",
-        "device": "Mobile",
-        "trackId": "t1791879579077",
-        "playedAt": "2026-10-16T11:02:28.663Z",
-        "trackTitle": "Bật nhạc lên - HIEUTHUHAI"
-      },
-      {
-        "id": "pl_1792148548599_skia",
-        "device": "Mobile",
-        "trackId": "t1791879579077",
-        "playedAt": "2026-10-16T11:02:28.599Z",
-        "trackTitle": "Bật nhạc lên - HIEUTHUHAI"
-      },
-      {
-        "id": "pl_1792145609219_nnvo",
-        "device": "Desktop",
-        "trackId": "t1791863432050",
-        "playedAt": "2026-10-16T10:13:29.219Z",
-        "trackTitle": "Vết thương - Fishy ( Slot )"
-      },
-      {
-        "id": "pl_1792145566877_qxgt",
-        "device": "Desktop",
-        "trackId": "t1791948682068",
-        "playedAt": "2026-10-16T10:12:46.877Z",
-        "trackTitle": "Giá như"
-      },
-      {
-        "id": "pl_1792145552002_vnij",
-        "device": "Desktop",
-        "trackId": "t1791863000230",
-        "playedAt": "2026-10-16T10:12:32.002Z",
-        "trackTitle": "Và thế giới mất đi một người cô đơn - Marzus ( Slot)"
-      },
-      {
-        "id": "pl_1792145551338_sovo",
-        "device": "Desktop",
-        "trackId": "t1791880340329",
-        "playedAt": "2026-10-16T10:12:31.337Z",
-        "trackTitle": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)"
-      },
-      {
-        "id": "pl_1792145544552_kpg9",
-        "device": "Desktop",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-16T10:12:24.552Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792143018306_nwqv",
-        "device": "Desktop",
-        "trackId": "t1791883926651",
-        "playedAt": "2026-10-16T09:30:18.306Z",
-        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)"
-      },
-      {
-        "id": "pl_1792143014920_jtn1",
-        "device": "Desktop",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-16T09:30:14.920Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792130832427_k9g3",
-        "device": "Desktop",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-16T06:07:12.427Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792118509256_zbb1",
-        "device": "Mobile",
-        "trackId": "t1791883926651",
-        "playedAt": "2026-10-16T02:41:49.256Z",
-        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)"
-      },
-      {
-        "id": "pl_1792118508476_8sls",
-        "device": "Mobile",
-        "trackId": "t1791883926651",
-        "playedAt": "2026-10-16T02:41:48.475Z",
-        "trackTitle": "Không thể quên - Vstra [remix by. Nghao & Knam] (Slot)"
-      },
-      {
-        "id": "pl_1792110759943_bmlv",
-        "device": "Mobile",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-16T00:32:39.943Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792110019982_xb6a",
-        "device": "Desktop",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-16T00:20:19.982Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792105622969_0xyo",
-        "device": "Mobile",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-15T23:07:02.968Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792093895797_swtg",
-        "device": "Mobile",
-        "trackId": "t1791948378483",
-        "playedAt": "2026-10-15T19:51:35.797Z",
-        "trackTitle": "Ai khóc nỗi đau này - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792093871344_yy2n",
-        "device": "Mobile",
-        "trackId": "t1791863592445",
-        "playedAt": "2026-10-15T19:51:11.344Z",
-        "trackTitle": "Dù có cách xa ( Slot )"
-      },
-      {
-        "id": "pl_1792093860597_6jnf",
-        "device": "Mobile",
-        "trackId": "t1791863000230",
-        "playedAt": "2026-10-15T19:51:00.596Z",
-        "trackTitle": "Và thế giới mất đi một người cô đơn - Marzus ( Slot)"
-      },
-      {
-        "id": "pl_1792089057175_bk88",
-        "device": "Desktop",
-        "trackId": "t1791880340329",
-        "playedAt": "2026-10-15T18:30:57.175Z",
-        "trackTitle": "Phong - Vstra [remix by. Nghao & Skiet] (Slot)"
-      },
-      {
-        "id": "pl_1792082029401_dqqz",
-        "device": "Mobile",
-        "trackId": "t1791908040220",
-        "playedAt": "2026-10-15T16:33:49.401Z",
-        "trackTitle": "Toidaidot - Greyd"
-      },
-      {
-        "id": "pl_1792082029211_li1b",
-        "device": "Mobile",
-        "trackId": "t1791908040220",
-        "playedAt": "2026-10-15T16:33:49.211Z",
-        "trackTitle": "Toidaidot - Greyd"
-      },
-      {
-        "id": "pl_1792082023930_xqdi",
-        "device": "Mobile",
-        "trackId": "t1791865022686",
-        "playedAt": "2026-10-15T16:33:43.930Z",
-        "trackTitle": "Baby - MCK, Marzus"
       }
     ],
-    "totalDownloads": 20,
+    "totalDownloads": 21,
     "trackDownloads": {
-      "t1791867400589": 2,
+      "t1791867400589": 3,
       "t1791874838261": 3,
       "t1791881192161": 2,
       "t1791881576650": 3,
@@ -2248,6 +2328,15 @@
       "t1791948682068": 5
     },
     "recentDownloads": [
+      {
+        "id": "dl_1792327252126_wkqn",
+        "ip": "113.187.11.***",
+        "device": "Mobile",
+        "browser": "Edge",
+        "trackId": "t1791867400589",
+        "trackTitle": "Ai ngoài anh - Vstra",
+        "downloadedAt": "2026-10-18T12:40:52.126Z"
+      },
       {
         "id": "dl_1792243234018_qrk7",
         "ip": "14.162.225.***",
@@ -2429,7 +2518,7 @@
         "downloadedAt": "2026-10-15T15:18:20.724Z"
       }
     ],
-    "totalUniqueVisitors": 62
+    "totalUniqueVisitors": 73
   },
   "bankAccount": {
     "bankId": "MB",
@@ -2439,6 +2528,36 @@
     "accountName": "NGUYEN DUC ANH HAO"
   },
   "subscribers": [
+    {
+      "id": "sub_1792327252124_6m6a",
+      "email": "huaducquan14@gmail.com",
+      "active": true,
+      "source": "free_download",
+      "trackId": "t1791867400589",
+      "trackTitle": "Ai ngoài anh - Vstra",
+      "subscribedAt": "2026-10-18T12:40:52.124Z"
+    },
+    {
+      "id": "sub_1792306644752_w4by",
+      "email": "spam_test_1@example.com",
+      "active": true,
+      "source": "free_download",
+      "subscribedAt": "2026-10-18T06:57:24.752Z"
+    },
+    {
+      "id": "sub_1792306643991_hmos",
+      "email": "spam_test_0@example.com",
+      "active": true,
+      "source": "free_download",
+      "subscribedAt": "2026-10-18T06:57:23.991Z"
+    },
+    {
+      "id": "sub_1792306620392_3cgy",
+      "email": "test_rate_limit_123@example.com",
+      "active": true,
+      "source": "free_download",
+      "subscribedAt": "2026-10-18T06:57:00.392Z"
+    },
     {
       "id": "sub_1792201546928_bphe",
       "email": "testsubscriber@gmail.com",
@@ -2452,6 +2571,18 @@
   "adminTotpSecret": "UUJ5WV4U27CMQVYZMIDYC4ASSUS3W75G",
   "adminTotpConfigured": true,
   "processedTransactions": [
+    {
+      "amount": "200000",
+      "content": "QAMTAP6196  PAY36090 1  NGHAO MVDXI3IA7WI",
+      "gateway": "MB",
+      "orderId": "ord_1792334220000",
+      "processedAt": "2026-10-18T14:41:38.071Z",
+      "referenceCode": "FT26292869070320",
+      "transactionId": "cmvdxio1o0isa01mft32e6k6i",
+      "orderResolution": "exact",
+      "transactionDate": "2026-10-18T14:37:00.000Z",
+      "bankAccountPublicId": null
+    },
     {
       "amount": "200000",
       "content": "QAMTAP6196  PAY36090 1  NGHAO MVC2WAF4IDX",
