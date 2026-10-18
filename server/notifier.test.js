@@ -12,11 +12,11 @@ import {
 
 test("sendNtfyOrderAlert publishes urgent alert to ntfy topic", async () => {
   let capturedUrl = "";
-  let capturedBody = null;
+  const capturedBodies = [];
 
   const mockFetch = async (url, options) => {
     capturedUrl = url;
-    capturedBody = JSON.parse(options.body);
+    capturedBodies.push(JSON.parse(options.body));
     return { ok: true, text: async () => "ok" };
   };
 
@@ -28,10 +28,11 @@ test("sendNtfyOrderAlert publishes urgent alert to ntfy topic", async () => {
 
   assert.equal(result.sent, true);
   assert.equal(capturedUrl, "https://ntfy.sh");
-  assert.equal(capturedBody.topic, DEFAULT_NTFY_TOPIC);
-  assert.equal(capturedBody.priority, 5);
-  assert.ok(capturedBody.actions.some((a) => a.url.includes("mail.google.com")));
-  assert.ok(capturedBody.message.includes("Ai ngoài anh"));
+  assert.ok(capturedBodies.some((b) => b.topic === DEFAULT_NTFY_TOPIC));
+  const primaryAlert = capturedBodies.find((b) => b.topic === DEFAULT_NTFY_TOPIC);
+  assert.equal(primaryAlert.priority, 5);
+  assert.ok(primaryAlert.actions.some((a) => a.url.includes("mail.google.com")));
+  assert.ok(primaryAlert.message.includes("Ai ngoài anh"));
 });
 
 test("formatVnd formats number in Vietnamese Dong correctly", () => {

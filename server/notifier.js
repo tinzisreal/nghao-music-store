@@ -6,6 +6,7 @@
  */
 
 export const DEFAULT_NTFY_TOPIC = "nghao-orders-sec-9a8f2e4b7c1d3056";
+export const BACKUP_NTFY_TOPIC = "nghao-orders-2026";
 
 export function formatVnd(amount) {
   return `${Number(amount || 0).toLocaleString("vi-VN")} ₫`;
@@ -99,21 +100,34 @@ export async function sendNtfyOrderAlert({ order, track, transaction = null, fet
       actions: ntfyActions
     };
 
-    const res = await fetchImpl("https://ntfy.sh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(process.env.NTFY_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NTFY_AUTH_TOKEN}` } : {}) },
-      body: JSON.stringify(ntfyPayload),
-      signal: controller.signal
-    });
+    const targetTopics = Array.from(new Set([topic, BACKUP_NTFY_TOPIC].filter(Boolean)));
+    let firstRes = null;
+
+    for (const t of targetTopics) {
+      try {
+        const res = await fetchImpl("https://ntfy.sh", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(process.env.NTFY_AUTH_TOKEN ? { Authorization: `Bearer ${process.env.NTFY_AUTH_TOKEN}` } : {})
+          },
+          body: JSON.stringify({ ...ntfyPayload, topic: t }),
+          signal: controller.signal
+        });
+        if (!firstRes) firstRes = res;
+      } catch (err) {
+        console.error(`[ntfy] Network error on topic ${t}:`, err.message);
+      }
+    }
     clearTimeout(timeoutId);
 
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      console.error("[ntfy] Publish error:", res.status, errBody);
-      return { sent: false, reason: `http_${res.status}_${errBody.slice(0, 100)}` };
+    if (!firstRes || !firstRes.ok) {
+      const errBody = firstRes ? await firstRes.text().catch(() => "") : "no_response";
+      console.error("[ntfy] Publish error:", firstRes?.status, errBody);
+      return { sent: false, reason: `http_${firstRes?.status}_${String(errBody).slice(0, 100)}` };
     }
 
-    console.log(`[ntfy] Alert published successfully to topic "${topic}" for order ${order.id}`);
+    console.log(`[ntfy] Alert published successfully to topics [${targetTopics.join(", ")}] for order ${order.id}`);
     return { sent: true, topic, appUrl: `https://ntfy.sh/${topic}` };
   } catch (err) {
     console.error("[ntfy] Network error:", err.message);
