@@ -188,8 +188,8 @@ function createRateLimiter({ windowMs, max, message }) {
 
 const orderRateLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000,
-  max: 5,
-  message: "Bạn đã tạo quá nhiều đơn hàng (tối đa 5 đơn trong 10 phút). Vui lòng đợi 10 phút trước khi thử lại."
+  max: 30,
+  message: "Bạn đã tạo quá nhiều đơn hàng (tối đa 30 đơn trong 10 phút). Vui lòng đợi 10 phút trước khi thử lại."
 });
 
 const subscribeRateLimiter = createRateLimiter({
@@ -1190,15 +1190,14 @@ app.post("/orders", orderRateLimiter, async (req, res) => {
         amount: String(totalAmount),
         content: transferNote,
         title: orderTitle,
-        redirectUrl: safeRedirectUrl,
-        webhookUrl: process.env.APIPAY_WEBHOOK_URL || `${siteUrl}/api/apipay/webhook`
+        redirectUrl: safeRedirectUrl
       });
     } catch (err) {
-      const status = err instanceof ApiPayError ? err.statusCode : 502;
-      const message = err instanceof ApiPayError ? err.message : "Không thể khởi tạo thanh toán ApiPay.";
-      return res.status(status).json({ message });
+      console.error("[ApiPay] Lỗi khởi tạo cổng ApiPay, chuyển sang mã QR ngân hàng dự phòng:", err.message);
     }
   }
+
+  const fallbackVietQrUrl = `https://img.vietqr.io/image/${encodeURIComponent(defaultBank.bankId || "MB")}-${encodeURIComponent(defaultBank.accountNo || "0392590124")}-compact2.png?amount=${encodeURIComponent(totalAmount)}&addInfo=${encodeURIComponent(transferNote)}&accountName=${encodeURIComponent(defaultBank.accountName || "NGUYEN DUC ANH HAO")}`;
 
   const bank = apipayData
     ? {
@@ -1240,7 +1239,7 @@ app.post("/orders", orderRateLimiter, async (req, res) => {
     amount: Number(apipayData?.amount ?? totalAmount),
     transferNote: apipayData?.content || transferNote,
     bank,
-    qrUrl: apipayData?.qrUrl || defaultBank.qrImage || "/bank-qr.png",
+    qrUrl: apipayData?.qrUrl || fallbackVietQrUrl,
     payUrl: apipayData?.payUrl || undefined,
     apipayPublicId: apipayData?.publicId || undefined,
     redirectSecret: apipayData?.redirectSecret || undefined,
