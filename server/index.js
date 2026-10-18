@@ -90,6 +90,11 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   // Giới hạn quyền truy cập phần cứng nhạy cảm
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(self)");
+  // Content Security Policy (CSP) chặt chẽ chống XSS & Data Exfiltration
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.paypal.com https://*.paypal.com https://static.cloudflareinsights.com; connect-src 'self' https://app.apipay.vn https://www.paypal.com https://*.paypal.com https://ntfy.sh https://res.cloudinary.com https://cloudflareinsights.com blob:; media-src 'self' https://res.cloudinary.com blob: data:; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; frame-src 'self' https://www.paypal.com https://*.paypal.com;"
+  );
   // Bật HSTS trên kết nối HTTPS
   if (req.secure || req.headers["x-forwarded-proto"] === "https") {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
@@ -182,15 +187,15 @@ function createRateLimiter({ windowMs, max, message }) {
 }
 
 const orderRateLimiter = createRateLimiter({
-  windowMs: 5 * 60 * 1000,
-  max: 15,
-  message: "Bạn đã tạo đơn quá nhanh. Vui lòng đợi 5 phút trước khi tạo đơn tiếp theo."
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  message: "Bạn đã tạo quá nhiều đơn hàng (tối đa 5 đơn trong 10 phút). Vui lòng đợi 10 phút trước khi thử lại."
 });
 
 const subscribeRateLimiter = createRateLimiter({
-  windowMs: 5 * 60 * 1000,
-  max: 10,
-  message: "Bạn đã gửi quá nhiều yêu cầu đăng ký. Vui lòng thử lại sau."
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  message: "Bạn đã gửi quá nhiều yêu cầu đăng ký (tối đa 5 lượt trong 10 phút). Vui lòng thử lại sau 10 phút."
 });
 
 const analyticsRateLimiter = createRateLimiter({
@@ -1275,7 +1280,7 @@ app.get("/paypal/config", (req, res) => {
 });
 
 // POST /paypal/create-order — Khởi tạo PayPal Checkout order để khách quẹt thẻ Visa/Mastercard
-app.post("/paypal/create-order", async (req, res) => {
+app.post("/paypal/create-order", orderRateLimiter, async (req, res) => {
   const { trackId, email, phone } = req.body || {};
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -1756,7 +1761,7 @@ function getTokenSecret(db) {
   return `${secret}:${process.env.APIPAY_WEBHOOK_SECRET || "nghao_admin_token_secret"}`;
 }
 
-function createAdminToken(db) {
+export function createAdminToken(db) {
   const payload = Buffer.from(
     JSON.stringify({
       role: "author_admin",
@@ -1784,14 +1789,44 @@ function verifyAdminToken(token, db) {
   }
 }
 
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  if (!header) return {};
+  const cookies = {};
+  for (const pair of header.split(";")) {
+    const idx = pair.indexOf("=");
+    if (idx < 0) continue;
+    const key = pair.slice(0, idx).trim();
+    const val = pair.slice(idx + 1).trim();
+    try {
+      cookies[key] = decodeURIComponent(val);
+    } catch {
+      cookies[key] = val;
+    }
+  }
+  return cookies;
+}
+
+function extractAdminToken(req) {
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    const bearer = authHeader.slice(7).trim();
+    if (bearer) return bearer;
+  }
+  const cookies = req.cookies || parseCookies(req);
+  if (cookies.admin_token) {
+    return cookies.admin_token.trim();
+  }
+  return "";
+}
+
 function requireAdmin(req, res, next) {
   const origin = req.headers.origin;
   if (origin && !isOriginAllowed(origin)) {
     return res.status(403).json({ message: "Yêu cầu bị từ chối do nguồn gốc không hợp lệ (CORS/CSRF)." });
   }
 
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const token = extractAdminToken(req);
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1803,8 +1838,7 @@ function requireAdmin(req, res, next) {
 
 // GET /admin/auth/status — Kiểm tra trạng thái đăng nhập & cấu hình Google Authenticator
 app.get("/admin/auth/status", (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const token = extractAdminToken(req);
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
@@ -1877,7 +1911,35 @@ app.post("/admin/auth/login", globalLoginLimiter, (req, res) => {
   }
 
   const token = createAdminToken(db);
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+  const isHttps = Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
+
+  // Thiết lập HttpOnly Cookie bảo mật cao chống tấn công XSS
+  res.cookie("admin_token", token, {
+    httpOnly: true,
+    secure: isProduction || isHttps,
+    sameSite: "strict",
+    path: "/api",
+    maxAge: 86400 * 1000 // 24 giờ
+  });
+
   return res.json({ token, method: "google_authenticator" });
+});
+
+// POST /admin/auth/logout — Xóa HttpOnly Cookie admin_token
+app.post("/admin/auth/logout", (req, res) => {
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+  const isHttps = Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
+
+  res.cookie("admin_token", "", {
+    httpOnly: true,
+    secure: isProduction || isHttps,
+    sameSite: "strict",
+    path: "/api",
+    maxAge: 0
+  });
+
+  return res.json({ success: true, message: "Đã đăng xuất phiên Admin." });
 });
 
 // POST /admin/auth/totp-reset — Tạo lại mã QR Google Authenticator mới (khi đổi điện thoại)
@@ -1891,6 +1953,17 @@ app.post("/admin/auth/totp-reset", requireAdmin, (req, res) => {
 
   const totpSetup = buildTotpSetupInfo(db.adminTotpSecret);
   const token = createAdminToken(db);
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+  const isHttps = Boolean(req.secure || req.headers["x-forwarded-proto"] === "https");
+
+  res.cookie("admin_token", token, {
+    httpOnly: true,
+    secure: isProduction || isHttps,
+    sameSite: "strict",
+    path: "/api",
+    maxAge: 86400 * 1000
+  });
+
   res.json({ token, totpSetup });
 });
 

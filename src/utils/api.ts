@@ -69,9 +69,11 @@ export function getAdminToken(): string {
   return window.localStorage.getItem(ADMIN_TOKEN_KEY) || "";
 }
 
-export function setAdminToken(token: string): void {
+export function setAdminToken(_token: string): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  // Tránh lưu secret token trong localStorage để chống đánh cắp mã phiên qua tấn công XSS.
+  // Token được quản lý bảo mật tuyệt đối qua HttpOnly Cookie từ máy chủ.
+  window.localStorage.removeItem(ADMIN_TOKEN_KEY);
 }
 
 export function clearAdminToken(): void {
@@ -106,6 +108,7 @@ async function request<T>(path: string, init: RequestInit = {}, baseUrl = API_BA
   try {
     res = await fetch(`${baseUrl}${path}`, {
       ...init,
+      credentials: "include",
       headers: {
         ...(isForm ? {} : { "Content-Type": "application/json" }),
         ...authHeaders(),
@@ -397,6 +400,16 @@ export const api = {
     return request<{ token: string; totpSetup: AdminAuthStatus["totpSetup"] }>("/admin/auth/totp-reset", {
       method: "POST"
     });
+  },
+
+  logoutAdmin(): Promise<{ success: boolean; message: string }> {
+    clearAdminToken();
+    if (!USE_MOCK) {
+      return request<{ success: boolean; message: string }>("/admin/auth/logout", {
+        method: "POST"
+      }).catch(() => ({ success: true, message: "Đã đăng xuất." }));
+    }
+    return Promise.resolve({ success: true, message: "Đã đăng xuất." });
   },
 
   /* ───────── Admin Reconciliation ───────── */

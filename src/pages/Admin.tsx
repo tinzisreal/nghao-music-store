@@ -53,11 +53,15 @@ export function Admin() {
     checkAuth();
   }, [checkAuth]);
 
-  const handleLogout = () => {
-    clearAdminToken();
-    setAuthenticated(false);
-    toast.success("Đã khóa trang Quản trị.");
-    checkAuth();
+  const handleLogout = async () => {
+    try {
+      await api.logoutAdmin();
+    } finally {
+      clearAdminToken();
+      setAuthenticated(false);
+      toast.success("Đã khóa trang Quản trị.");
+      checkAuth();
+    }
   };
 
   if (authChecking) {
