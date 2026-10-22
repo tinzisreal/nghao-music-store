@@ -27,6 +27,12 @@
         "kind": "tiktok",
         "label": "TikTok",
         "handle": "prod.nghao"
+      },
+      {
+        "href": "https://soundcloud.com/nghaoindahouse",
+        "kind": "soundcloud",
+        "label": "SoundCloud",
+        "handle": "nghaoindahouse"
       }
     ]
   },
@@ -1177,6 +1183,34 @@
       "transferNote": "NGHAO MVDE3WZJK67",
       "apipayPublicId": "APIPAYJSCM3BRJDP9ZE",
       "redirectSecret": "6b1013db4a15252ba2909f23e5bef6b4fed41aaa57cbe13d91c5de0040b4612b"
+    },
+    {
+      "id": "ord_1792336523847",
+      "trackId": "t1791964364619",
+      "trackIds": [
+        "t1791964364619"
+      ],
+      "items": [
+        {
+          "trackId": "t1791964364619",
+          "title": "Đừng ai nhắc về anh ấy - Skiet (Slot)",
+          "price": 500000,
+          "cover": "https://res.cloudinary.com/oksfct7l/image/upload/v1791963852/music_store/images/rzupdtwtbvvweurqpyzw.jpg"
+        }
+      ],
+      "amount": 500000,
+      "transferNote": "NGHAO MVDYW0UF8KG",
+      "bank": {
+        "bankId": "MB",
+        "bankName": "MBBank",
+        "accountNo": "VQRQAMTAP6196",
+        "accountName": "NGUYEN DUC ANH HAO"
+      },
+      "qrUrl": "https://app.apipay.vn/v1/payment-requests/APIPAYJSCW6STHPZXQT/qr-image",
+      "payUrl": "https://pay.apipay.vn/APIPAYJSCW6STHPZXQT",
+      "apipayPublicId": "APIPAYJSCW6STHPZXQT",
+      "status": "pending_verification",
+      "createdAt": "2026-10-18T15:15:24.260Z"
     }
   ],
   "tracks": [
@@ -1513,14 +1547,14 @@
         "downloads": 5
       },
       "2026-10-18": {
-        "plays": 43,
-        "views": 14,
-        "uniques": 11,
+        "plays": 44,
+        "views": 15,
+        "uniques": 12,
         "downloads": 1
       }
     },
     "devices": {
-      "mobile": 51,
+      "mobile": 52,
       "tablet": 0,
       "desktop": 65
     },
@@ -1567,6 +1601,7 @@
       "9c066de14a0036bd": "2026-10-17",
       "9d7e0060bd5f1b47": "2026-10-17",
       "a31767b82f7fa13b": "2026-10-15",
+      "a41af3ab1c4468ca": "2026-10-18",
       "a83a4c4db1c2a1b5": "2026-10-18",
       "acb5261b88774122": "2026-10-16",
       "ade686eab6b88dd6": "2026-10-17",
@@ -1593,8 +1628,8 @@
       "fe1b569690e27585": "2026-10-17",
       "ff7d63138da0db9f": "2026-10-17"
     },
-    "totalPlays": 208,
-    "totalViews": 116,
+    "totalPlays": 209,
+    "totalViews": 117,
     "trackPlays": {
       "t1791863000230": 14,
       "t1791863432050": 4,
@@ -1613,9 +1648,16 @@
       "t1791908040220": 15,
       "t1791948378483": 11,
       "t1791948682068": 6,
-      "t1791964364619": 31
+      "t1791964364619": 32
     },
     "recentPlays": [
+      {
+        "id": "pl_1792335967835_7v2f",
+        "device": "Mobile",
+        "trackId": "t1791964364619",
+        "playedAt": "2026-10-18T15:06:07.835Z",
+        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
+      },
       {
         "id": "pl_1792332271571_xq9v",
         "device": "Desktop",
@@ -2308,13 +2350,6 @@
         "trackId": "t1791964364619",
         "playedAt": "2026-10-17T06:21:13.859Z",
         "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
-      },
-      {
-        "id": "pl_1792207605014_ydl6",
-        "device": "Desktop",
-        "trackId": "t1791964364619",
-        "playedAt": "2026-10-17T03:26:45.013Z",
-        "trackTitle": "Đừng ai nhắc về anh ấy - Skiet (Slot)"
       }
     ],
     "totalDownloads": 21,
@@ -2518,7 +2553,7 @@
         "downloadedAt": "2026-10-15T15:18:20.724Z"
       }
     ],
-    "totalUniqueVisitors": 73
+    "totalUniqueVisitors": 74
   },
   "bankAccount": {
     "bankId": "MB",

@@ -1,7 +1,7 @@
 import { Track } from "./track";
 import { Album } from "./album";
 
-export type SocialKind = "instagram" | "facebook" | "tiktok";
+export type SocialKind = "instagram" | "facebook" | "tiktok" | "soundcloud";
 
 export interface LocalizedText {
   vi: string;
