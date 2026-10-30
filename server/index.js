@@ -299,6 +299,7 @@ const isSupabaseConfigured = Boolean(
 );
 
 let memoryDb = null;
+let lastSupabaseSyncAt = 0;
 
 function readDb() {
   if (memoryDb) return memoryDb;
@@ -341,10 +342,13 @@ async function syncToSupabase(data) {
   }
 }
 
-async function initSupabaseStore() {
+async function initSupabaseStore(force = false) {
   if (!isSupabaseConfigured) {
-    console.log("Supabase not configured, using local server/db.json storage.");
-    return;
+    return readDb();
+  }
+  const now = Date.now();
+  if (!force && memoryDb && now - lastSupabaseSyncAt < 2500) {
+    return memoryDb;
   }
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/app_store?id=eq.main&select=data`, {
@@ -355,38 +359,42 @@ async function initSupabaseStore() {
     });
     if (!res.ok) {
       console.warn(`Supabase init check returned ${res.status}. Make sure table 'app_store' exists.`);
-      return;
+      return readDb();
     }
     const rows = await res.json();
     if (Array.isArray(rows) && rows.length > 0 && rows[0]?.data) {
       memoryDb = rows[0].data;
+      lastSupabaseSyncAt = Date.now();
       try {
         fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf-8");
       } catch {
         /* ignore local cache write error on serverless */
       }
-      console.log("Loaded store state from Supabase (app_store).");
+      return memoryDb;
     } else {
       const initialData = readDb();
       if (initialData) {
         await syncToSupabase(initialData);
-        console.log("Seeded initial server/db.json state into Supabase (app_store).");
+        lastSupabaseSyncAt = Date.now();
       }
+      return initialData;
     }
   } catch (err) {
     console.error("Failed to initialize Supabase store:", err.message);
+    return readDb();
   }
 }
 
-function writeDb(data) {
+async function writeDb(data) {
   memoryDb = data;
+  lastSupabaseSyncAt = Date.now();
   try {
     fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
   } catch (err) {
     console.error("Error writing local db.json:", err);
   }
   if (isSupabaseConfigured) {
-    syncToSupabase(data);
+    await syncToSupabase(data);
   }
   return true;
 }
@@ -1251,7 +1259,7 @@ app.post("/orders", orderRateLimiter, async (req, res) => {
 
   if (!db.orders) db.orders = [];
   db.orders.push(order);
-  writeDb(db);
+  await writeDb(db);
 
   res.json(sanitizeOrderForClient(order, db.tracks));
 });
@@ -2276,7 +2284,7 @@ app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
     order.shortfallAmount = undefined;
   }
 
-  writeDb(db);
+  await writeDb(db);
 
   if (status === "paid") {
     const track = (db.tracks || []).find((t) => t.id === order.trackId);
@@ -2291,7 +2299,7 @@ app.patch("/admin/orders/:id/status", requireAdmin, async (req, res) => {
 });
 
 // PATCH /admin/orders/:id/email-sent — Đánh dấu Admin đã gửi file qua Gmail thủ công cho khách
-app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
+app.patch("/admin/orders/:id/email-sent", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { sent = true, email, phone } = req.body || {};
   const db = readDb();
@@ -2307,7 +2315,7 @@ app.patch("/admin/orders/:id/email-sent", requireAdmin, (req, res) => {
     order.phone = String(phone).trim();
   }
   order.emailSentAt = sent ? new Date().toISOString() : undefined;
-  writeDb(db);
+  await writeDb(db);
 
   res.json(sanitizeOrderForClient(order, db.tracks, { includeDownloadUrl: true }));
 });
@@ -2352,13 +2360,13 @@ app.post("/admin/notifications/test", requireAdmin, async (req, res) => {
 });
 
 // DELETE /admin/orders/:id — Xoá đơn hàng rác / thử nghiệm
-app.delete("/admin/orders/:id", requireAdmin, (req, res) => {
+app.delete("/admin/orders/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
   db.orders = (db.orders || []).filter((o) => o.id !== id);
-  writeDb(db);
+  await writeDb(db);
   res.status(204).send();
 });
 
@@ -2433,7 +2441,7 @@ app.post(
 });
 
 // POST /tracks
-app.post("/tracks", requireAdmin, (req, res) => {
+app.post("/tracks", requireAdmin, async (req, res) => {
   const input = req.body;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -2449,13 +2457,13 @@ app.post("/tracks", requireAdmin, (req, res) => {
   };
 
   db.tracks.unshift(newTrack);
-  writeDb(db);
+  await writeDb(db);
 
   res.status(201).json(newTrack);
 });
 
 // PUT /tracks/reorder — Sắp xếp lại thứ tự bài hát hiển thị trên Store
-app.put("/tracks/reorder", requireAdmin, (req, res) => {
+app.put("/tracks/reorder", requireAdmin, async (req, res) => {
   const { trackIds } = req.body;
   if (!Array.isArray(trackIds)) {
     return res.status(400).json({ message: "trackIds phải là mảng id bài hát." });
@@ -2480,13 +2488,13 @@ app.put("/tracks/reorder", requireAdmin, (req, res) => {
   }
 
   db.tracks = reordered;
-  writeDb(db);
+  await writeDb(db);
 
   res.json(db.tracks);
 });
 
 // PATCH /tracks/:id
-app.patch("/tracks/:id", requireAdmin, (req, res) => {
+app.patch("/tracks/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const patch = req.body;
   const db = readDb();
@@ -2515,13 +2523,13 @@ app.patch("/tracks/:id", requireAdmin, (req, res) => {
   }
 
   db.tracks[idx] = { ...db.tracks[idx], ...patch };
-  writeDb(db);
+  await writeDb(db);
 
   res.json(db.tracks[idx]);
 });
 
 // DELETE /tracks/:id
-app.delete("/tracks/:id", requireAdmin, (req, res) => {
+app.delete("/tracks/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -2530,38 +2538,38 @@ app.delete("/tracks/:id", requireAdmin, (req, res) => {
   if (db.sections?.newReleases?.trackIds) {
     db.sections.newReleases.trackIds = db.sections.newReleases.trackIds.filter((tid) => tid !== id);
   }
-  writeDb(db);
+  await writeDb(db);
 
   res.status(204).send();
 });
 
 // PUT /producer
-app.put("/producer", requireAdmin, (req, res) => {
+app.put("/producer", requireAdmin, async (req, res) => {
   const producer = req.body;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
   db.producer = { ...producer };
   db.tracks = db.tracks.map((t) => ({ ...t, artist: producer.name }));
-  writeDb(db);
+  await writeDb(db);
 
   res.json(db.producer);
 });
 
 // PUT /store-info
-app.put("/store-info", requireAdmin, (req, res) => {
+app.put("/store-info", requireAdmin, async (req, res) => {
   const info = req.body;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
 
   db.info = { ...info };
-  writeDb(db);
+  await writeDb(db);
 
   res.json(db.info);
 });
 
 // PUT /sections
-app.put("/sections", requireAdmin, (req, res) => {
+app.put("/sections", requireAdmin, async (req, res) => {
   const sections = req.body;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -2574,7 +2582,7 @@ app.put("/sections", requireAdmin, (req, res) => {
     };
   }
   db.sections = nextSections;
-  writeDb(db);
+  await writeDb(db);
 
   res.json(db.sections);
 });
@@ -2582,7 +2590,7 @@ app.put("/sections", requireAdmin, (req, res) => {
 /* ──────── Albums CRUD Endpoints ──────── */
 
 // POST /albums
-app.post("/albums", requireAdmin, (req, res) => {
+app.post("/albums", requireAdmin, async (req, res) => {
   const input = req.body;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -2596,13 +2604,13 @@ app.post("/albums", requireAdmin, (req, res) => {
 
   if (!db.albums) db.albums = [];
   db.albums.unshift(newAlbum);
-  writeDb(db);
+  await writeDb(db);
 
   res.status(201).json(newAlbum);
 });
 
 // PATCH /albums/:id
-app.patch("/albums/:id", requireAdmin, (req, res) => {
+app.patch("/albums/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const patch = req.body;
   const db = readDb();
@@ -2619,12 +2627,12 @@ app.patch("/albums/:id", requireAdmin, (req, res) => {
     db.tracks = db.tracks.map((t) => (t.albumId === id ? { ...t, album: patch.title } : t));
   }
 
-  writeDb(db);
+  await writeDb(db);
   res.json(db.albums[idx]);
 });
 
 // DELETE /albums/:id
-app.delete("/albums/:id", requireAdmin, (req, res) => {
+app.delete("/albums/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
   const db = readDb();
   if (!db) return res.status(500).json({ message: "Lỗi đọc dữ liệu." });
@@ -2635,7 +2643,7 @@ app.delete("/albums/:id", requireAdmin, (req, res) => {
   // Chuyển các track thuộc album này về Single
   db.tracks = db.tracks.map((t) => (t.albumId === id ? { ...t, albumId: undefined, album: "Single" } : t));
 
-  writeDb(db);
+  await writeDb(db);
   res.status(204).send();
 });
 

@@ -79,6 +79,18 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, saving]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Cảnh báo nếu đang tải lên hoặc có dữ liệu mới chưa lưu mà bấm F5 / rời trang
+      if (!saving && (audioUrl !== track?.audioUrl || cover !== track?.cover || title !== (track?.title ?? ""))) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [audioUrl, cover, title, track, saving]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanPriceDigits = price.replace(/\D/g, "");
@@ -155,6 +167,9 @@ function EditorForm({ track, genres, albums = [], featuredFull, onClose, onSave 
               onChange={(url) => {
                 setAudioUrl(url);
                 setFullAudioUrl(url);
+                if (url && url !== track?.audioUrl) {
+                  toast.success("Đã tải file lên cloud! Đừng quên bấm nút 'Thêm bài' / 'Lưu thay đổi' ở cuối để lưu nhé.");
+                }
               }}
               onAudioDuration={(s) => {
                 setDuration(formatTime(s));
