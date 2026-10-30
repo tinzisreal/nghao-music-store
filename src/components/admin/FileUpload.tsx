@@ -17,14 +17,21 @@ const LIMITS = { image: 5, audio: 50 }; // MB
 export function FileUpload({ kind, label, value, onChange, onAudioDuration, error, hint }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [dragging, setDragging] = useState(false);
   const [fileName, setFileName] = useState("");
 
   const handleFile = async (file: File) => {
     setUploadError("");
-    if (!file.type.startsWith(`${kind}/`)) {
-      setUploadError(kind === "image" ? "Vui lòng chọn file ảnh (JPG, PNG, WEBP)." : "Vui lòng chọn file âm thanh (MP3, WAV).");
+    const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|svg)$/i.test(file.name);
+    const isAudio = file.type.startsWith("audio/") || /\.(mp3|wav|flac|aac|m4a|ogg)$/i.test(file.name);
+    if (kind === "image" && !isImage) {
+      setUploadError("Vui lòng chọn file ảnh (JPG, PNG, WEBP).");
+      return;
+    }
+    if (kind === "audio" && !isAudio) {
+      setUploadError("Vui lòng chọn file âm thanh (MP3, WAV).");
       return;
     }
     if (file.size > LIMITS[kind] * 1024 * 1024) {
@@ -34,14 +41,18 @@ export function FileUpload({ kind, label, value, onChange, onAudioDuration, erro
     if (kind === "audio" && onAudioDuration) readDuration(file, onAudioDuration);
 
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const { url } = await api.uploadFile(file, kind);
+      const { url } = await api.uploadFile(file, kind, (percent) => {
+        setUploadProgress(percent);
+      });
       setFileName(file.name);
       onChange(url);
     } catch (err) {
       setUploadError(errorMessage(err, "Tải file lên thất bại. Thử lại nhé."));
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -117,18 +128,28 @@ export function FileUpload({ kind, label, value, onChange, onAudioDuration, erro
         dragging ? "border-white/60 bg-white/10" : "border-white/20 bg-white/[0.03] hover:border-white/40 hover:bg-white/[0.06]"} ${
         shownError ? "border-ember/60" : ""}`}>
         
-          {uploading ?
-        <>
+          {uploading ? (
+            <div className="flex flex-col items-center gap-2">
               <Loader2Icon className="h-6 w-6 animate-spin text-white/70" aria-hidden />
-              <span className="text-sm text-white/70">Đang tải lên…</span>
-            </> :
-
-        <>
-              {kind === "image" ?
-          <ImageIcon className="h-6 w-6 text-white/50" aria-hidden /> :
-
-          <UploadIcon className="h-6 w-6 text-white/50" aria-hidden />
-          }
+              <span className="text-sm font-medium text-white/80">
+                {uploadProgress !== null ? `Đang tải lên ${uploadProgress}%…` : "Đang tải lên…"}
+              </span>
+              {uploadProgress !== null && (
+                <div className="mt-1 h-1.5 w-48 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full bg-white/70 transition-all duration-150"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {kind === "image" ? (
+                <ImageIcon className="h-6 w-6 text-white/50" aria-hidden />
+              ) : (
+                <UploadIcon className="h-6 w-6 text-white/50" aria-hidden />
+              )}
               <span className="text-sm text-white">
                 Kéo thả hoặc <span className="underline underline-offset-2">chọn file</span>
               </span>
@@ -136,7 +157,7 @@ export function FileUpload({ kind, label, value, onChange, onAudioDuration, erro
                 {kind === "image" ? `JPG, PNG, WEBP · tối đa ${LIMITS.image}MB` : `MP3, WAV · tối đa ${LIMITS.audio}MB`}
               </span>
             </>
-        }
+          )}
         </button>
       }
 

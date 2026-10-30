@@ -25,6 +25,7 @@ test("Security 1. Strict HTTP security headers and CSP are sent on responses", a
     assert.match(csp, /https:\/\/app\.apipay\.vn/);
     assert.match(csp, /https:\/\/ntfy\.sh/);
     assert.match(csp, /https:\/\/res\.cloudinary\.com/);
+    assert.match(csp, /https:\/\/api\.cloudinary\.com/);
   } finally {
     server.close();
   }
@@ -146,6 +147,41 @@ test("Security 7. Rate limiter blocks rapid spam on /subscribe after 5 requests"
       db.subscribers = db.subscribers.filter((s) => !s.email?.startsWith("rate_test_"));
       writeDb(db);
     }
+    server.close();
+  }
+});
+
+
+test("Security 8. GET /admin/cloudinary-sign requires admin auth and returns valid upload signature", async () => {
+  const server = app.listen(0);
+  const port = server.address().port;
+
+  try {
+    // 1. Yêu cầu không có quyền admin phải trả về 401
+    const unauthRes = await fetch(`http://localhost:${port}/admin/cloudinary-sign?kind=audio`);
+    assert.equal(unauthRes.status, 401, "Yêu cầu không có quyền admin phải bị từ chối 401");
+
+    // 2. Yêu cầu có quyền admin hợp lệ
+    const db = readDb();
+    const token = createAdminToken(db);
+    const authRes = await fetch(`http://localhost:${port}/admin/cloudinary-sign?kind=audio`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (authRes.status === 200) {
+      const data = await authRes.json();
+      assert.ok(data.signature, "Phải có chữ ký signature");
+      assert.ok(data.timestamp, "Phải có timestamp");
+      assert.ok(data.apiKey, "Phải có apiKey");
+      assert.ok(data.cloudName, "Phải có cloudName");
+      assert.equal(data.folder, "music_store/audios");
+      assert.equal(data.resourceType, "auto");
+    } else {
+      assert.equal(authRes.status, 503, "Nếu chưa cấu hình Cloudinary thì phải trả về 503");
+    }
+  } finally {
     server.close();
   }
 });

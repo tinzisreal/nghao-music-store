@@ -93,7 +93,7 @@ app.use((req, res, next) => {
   // Content Security Policy (CSP) chặt chẽ chống XSS & Data Exfiltration
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.paypal.com https://*.paypal.com https://static.cloudflareinsights.com; connect-src 'self' https://app.apipay.vn https://www.paypal.com https://*.paypal.com https://ntfy.sh https://res.cloudinary.com https://cloudflareinsights.com blob:; media-src 'self' https://res.cloudinary.com blob: data:; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; frame-src 'self' https://www.paypal.com https://*.paypal.com;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.paypal.com https://*.paypal.com https://static.cloudflareinsights.com; connect-src 'self' https://api.cloudinary.com https://app.apipay.vn https://www.paypal.com https://*.paypal.com https://ntfy.sh https://res.cloudinary.com https://cloudflareinsights.com blob:; media-src 'self' https://res.cloudinary.com blob: data:; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; frame-src 'self' https://www.paypal.com https://*.paypal.com;"
   );
   // Bật HSTS trên kết nối HTTPS
   if (req.secure || req.headers["x-forwarded-proto"] === "https") {
@@ -2360,6 +2360,31 @@ app.delete("/admin/orders/:id", requireAdmin, (req, res) => {
   db.orders = (db.orders || []).filter((o) => o.id !== id);
   writeDb(db);
   res.status(204).send();
+});
+
+// GET /admin/cloudinary-sign — Ký yêu cầu upload trực tiếp lên Cloudinary (bỏ qua giới hạn 4.5MB của Vercel)
+app.get("/admin/cloudinary-sign", requireAdmin, (req, res) => {
+  if (!isCloudinaryConfigured) {
+    return res.status(503).json({ message: "Cloudinary chưa được cấu hình." });
+  }
+
+  const kind = req.query.kind === "image" ? "image" : "audio";
+  const folder = `music_store/${kind}s`;
+  const timestamp = Math.round(Date.now() / 1000);
+
+  const signature = cloudinary.utils.api_sign_request(
+    { folder, timestamp },
+    process.env.CLOUDINARY_API_SECRET
+  );
+
+  res.json({
+    signature,
+    timestamp,
+    folder,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    resourceType: kind === "image" ? "image" : "auto"
+  });
 });
 
 // POST /uploads

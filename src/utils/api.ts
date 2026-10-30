@@ -132,6 +132,72 @@ async function request<T>(path: string, init: RequestInit = {}, baseUrl = API_BA
   return res.json() as Promise<T>;
 }
 
+interface CloudinarySignResponse {
+  signature: string;
+  timestamp: number;
+  folder: string;
+  apiKey: string;
+  cloudName: string;
+  resourceType: string;
+}
+
+function uploadDirectToCloudinary(
+  file: File,
+  signData: CloudinarySignResponse,
+  onProgress?: (percent: number) => void
+): Promise<{ url: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const resourceType = signData.resourceType || "auto";
+    const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(signData.cloudName)}/${encodeURIComponent(resourceType)}/upload`;
+
+    xhr.open("POST", endpoint, true);
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+          onProgress(percent);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      let data: any = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        // non-JSON response
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300 && (data?.secure_url || data?.url)) {
+        if (onProgress) onProgress(100);
+        resolve({ url: data.secure_url || data.url });
+      } else {
+        const errorMsg = data?.error?.message || `Tải lên Cloudinary thất bại (${xhr.status}).`;
+        reject(new ApiError(errorMsg, xhr.status));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new ApiError("Lỗi kết nối khi tải file trực tiếp lên cloud. Vui lòng thử lại."));
+    };
+
+    xhr.ontimeout = () => {
+      reject(new ApiError("Hết thời gian tải file lên cloud. Vui lòng thử lại."));
+    };
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("api_key", signData.apiKey);
+    formData.append("timestamp", String(signData.timestamp));
+    formData.append("signature", signData.signature);
+    formData.append("folder", signData.folder);
+
+    xhr.send(formData);
+  });
+}
+
 /* ───────── Mock backend (in-memory) ───────── */
 
 function clone<T>(v: T): T {
@@ -456,14 +522,42 @@ export const api = {
 
   /* ───────── Admin ───────── */
 
-  uploadFile(file: File, kind: "image" | "audio"): Promise<{url: string;}> {
-    if (!USE_MOCK) {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", kind);
-      return request<{url: string;}>("/uploads", { method: "POST", body: form });
+  async uploadFile(
+    file: File,
+    kind: "image" | "audio",
+    onProgress?: (percent: number) => void
+  ): Promise<{ url: string }> {
+    if (USE_MOCK) {
+      if (onProgress) {
+        onProgress(30);
+        setTimeout(() => onProgress(70), 200);
+        setTimeout(() => onProgress(100), 500);
+      }
+      return mock({ url: URL.createObjectURL(file) }, 700);
     }
-    return mock({ url: URL.createObjectURL(file) }, 700);
+
+    // 1. Cố gắng lấy chữ ký xác thực từ máy chủ để tải trực tiếp lên Cloudinary
+    // Bỏ qua hoàn toàn giới hạn 4.5MB payload của Vercel Serverless Function (sửa lỗi 413)
+    let signData: CloudinarySignResponse | null = null;
+    try {
+      signData = await request<CloudinarySignResponse>(
+        `/admin/cloudinary-sign?kind=${encodeURIComponent(kind)}`
+      );
+    } catch (signErr) {
+      // Nếu máy chủ chưa cấu hình Cloudinary (503) hoặc môi trường không hỗ trợ, fallback về /uploads
+      console.warn("Cloudinary signing endpoint unavailable, falling back to /uploads:", signErr);
+    }
+
+    // Nếu có chữ ký hợp lệ, tải trực tiếp lên Cloudinary với theo dõi tiến trình (progress)
+    if (signData?.signature && signData?.apiKey && signData?.cloudName) {
+      return uploadDirectToCloudinary(file, signData, onProgress);
+    }
+
+    // 2. Fallback tải qua máy chủ backend /uploads
+    const form = new FormData();
+    form.append("file", file);
+    form.append("kind", kind);
+    return request<{ url: string }>("/uploads", { method: "POST", body: form });
   },
 
   createTrack(input: TrackInput): Promise<Track> {
